@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="LauncherTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:colorAccent">#5F86E4</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">#00000000</item>
+        <item name="android:statusBarColor">#00000000</item>
+    </style>
+</resources>
