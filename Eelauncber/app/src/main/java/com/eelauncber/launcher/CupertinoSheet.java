@@ -275,6 +275,7 @@ final class CupertinoSheet {
         cancel.setOnClickListener(v -> dialog.dismiss());
 
         dialog.setContentView(outer);
+        GlassUi.applyMenuInsets(a, outer, outer, false);
         Window window = dialog.getWindow();
         if (window != null) {
             window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -287,6 +288,7 @@ final class CupertinoSheet {
         GlassUi.configure(a, window, false);
         dialog.show();
         if (window != null) window.setLayout(-1, -2);
+        outer.requestApplyInsets();
         outer.setTranslationY(dp(a, 70));
         outer.setAlpha(0.5f);
         outer.animate().translationY(0).alpha(1f).setDuration(260)
