@@ -12,6 +12,7 @@ final class HomeState {
     static final class Item {
         String id = UUID.randomUUID().toString();
         String name = "";
+        int page = -1, cell = -1;
         final ArrayList<String> apps = new ArrayList<>();
         Item() {}
         Item(String key) { apps.add(key); }
@@ -21,12 +22,15 @@ final class HomeState {
             JSONArray arr = new JSONArray();
             for (String app : apps) arr.put(app);
             obj.put("id", id); obj.put("name", name); obj.put("apps", arr);
+            obj.put("page", page); obj.put("cell", cell);
             return obj;
         }
         static Item fromJson(JSONObject obj) {
             Item item = new Item();
             item.id = obj.optString("id", UUID.randomUUID().toString());
             item.name = obj.optString("name", "");
+            item.page = obj.optInt("page", -1);
+            item.cell = obj.optInt("cell", -1);
             JSONArray arr = obj.optJSONArray("apps");
             if (arr != null) for (int i = 0; i < arr.length(); i++) {
                 String key = arr.optString(i, "");
@@ -103,7 +107,31 @@ final class HomeState {
         // Intentionally empty on first launch: never auto-populate the dock or home.
         // Apps can be added explicitly using the swipe-up app library.
         while (home.dock.size() > 4) home.pages.add(0, home.dock.remove(home.dock.size() - 1));
+        home.normalize();
         return home;
+    }
+
+    /** Keep explicit gaps while migrating old sequential layouts and avoiding widgets. */
+    void normalize() {
+        boolean[][] used = new boolean[50][20];
+        for (WidgetPlacement widget : widgets) {
+            if (widget.page >= 50) continue;
+            if (!HomePages.free(used[widget.page], widget.cell, widget.spanX, widget.spanY)) continue;
+            HomePages.occupy(used[widget.page], widget.cell, widget.spanX, widget.spanY);
+        }
+        for (Item item : pages) {
+            if (item.page >= 0 && item.page < 50 && item.cell >= 0 && item.cell < 20 && !used[item.page][item.cell]) {
+                used[item.page][item.cell] = true;
+            } else {
+                item.page = -1; item.cell = -1;
+            }
+        }
+        for (Item item : pages) if (item.page < 0) {
+            for (int p = 0; p < 50 && item.page < 0; p++)
+                for (int c = 0; c < 20; c++) if (!used[p][c]) {
+                    item.page = p; item.cell = c; used[p][c] = true; break;
+                }
+        }
     }
 
     private static void load(JSONArray array, ArrayList<Item> result, AppCatalog catalog) {
