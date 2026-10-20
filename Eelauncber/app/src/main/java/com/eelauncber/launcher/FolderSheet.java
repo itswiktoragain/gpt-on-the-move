@@ -1,34 +1,40 @@
 package com.eelauncber.launcher;
-import android.app.AlertDialog;
-import android.widget.EditText;
+
+import java.util.ArrayList;
 
 final class FolderSheet {
-    static void open(LauncherActivity a,HomeState.Item item){
-        String[] titles=new String[item.apps.size()];
-        for(int i=0;i<titles.length;i++){
-            AppCatalog.Entry e=a.catalog.get(item.apps.get(i));
-            titles[i]=e==null?"App":e.label;
+    static void open(LauncherActivity a, HomeState.Item folder) {
+        ArrayList<CupertinoSheet.Action> actions = new ArrayList<>();
+        for (String key : folder.apps) {
+            AppCatalog.Entry entry = a.catalog.get(key);
+            String name = entry == null ? "App" : entry.label;
+            actions.add(CupertinoSheet.action("↗", name,
+                    () -> LauncherActions.launch(a, key)));
         }
-        new AlertDialog.Builder(a)
-            .setTitle(item.name.isEmpty()?"Folder":item.name)
-            .setItems(titles,(dialog,index)->LauncherActions.launch(a,item.apps.get(index)))
-            .setNeutralButton("Rename",(dialog,index)->rename(a,item))
-            .setNegativeButton("Ungroup",(dialog,index)->{
-                a.home.pages.remove(item);
-                a.home.dock.remove(item);
-                for(String key:item.apps)a.home.pages.add(new HomeState.Item(key));
-                LauncherActions.save(a);
-            })
-            .setPositiveButton("Close",null).show();
+        actions.add(CupertinoSheet.action("✎", "Rename folder",
+                () -> rename(a, folder)));
+        actions.add(CupertinoSheet.danger("−", "Ungroup apps",
+                () -> CupertinoSheet.confirm(a, "Ungroup Folder",
+                        "All apps will be moved to your home screen.",
+                        "Ungroup", () -> ungroup(a, folder))));
+        CupertinoSheet.show(a, folder.name.isEmpty() ? "Folder" : folder.name,
+                "Tap an app to open it", actions.toArray(new CupertinoSheet.Action[0]));
     }
-    static void rename(LauncherActivity a,HomeState.Item item){
-        EditText field=new EditText(a);
-        field.setSingleLine(true);field.setText(item.name);
-        new AlertDialog.Builder(a).setTitle("Folder name").setView(field)
-            .setNegativeButton("Cancel",null)
-            .setPositiveButton("Save",(dialog,index)->{
-                item.name=field.getText().toString().trim();
-                LauncherActions.save(a);
-            }).show();
+
+    private static void ungroup(LauncherActivity a, HomeState.Item folder) {
+        a.home.pages.remove(folder);
+        a.home.dock.remove(folder);
+        for (String key : folder.apps) {
+            if (!a.home.includes(key)) a.home.pages.add(new HomeState.Item(key));
+        }
+        LauncherActions.save(a);
+        CupertinoNotice.show(a, "Folder ungrouped");
+    }
+
+    static void rename(LauncherActivity a, HomeState.Item folder) {
+        CupertinoSheet.textPrompt(a, "Rename Folder", folder.name, text -> {
+            folder.name = text.isEmpty() ? "Folder" : text;
+            LauncherActions.save(a);
+        });
     }
 }
