@@ -1,32 +1,65 @@
 package com.eelauncber.launcher;
-import android.app.AlertDialog;
+
 import android.app.WallpaperManager;
 import android.content.Intent;
+import java.util.ArrayList;
+
 final class SettingsSheet {
- static void open(LauncherActivity a){
-  String[] names={"Add system widget","Show icon labels","Dark dock","Larger icons","Choose wallpaper","Hide an app"};
-  new AlertDialog.Builder(a).setTitle("Customize Home Screen")
-   .setItems(names,(d,i)->{
-    if(i==0){a.widgets.pick();return;}
-    if(i==4){
-     try{a.startActivity(new Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER));}
-     catch(Exception ex){a.startActivity(new Intent(Intent.ACTION_SET_WALLPAPER));}
-     return;
+    static void open(LauncherActivity a) {
+        if (a.prefs == null) return;
+        boolean labels = a.prefs.getBoolean("labels", true);
+        boolean darkDock = a.prefs.getBoolean("dark_dock", false);
+        boolean bigIcons = a.prefs.getInt("icon_size", 58) > 60;
+        CupertinoSheet.show(a, "Customize Home Screen", "Your home, your way",
+                CupertinoSheet.action("＋", "Add system widget", () -> a.widgets.pick()),
+                CupertinoSheet.action("Aa", "App labels", labels ? "On" : "Off", () -> {
+                    a.prefs.edit().putBoolean("labels", !labels).apply();
+                    HomeScreen.draw(a);
+                    open(a);
+                }),
+                CupertinoSheet.action("◐", "Dock appearance", darkDock ? "Dark" : "Light", () -> {
+                    a.prefs.edit().putBoolean("dark_dock", !darkDock).apply();
+                    HomeScreen.draw(a);
+                    open(a);
+                }),
+                CupertinoSheet.action("◎", "Icon size", bigIcons ? "Large" : "Normal", () -> {
+                    a.prefs.edit().putInt("icon_size", bigIcons ? 58 : 65).apply();
+                    HomeScreen.draw(a);
+                    open(a);
+                }),
+                CupertinoSheet.action("◇", "Change wallpaper", () -> {
+                    try {
+                        a.startActivity(new Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER));
+                    } catch (Exception ignored) {
+                        try {
+                            a.startActivity(new Intent(Intent.ACTION_SET_WALLPAPER));
+                        } catch (Exception failure) {
+                            CupertinoNotice.show(a, "Wallpaper picker unavailable");
+                        }
+                    }
+                }),
+                CupertinoSheet.action("−", "Hide a home app", () -> chooseHidden(a)));
     }
-    if(i==5){
-     String[] labels=new String[a.catalog.all.size()];
-     for(int k=0;k<labels.length;k++)labels[k]=a.catalog.all.get(k).label;
-     new AlertDialog.Builder(a).setTitle("Hide from Home Screen").setItems(labels,(dialog,k)->{
-      String key=a.catalog.all.get(k).key;
-      a.home.hidden.add(key);
-      a.home.pages.removeIf(it->it.apps.contains(key));
-      LauncherActions.save(a);
-     }).show();return;
+
+    private static void chooseHidden(LauncherActivity a) {
+        ArrayList<CupertinoSheet.Action> choices = new ArrayList<>();
+        for (AppCatalog.Entry app : a.catalog.all) {
+            if (!a.home.includes(app.key)) continue;
+            choices.add(CupertinoSheet.action("−", app.label, () -> {
+                a.home.hidden.add(app.key);
+                for (HomeState.Item item : a.home.pages) item.apps.remove(app.key);
+                for (HomeState.Item item : a.home.dock) item.apps.remove(app.key);
+                a.home.pages.removeIf(item -> item.apps.isEmpty());
+                a.home.dock.removeIf(item -> item.apps.isEmpty());
+                LauncherActions.save(a);
+                CupertinoNotice.show(a, "Removed from Home Screen");
+            }));
+        }
+        if (choices.isEmpty()) {
+            CupertinoNotice.show(a, "Your home has no apps to hide");
+            return;
+        }
+        CupertinoSheet.searchable(a, "Remove a Home App",
+                choices.toArray(new CupertinoSheet.Action[0]));
     }
-    String key=i==1?"labels":i==2?"dark_dock":"icon_size";
-    if(i==3)a.prefs.edit().putInt(key,a.prefs.getInt(key,58)>60?58:65).apply();
-    else a.prefs.edit().putBoolean(key,!a.prefs.getBoolean(key,i==1)).apply();
-    HomeScreen.draw(a);
-   }).setPositiveButton("Done",null).show();
- }
 }
