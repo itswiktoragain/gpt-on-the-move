@@ -2,6 +2,7 @@ package com.eelauncber.launcher;
 
 import android.content.Context;
 import android.view.MotionEvent;
+import android.view.ViewConfiguration;
 import android.view.View;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
@@ -15,8 +16,19 @@ final class HomePager extends HorizontalScrollView {
     private int page;
     private float x, y;
     private ValueAnimator anim;
+    private boolean vertical;
+    private final int touchSlop;
+    @Override public boolean onInterceptTouchEvent(MotionEvent e){
+        if(e.getActionMasked()==MotionEvent.ACTION_DOWN){x=e.getX();y=e.getY();vertical=false;return super.onInterceptTouchEvent(e);}
+        if(e.getActionMasked()==MotionEvent.ACTION_MOVE){
+            float dx=e.getX()-x,dy=e.getY()-y;
+            if(dy < -touchSlop*2 && Math.abs(dy)>Math.abs(dx)*1.2f){vertical=true;return true;}
+        }
+        return vertical || super.onInterceptTouchEvent(e);
+    }
     HomePager(Context c) {
         super(c);
+        touchSlop=ViewConfiguration.get(c).getScaledTouchSlop();
         setHorizontalScrollBarEnabled(false);
         setFillViewport(true);
         setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -52,11 +64,11 @@ final class HomePager extends HorizontalScrollView {
     }
     @Override public boolean onTouchEvent(MotionEvent e){
         if(e.getActionMasked()==MotionEvent.ACTION_DOWN){x=e.getX();y=e.getY();}
-        boolean result=super.onTouchEvent(e);
+        boolean result=vertical?true:super.onTouchEvent(e);
         if(e.getActionMasked()==MotionEvent.ACTION_UP){
             float dx=e.getX()-x,dy=e.getY()-y;
-            if(Math.abs(dy)>Math.abs(dx)*1.4f&&Math.abs(dy)>70){
-                if(listener!=null)listener.onVerticalSwipe(dy<0);
+            if(dy < -touchSlop*3 && Math.abs(dy)>Math.abs(dx)*1.2f){
+                if(listener!=null)listener.onVerticalSwipe(true);
             } else postDelayed(()->animateTo(Math.round((float)getScrollX()/Math.max(1,getWidth()))),45);
         }
         return result;
