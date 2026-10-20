@@ -14,13 +14,13 @@ final class SearchPanel {
     static void show(LauncherActivity a,String initial){
         a.controller.closeShelf();
         FrameLayout overlay=new FrameLayout(a);
-        overlay.setBackgroundColor(0xA9101729);
+        overlay.setBackgroundColor(0xB90C1321);
         overlay.setOnClickListener(v->a.controller.closeShelf());
         LinearLayout panel=new LinearLayout(a);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(LauncherUi.dp(a,14),LauncherUi.dp(a,15),
                 LauncherUi.dp(a,14),LauncherUi.dp(a,10));
-        panel.setBackground(LauncherUi.bg(a,0xF3F5F6FB,27));
+        panel.setBackground(LauncherUi.bg(a,0xF0222D40,29));
         FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(-1,-1);
         p.leftMargin=LauncherUi.dp(a,7);
         p.rightMargin=LauncherUi.dp(a,7);
@@ -32,13 +32,13 @@ final class SearchPanel {
         EditText input=new EditText(a);
         input.setSingleLine(true);
         input.setTextSize(16);
-        input.setTextColor(0xFF24314C);
-        input.setHintTextColor(0xFF748095);
+        input.setTextColor(0xFFF6F7FC);
+        input.setHintTextColor(0xFFB0BDD1);
         input.setHint("Search apps");
         input.setPadding(LauncherUi.dp(a,14),0,LauncherUi.dp(a,14),0);
-        input.setBackground(LauncherUi.bg(a,0xFFE3E8F2,15));
+        input.setBackground(LauncherUi.bg(a,0xFF3A485F,15));
         bar.addView(input,new LinearLayout.LayoutParams(0,LauncherUi.dp(a,48),1));
-        TextView close=LauncherUi.text(a,"Cancel",14,0xFF416FD2,true);
+        TextView close=LauncherUi.text(a,"Cancel",14,0xFF9ABEFF,true);
         LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(
                 LauncherUi.dp(a,66),LauncherUi.dp(a,48));
         bar.addView(close,cp);
@@ -59,6 +59,9 @@ final class SearchPanel {
         });
         a.root.addView(overlay,new FrameLayout.LayoutParams(-1,-1));
         a.shelf=overlay;
+        panel.setAlpha(0f);
+        panel.setTranslationY(LauncherUi.dp(a,70));
+        panel.animate().alpha(1f).translationY(0).setDuration(260).start();
         input.setText(initial);
         SearchResults.render(a,list,initial);
     }
