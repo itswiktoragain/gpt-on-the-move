@@ -67,11 +67,11 @@ final class WidgetGallery {
  static void show(LauncherActivity a){
   a.controller.closeShelf();
   FrameLayout overlay=new FrameLayout(a);
-  overlay.setBackgroundColor(0xE5101115);
+  overlay.setBackgroundColor(0x090E1118);
   overlay.setOnClickListener(v->a.controller.closeShelf());
   LinearLayout panel=new LinearLayout(a);
   panel.setOrientation(LinearLayout.VERTICAL);panel.setClickable(true);
-  panel.setBackground(LauncherUi.bg(a,0xFC1C1D23,31));
+  panel.setBackground(GlassUi.sheet(a,31));
   FrameLayout.LayoutParams pp=new FrameLayout.LayoutParams(-1,-1);
   pp.topMargin=LauncherUi.dp(a,56);overlay.addView(panel,pp);
 
@@ -96,7 +96,7 @@ final class WidgetGallery {
   search.setSingleLine(true);search.setTextSize(16);search.setTextColor(WHITE);
   search.setHintTextColor(DIM);search.setHint("Search Widgets");
   search.setPadding(LauncherUi.dp(a,15),0,LauncherUi.dp(a,15),0);
-  search.setBackground(LauncherUi.bg(a,0xFF35363E,14));
+  search.setBackground(GlassUi.input(a,14));
   LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,LauncherUi.dp(a,49));
   sp.setMargins(LauncherUi.dp(a,21),LauncherUi.dp(a,6),LauncherUi.dp(a,21),LauncherUi.dp(a,14));
   panel.addView(search,sp);
@@ -146,10 +146,10 @@ final class WidgetGallery {
    outer.setPadding(LauncherUi.dp(a,9),LauncherUi.dp(a,5),LauncherUi.dp(a,9),LauncherUi.dp(a,5));
    LinearLayout card=new LinearLayout(a);card.setGravity(Gravity.CENTER_VERTICAL);
    card.setPadding(LauncherUi.dp(a,12),LauncherUi.dp(a,10),LauncherUi.dp(a,13),LauncherUi.dp(a,10));
-   card.setBackground(LauncherUi.bg(a,0xFF32333B,20));
+   card.setBackground(GlassUi.card(a,20));
    outer.addView(card,new LinearLayout.LayoutParams(-1,LauncherUi.dp(a,115)));
    FrameLayout previewBox=new FrameLayout(a);
-   previewBox.setBackground(LauncherUi.bg(a,0xFF23242B,12));
+   previewBox.setBackground(GlassUi.chip(a,12));
    LinearLayout.LayoutParams pb=new LinearLayout.LayoutParams(LauncherUi.dp(a,115),LauncherUi.dp(a,89));
    pb.rightMargin=LauncherUi.dp(a,14);card.addView(previewBox,pb);
    ImageView graphic=new ImageView(a);
@@ -187,7 +187,7 @@ final class WidgetGallery {
   LinearLayout panel=new LinearLayout(a);panel.setOrientation(LinearLayout.VERTICAL);
   panel.setPadding(LauncherUi.dp(a,20),LauncherUi.dp(a,18),
       LauncherUi.dp(a,20),LauncherUi.dp(a,24));
-  panel.setBackground(LauncherUi.bg(a,0xFF272830,30));
+  panel.setBackground(GlassUi.sheet(a,30));
   LinearLayout bar=new LinearLayout(a);bar.setGravity(Gravity.CENTER_VERTICAL);
   TextView back=LauncherUi.text(a,"‹  Widgets",16,0xFF91B9FF,false);
   back.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);
@@ -198,7 +198,7 @@ final class WidgetGallery {
   panel.addView(bar);back.setOnClickListener(v->dialog.dismiss());
 
   FrameLayout previewBox=new FrameLayout(a);
-  previewBox.setBackground(LauncherUi.bg(a,0xFF373840,23));
+  previewBox.setBackground(GlassUi.card(a,23));
   LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,LauncherUi.dp(a,222));
   pp.topMargin=LauncherUi.dp(a,13);panel.addView(previewBox,pp);
   TextView sizeInfo=LauncherUi.text(a,"",15,DIM,false);
@@ -249,7 +249,8 @@ final class WidgetGallery {
   if(window!=null){
    window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
    window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-   window.setDimAmount(.6f);window.setGravity(Gravity.BOTTOM);
+   window.setDimAmount(.12f);window.setGravity(Gravity.BOTTOM);
+   GlassUi.configure(a,window,false);
   }
   dialog.show();if(window!=null)window.setLayout(-1,-2);
  }
