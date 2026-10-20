@@ -18,15 +18,24 @@ class LauncherActivity extends Activity {
  long lastScan;
  LauncherController controller;
  WidgetHost widgets;
+ boolean launcherVisible=false;
+ boolean homeWasForeground=false;
  @Override public void onCreate(Bundle b){super.onCreate(b);controller=new LauncherController(this);controller.start();}
- @Override protected void onResume(){super.onResume();if(controller!=null)controller.resume();}
+ @Override protected void onResume(){super.onResume();launcherVisible=true;if(controller!=null)controller.resume();}
  @Override protected void onStart(){super.onStart();if(widgets!=null)widgets.start();}
- @Override protected void onStop(){if(widgets!=null)widgets.stop();super.onStop();}
+ @Override protected void onStop(){launcherVisible=false;if(widgets!=null)widgets.stop();super.onStop();}
  @Override protected void onActivityResult(int req,int result,Intent data){
   super.onActivityResult(req,result,data);
   if(widgets!=null)widgets.result(req,result,data);
  }
  @Override public void onBackPressed(){if(controller!=null&&controller.back())return;super.onBackPressed();}
- @Override protected void onNewIntent(Intent i){super.onNewIntent(i);if(controller!=null)controller.home();}
+ @Override protected void onNewIntent(Intent i){
+  boolean alreadyOnHome=launcherVisible && hasWindowFocus();
+  super.onNewIntent(i);
+  if(controller!=null){
+   if(alreadyOnHome){controller.closeShelf();SearchPanel.show(this,"");}
+   else controller.home();
+  }
+ }
  @Override protected void onDestroy(){if(controller!=null)controller.stop();super.onDestroy();}
 }
