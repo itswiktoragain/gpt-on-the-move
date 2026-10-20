@@ -92,7 +92,7 @@ final class SearchResults extends BaseAdapter {
                     LauncherUi.dp(activity, 25), LauncherUi.dp(activity, 25)));
         }
 
-        row.setBackground(LauncherUi.bg(activity, 0x143A3B43, 13));
+        row.setBackground(GlassUi.chip(activity, 13));
         LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
                 -1, LauncherUi.dp(activity, 59));
         rowParams.setMargins(LauncherUi.dp(activity, 10), 0, LauncherUi.dp(activity, 10), 0);
