@@ -89,7 +89,8 @@ final class WidgetTile {
             int cellW = Math.max(1, grid.getWidth() / 4);
             int cellH = Math.max(1, grid.getHeight() / 5);
             AppWidgetProviderInfo info = a.widgets.manager.getAppWidgetInfo(item.id);
-            int mode = info == null ? AppWidgetProviderInfo.RESIZE_BOTH : info.resizeMode;
+            int mode = EelaWidgets.custom(item) ? AppWidgetProviderInfo.RESIZE_BOTH :
+                    info == null ? AppWidgetProviderInfo.RESIZE_BOTH : info.resizeMode;
             boolean horiz = (mode & AppWidgetProviderInfo.RESIZE_HORIZONTAL) != 0;
             boolean vert = (mode & AppWidgetProviderInfo.RESIZE_VERTICAL) != 0;
             int minX = 1, minY = 1;
