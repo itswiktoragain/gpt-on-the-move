@@ -176,7 +176,7 @@ final class CupertinoSheet {
     private static LinearLayout makePanel(LauncherActivity a) {
         LinearLayout panel = new LinearLayout(a);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setBackground(glass(a, PANEL, 27));
+        panel.setBackground(GlassUi.sheet(a, 27));
         panel.setElevation(dp(a, 24));
         panel.setClipToOutline(true);
         return panel;
@@ -267,7 +267,7 @@ final class CupertinoSheet {
 
         TextView cancel = label(a, "Cancel", 17, TEXT, true);
         cancel.setGravity(Gravity.CENTER);
-        cancel.setBackground(glass(a, 0xF63A3A41, 21));
+        cancel.setBackground(GlassUi.card(a, 21));
         cancel.setElevation(dp(a, 8));
         LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, dp(a, 56));
         cp.topMargin = dp(a, 9);
@@ -284,6 +284,7 @@ final class CupertinoSheet {
             window.setNavigationBarColor(0xFF1A1A1F);
             window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         }
+        GlassUi.configure(a, window, false);
         dialog.show();
         if (window != null) window.setLayout(-1, -2);
         outer.setTranslationY(dp(a, 70));
@@ -309,7 +310,7 @@ final class CupertinoSheet {
         field.setHintTextColor(SECONDARY);
         field.setHint(hint);
         field.setPadding(dp(a, 17), 0, dp(a, 17), 0);
-        field.setBackground(glass(a, 0xEA404047, 15));
+        field.setBackground(GlassUi.input(a, 15));
         return field;
     }
 
