@@ -67,7 +67,9 @@ final class SettingsSheet {
         sectionTitle(a, content, "WIDGETS");
         LinearLayout widgets = group(a);
         content.addView(widgets);
-        item(a, widgets, R.drawable.f7_widget, "Add Widgets", null,
+        item(a, widgets, R.drawable.f7_widget, "Eelauncber Widgets", null,
+                () -> { a.controller.closeShelf(); EelaWidgets.pick(a); });
+        item(a, widgets, R.drawable.f7_widget, "System Widgets", null,
                 () -> { a.controller.closeShelf(); a.widgets.pick(); });
 
         sectionTitle(a, content, "HOME SCREEN");
