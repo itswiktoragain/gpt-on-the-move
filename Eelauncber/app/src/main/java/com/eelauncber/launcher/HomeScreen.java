@@ -47,12 +47,6 @@ final class HomeScreen {
         FrameLayout.LayoutParams dot=new FrameLayout.LayoutParams(-2,LauncherUi.dp(a,19),Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);
         dot.bottomMargin=LauncherUi.dp(a,154);
         a.root.addView(a.dots,dot);
-        TextView search=LauncherUi.text(a,"↑  Swipe up to search",13,Color.WHITE,true);
-        search.setBackground(LauncherUi.bg(a,0x80434D65,17));
-        FrameLayout.LayoutParams sp=new FrameLayout.LayoutParams(LauncherUi.dp(a,176),LauncherUi.dp(a,31),Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);
-        sp.bottomMargin=LauncherUi.dp(a,114);
-        a.root.addView(search,sp);
-        search.setOnClickListener(v->SearchPanel.show(a,""));
         a.dock=new LinearLayout(a);
         a.dock.setGravity(Gravity.CENTER_VERTICAL);
         a.dock.setPadding(LauncherUi.dp(a,12),0,LauncherUi.dp(a,12),0);
