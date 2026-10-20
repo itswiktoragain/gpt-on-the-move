@@ -2,6 +2,8 @@ package com.eelauncber.launcher;
 
 import android.app.Dialog;
 import android.graphics.Color;
+import android.graphics.RenderEffect;
+import android.graphics.Shader;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
@@ -78,10 +80,18 @@ final class GlassUi {
         Dialog dialog = new Dialog(a, android.R.style.Theme_Translucent_NoTitleBar);
         dialog.setCancelable(true);
         dialog.setCanceledOnTouchOutside(true);
+        // Render a genuinely blurred snapshot, including the system wallpaper where accessible.
+        View blurred = AcrylicBackdrop.create(a);
+        overlay.addView(blurred, 0, new FrameLayout.LayoutParams(-1, -1));
         dialog.setContentView(overlay);
         Window window = dialog.getWindow();
         configure(a, window, true);
+        if (Build.VERSION.SDK_INT >= 31 && a.root != null) {
+            a.root.setRenderEffect(RenderEffect.createBlurEffect(
+                    LauncherUi.dp(a, 29), LauncherUi.dp(a, 29), Shader.TileMode.CLAMP));
+        }
         dialog.setOnDismissListener(d -> {
+            if (Build.VERSION.SDK_INT >= 31 && a.root != null) a.root.setRenderEffect(null);
             if (a.glassDialog == dialog) a.glassDialog = null;
         });
         a.glassDialog = dialog;
