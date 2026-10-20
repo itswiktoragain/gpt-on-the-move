@@ -14,6 +14,7 @@ final class HomePages {
   int shortcut=0;
   for(int page=0;page<pageCount;page++){
    HomeGrid grid=new HomeGrid(a);
+   grid.setOnLongClickListener(v->{a.controller.setEditing(true);return true;});
    boolean[] busy=new boolean[20];
    for(HomeState.WidgetPlacement w:a.home.widgets)if(w.page==page){
     int target=locate(busy,w.cell,w.spanX,w.spanY);
@@ -30,6 +31,7 @@ final class HomePages {
   }
   while(shortcut<a.home.pages.size()){
    HomeGrid grid=new HomeGrid(a);
+   grid.setOnLongClickListener(v->{a.controller.setEditing(true);return true;});
    for(int cell=0;cell<20&&shortcut<a.home.pages.size();cell++,shortcut++)
     grid.addView(AppTile.create(a,a.home.pages.get(shortcut),false,shortcut),new HomeGrid.Params(cell,1,1));
    views.add(grid);
