@@ -116,10 +116,7 @@ final class WidgetGallery {
    }
    public void afterTextChanged(Editable s){}
   });
-  a.root.addView(overlay,new FrameLayout.LayoutParams(-1,-1));
-  a.shelf=overlay;
-  panel.setTranslationY(LauncherUi.dp(a,95));panel.setAlpha(.6f);
-  panel.animate().translationY(0).alpha(1f).setDuration(280).start();
+  GlassUi.show(a,overlay,panel);
  }
  static class GalleryAdapter extends BaseAdapter {
   final LauncherActivity a;
