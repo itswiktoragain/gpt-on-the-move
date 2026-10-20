@@ -77,7 +77,7 @@ final class CupertinoSheet {
         scroll.setVerticalScrollBarEnabled(false);
         scroll.addView(list);
         int maxHeight = (int)(a.getResources().getDisplayMetrics().heightPixels * .60f);
-        int desired = dp(a, 57) * actions.length;
+        int desired = dp(a, 55) * actions.length;
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1,
                 Math.min(desired, maxHeight));
         panel.addView(scroll, slp);
@@ -213,17 +213,17 @@ final class CupertinoSheet {
     private static View actionRow(LauncherActivity a, Dialog dialog, Action choice) {
         LinearLayout row = new LinearLayout(a);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(a, 18), 0, dp(a, 20), 0);
-        row.setMinimumHeight(dp(a, 56));
+        row.setPadding(dp(a, 22), 0, dp(a, 22), 0);
+        row.setMinimumHeight(dp(a, 54));
         row.setBackground(ripple(a, dp(a, 17)));
 
         android.widget.ImageView icon = new android.widget.ImageView(a);
         icon.setImageResource(symbolFor(choice.label));
-        icon.setColorFilter(choice.dangerous ? DANGER : TEXT);
-        icon.setPadding(dp(a, 7), dp(a, 7), dp(a, 7), dp(a, 7));
+        icon.setColorFilter(choice.dangerous ? DANGER : ACCENT);
+        icon.setPadding(dp(a, 3), dp(a, 3), dp(a, 3), dp(a, 3));
         LinearLayout.LayoutParams ilp =
-                new LinearLayout.LayoutParams(dp(a, 34), dp(a, 34));
-        ilp.rightMargin = dp(a, 13);
+                new LinearLayout.LayoutParams(dp(a, 29), dp(a, 29));
+        ilp.rightMargin = dp(a, 16);
         row.addView(icon, ilp);
 
         TextView name = label(a, choice.label, 16,
