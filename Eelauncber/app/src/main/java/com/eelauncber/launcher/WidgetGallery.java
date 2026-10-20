@@ -29,7 +29,7 @@ final class WidgetGallery {
   }catch(Exception ex){return info.provider.getPackageName();}
  }
  static Drawable preview(LauncherActivity a,AppWidgetProviderInfo info){
-  try{return info.loadPreviewImage(a.getPackageManager());}catch(Exception ignored){return null;}
+  try{return info.loadPreviewImage(a, a.getResources().getDisplayMetrics().densityDpi);}catch(Exception ignored){return null;}
  }
  static Drawable icon(LauncherActivity a,AppWidgetProviderInfo info){
   try{return a.getPackageManager().getApplicationIcon(info.provider.getPackageName());}
