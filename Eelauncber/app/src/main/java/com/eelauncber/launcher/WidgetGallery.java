@@ -87,6 +87,14 @@ final class WidgetGallery {
   bar.addView(done,new LinearLayout.LayoutParams(LauncherUi.dp(a,65),LauncherUi.dp(a,49)));
   done.setOnClickListener(v->a.controller.closeShelf());
   panel.addView(bar);
+  TextView custom=LauncherUi.text(a,"Eelauncber Widgets  →",17,WHITE,true);
+  custom.setGravity(Gravity.CENTER_VERTICAL);
+  custom.setPadding(LauncherUi.dp(a,19),0,0,0);
+  custom.setBackground(GlassUi.card(a,18));
+  LinearLayout.LayoutParams cust=new LinearLayout.LayoutParams(-1,LauncherUi.dp(a,55));
+  cust.setMargins(LauncherUi.dp(a,21),0,LauncherUi.dp(a,21),LauncherUi.dp(a,12));
+  panel.addView(custom,cust);
+  custom.setOnClickListener(v->{a.controller.closeShelf();EelaWidgets.pick(a);});
   TextView explanation=LauncherUi.text(a,"Choose a widget and its size",14,DIM,false);
   explanation.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);
   explanation.setPadding(LauncherUi.dp(a,25),0,0,0);
