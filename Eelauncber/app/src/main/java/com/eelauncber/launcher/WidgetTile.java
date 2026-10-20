@@ -97,6 +97,12 @@ final class WidgetTile {
         hp.rightMargin = LauncherUi.dp(a, 3);
         outer.addView(handle, hp);
         resize(a, outer, handle, indicator, widget);
+        outer.setOnDragListener((v,event)->{
+            if(!(event.getLocalState() instanceof WidgetMove.Ref))return false;
+            if(event.getAction()==android.view.DragEvent.ACTION_DROP)
+                WidgetMove.drop(a,(WidgetMove.Ref)event.getLocalState(),widget.page,widget.cell);
+            return true;
+        });
         outer.setOnLongClickListener(v -> { options(a, widget); return true; });
         return outer;
     }
