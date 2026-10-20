@@ -10,11 +10,11 @@ import android.widget.TextView;
 final class HomeControls {
     static void add(LauncherActivity a){
         ImageView gear=new ImageView(a);
-        gear.setImageResource(android.R.drawable.ic_menu_manage);
+        gear.setImageResource(R.drawable.f7_gear);
         gear.setColorFilter(Color.WHITE);
         gear.setPadding(LauncherUi.dp(a,11),LauncherUi.dp(a,11),
                 LauncherUi.dp(a,11),LauncherUi.dp(a,11));
-        gear.setBackground(LauncherUi.bg(a,0x553B4359,21));
+        gear.setBackground(GlassUi.chip(a,21));
         FrameLayout.LayoutParams gp=new FrameLayout.LayoutParams(LauncherUi.dp(a,43),LauncherUi.dp(a,43),
                 Gravity.TOP|Gravity.RIGHT);
         gp.topMargin=LauncherUi.dp(a,52);
