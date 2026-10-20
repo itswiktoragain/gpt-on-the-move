@@ -21,9 +21,8 @@ final class HomePages {
    grid.setOnDragListener((v,event)->{
     if(!(event.getLocalState() instanceof WidgetMove.Ref))return false;
     if(event.getAction()==android.view.DragEvent.ACTION_DROP){
-     int column=Math.max(0,Math.min(3,(int)(event.getX()/Math.max(1,grid.getWidth()/4))));
-     int row=Math.max(0,Math.min(4,(int)(event.getY()/Math.max(1,grid.getHeight()/5))));
-     WidgetMove.drop(a,(WidgetMove.Ref)event.getLocalState(),pageNumber,row*4+column);
+     int hovered=WidgetGridFit.hoveredCell(event.getX(),event.getY(),grid.getWidth(),grid.getHeight());
+     WidgetMove.drop(a,(WidgetMove.Ref)event.getLocalState(),pageNumber,hovered);
     }
     if(event.getAction()==android.view.DragEvent.ACTION_DRAG_ENDED)
      WidgetMove.end(a,(WidgetMove.Ref)event.getLocalState());
