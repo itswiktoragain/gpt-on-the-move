@@ -9,6 +9,8 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.view.Gravity;
 import android.view.View;
+import android.view.WindowInsets;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
@@ -53,18 +55,31 @@ final class GlassUi {
         window.setBackgroundDrawable(new ColorDrawable(fullScreen ? 0x110B1220 : 0x150B1020));
         window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         window.setDimAmount(fullScreen ? .10f : .14f);
+        // A dialog uses its own system bar policy. Setting a transparent color
+        // alone is not enough on Android 10+/Samsung: the default contrast
+        // scrim can turn the entire three-button navigation area opaque.
+        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION |
+                          WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         window.setNavigationBarColor(Color.TRANSPARENT);
         window.setStatusBarColor(Color.TRANSPARENT);
-        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-        if (fullScreen) {
-            window.setGravity(Gravity.TOP);
-            window.getDecorView().setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
-        } else {
-            window.setGravity(Gravity.BOTTOM);
+        if (Build.VERSION.SDK_INT >= 28)
+            window.setNavigationBarDividerColor(Color.TRANSPARENT);
+        if (Build.VERSION.SDK_INT >= 29) {
+            window.setNavigationBarContrastEnforced(false);
+            window.setStatusBarContrastEnforced(false);
         }
+        if (Build.VERSION.SDK_INT >= 30) window.setDecorFitsSystemWindows(false);
+        View decor = window.getDecorView();
+        int flags = decor.getSystemUiVisibility();
+        flags |= View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                 View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                 View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+        flags &= ~(View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR |
+                   View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+        decor.setSystemUiVisibility(flags);
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        window.setGravity(fullScreen ? Gravity.TOP : Gravity.BOTTOM);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             // This uses the hardware/system window-blur compositor, not an opaque tint.
             window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
@@ -73,6 +88,53 @@ final class GlassUi {
             window.setAttributes(params);
             window.setBackgroundBlurRadius(LauncherUi.dp(a, fullScreen ? 42 : 32));
         }
+    }
+
+    /**
+     * Edge-to-edge windows draw behind the system buttons. Keep *content*
+     * above the navigation/keyboard inset while letting the glass itself
+     * continue underneath the transparent navigation region.
+     *
+     * Safe on API 26+: WindowInsets.Type is only referenced on API 30+.
+     */
+    static void applyMenuInsets(LauncherActivity a, View receiver,
+                                View content, boolean adjustTop) {
+        final int left = content.getPaddingLeft();
+        final int topPadding = content.getPaddingTop();
+        final int right = content.getPaddingRight();
+        final int bottomPadding = content.getPaddingBottom();
+        final int originalTopMargin;
+        ViewGroup.LayoutParams params = content.getLayoutParams();
+        if (params instanceof FrameLayout.LayoutParams)
+            originalTopMargin = ((FrameLayout.LayoutParams) params).topMargin;
+        else originalTopMargin = 0;
+
+        receiver.setOnApplyWindowInsetsListener((v, insets) -> {
+            int bottom, statusTop;
+            if (Build.VERSION.SDK_INT >= 30) {
+                bottom = insets.getInsets(WindowInsets.Type.navigationBars() |
+                        WindowInsets.Type.ime()).bottom;
+                statusTop = insets.getInsets(WindowInsets.Type.statusBars() |
+                        WindowInsets.Type.displayCutout()).top;
+            } else {
+                bottom = insets.getSystemWindowInsetBottom();
+                statusTop = insets.getSystemWindowInsetTop();
+            }
+            content.setPadding(left, topPadding, right,
+                    bottomPadding + Math.max(0, bottom));
+            if (adjustTop && content.getLayoutParams() instanceof FrameLayout.LayoutParams) {
+                FrameLayout.LayoutParams frame =
+                        (FrameLayout.LayoutParams) content.getLayoutParams();
+                int safeTop = Math.max(originalTopMargin, statusTop +
+                        LauncherUi.dp(a, 15));
+                if (frame.topMargin != safeTop) {
+                    frame.topMargin = safeTop;
+                    content.setLayoutParams(frame);
+                }
+            }
+            return insets;
+        });
+        receiver.post(receiver::requestApplyInsets);
     }
 
     static void show(LauncherActivity a, FrameLayout overlay, LinearLayout panel) {
@@ -86,6 +148,7 @@ final class GlassUi {
         dialog.setContentView(overlay);
         Window window = dialog.getWindow();
         configure(a, window, true);
+        applyMenuInsets(a, overlay, panel, true);
         if (Build.VERSION.SDK_INT >= 31 && a.root != null) {
             a.root.setRenderEffect(RenderEffect.createBlurEffect(
                     LauncherUi.dp(a, 29), LauncherUi.dp(a, 29), Shader.TileMode.CLAMP));
@@ -97,6 +160,7 @@ final class GlassUi {
         a.glassDialog = dialog;
         dialog.show();
         if (window != null) window.setLayout(-1, -1);
+        overlay.requestApplyInsets();
         panel.setAlpha(.82f);
         panel.setTranslationY(LauncherUi.dp(a, 85));
         panel.animate().alpha(1f).translationY(0).setDuration(285).start();
