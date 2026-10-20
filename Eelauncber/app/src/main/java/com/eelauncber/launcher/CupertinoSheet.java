@@ -29,12 +29,12 @@ import java.util.function.Consumer;
  * These are inspired by iOS visuals and are not Apple assets.
  */
 final class CupertinoSheet {
-    static final int TEXT = 0xFFF5F7FD;
-    static final int SECONDARY = 0xFFA7B4C9;
-    static final int ACCENT = 0xFF96B8FF;
-    static final int DANGER = 0xFFFF858C;
-    private static final int PANEL = 0xF020293A;
-    private static final int BORDER = 0x40FFFFFF;
+    static final int TEXT = 0xFFF8F8FA;
+    static final int SECONDARY = 0xFFABABB4;
+    static final int ACCENT = 0xFF0A84FF;
+    static final int DANGER = 0xFFFF453A;
+    private static final int PANEL = 0xF62B2B30;
+    private static final int BORDER = 0x19FFFFFF;
 
     static final class Action {
         final String glyph;
@@ -77,7 +77,7 @@ final class CupertinoSheet {
         scroll.setVerticalScrollBarEnabled(false);
         scroll.addView(list);
         int maxHeight = (int)(a.getResources().getDisplayMetrics().heightPixels * .60f);
-        int desired = dp(a, 55) * actions.length;
+        int desired = dp(a, 58) * actions.length;
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1,
                 Math.min(desired, maxHeight));
         panel.addView(scroll, slp);
@@ -213,37 +213,29 @@ final class CupertinoSheet {
     private static View actionRow(LauncherActivity a, Dialog dialog, Action choice) {
         LinearLayout row = new LinearLayout(a);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(a, 22), 0, dp(a, 22), 0);
-        row.setMinimumHeight(dp(a, 54));
-        row.setBackground(ripple(a, dp(a, 17)));
+        row.setPadding(dp(a, 21), 0, dp(a, 19), 0);
+        row.setMinimumHeight(dp(a, 57));
+        row.setBackground(ripple(a, 16));
 
-        android.widget.ImageView icon = new android.widget.ImageView(a);
-        icon.setImageResource(symbolFor(choice.label));
-        icon.setColorFilter(choice.dangerous ? DANGER : ACCENT);
-        icon.setPadding(dp(a, 3), dp(a, 3), dp(a, 3), dp(a, 3));
-        LinearLayout.LayoutParams ilp =
-                new LinearLayout.LayoutParams(dp(a, 29), dp(a, 29));
-        ilp.rightMargin = dp(a, 16);
-        row.addView(icon, ilp);
-
-        TextView name = label(a, choice.label, 16,
+        TextView name = label(a, choice.label, 17,
                 choice.dangerous ? DANGER : TEXT, false);
-        name.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
-        name.setSingleLine(true);
+        name.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
+        name.setSingleLine();
         name.setEllipsize(android.text.TextUtils.TruncateAt.END);
         row.addView(name, new LinearLayout.LayoutParams(0, dp(a, 55), 1f));
 
         if (choice.detail != null && !choice.detail.isEmpty()) {
-            TextView note = label(a, choice.detail, 13, SECONDARY, false);
-            note.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
-            LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-2, dp(a, 55));
-            np.leftMargin = dp(a, 7);
-            row.addView(note, np);
-        } else {
-            TextView arrow = label(a, "›", 24, 0xFF7387A5, false);
-            row.addView(arrow, new LinearLayout.LayoutParams(dp(a, 16), dp(a, 55)));
+            TextView value = label(a, choice.detail, 14, SECONDARY, false);
+            value.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+            LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(-2, dp(a, 55));
+            vp.rightMargin = dp(a, 17);
+            row.addView(value, vp);
         }
-
+        android.widget.ImageView symbol = new android.widget.ImageView(a);
+        symbol.setImageResource(symbolFor(choice.label));
+        symbol.setColorFilter(choice.dangerous ? DANGER : ACCENT);
+        symbol.setPadding(dp(a, 2), dp(a, 2), dp(a, 2), dp(a, 2));
+        row.addView(symbol, new LinearLayout.LayoutParams(dp(a, 24), dp(a, 24)));
         row.setOnClickListener(v -> {
             dialog.dismiss();
             if (choice.callback != null) choice.callback.run();
@@ -254,12 +246,17 @@ final class CupertinoSheet {
     private static int symbolFor(String title) {
         String s = title.toLowerCase(java.util.Locale.ROOT);
         if (s.contains("widget")) return R.drawable.f7_widget;
-        if (s.contains("label") || s.contains("name") || s.contains("rename")) return R.drawable.f7_labels;
+        if (s.contains("add")) return R.drawable.f7_plus;
+        if (s.contains("information") || s.contains("info")) return R.drawable.f7_info;
+        if (s.contains("folder") || s.contains("rename")) return R.drawable.f7_folder;
+        if (s.contains("move") || s.contains("resize")) return R.drawable.f7_resize;
+        if (s.contains("label") || s.contains("name")) return R.drawable.f7_labels;
         if (s.contains("dock")) return R.drawable.f7_dock;
         if (s.contains("icon") || s.contains("size")) return R.drawable.f7_size;
         if (s.contains("wallpaper")) return R.drawable.f7_wallpaper;
-        if (s.contains("hide") || s.contains("remove") || s.contains("ungroup")) return R.drawable.f7_hide;
-        return R.drawable.f7_widget;
+        if (s.contains("hide") || s.contains("remove") || s.contains("ungroup"))
+            return R.drawable.f7_hide;
+        return R.drawable.f7_info;
     }
 
     private static void present(LauncherActivity a, Dialog dialog, LinearLayout panel) {
@@ -270,7 +267,7 @@ final class CupertinoSheet {
 
         TextView cancel = label(a, "Cancel", 17, TEXT, true);
         cancel.setGravity(Gravity.CENTER);
-        cancel.setBackground(glass(a, 0xF0273449, 21));
+        cancel.setBackground(glass(a, 0xF63A3A41, 21));
         cancel.setElevation(dp(a, 8));
         LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, dp(a, 56));
         cp.topMargin = dp(a, 9);
@@ -284,7 +281,7 @@ final class CupertinoSheet {
             window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
             window.setDimAmount(0.54f);
             window.setGravity(Gravity.BOTTOM);
-            window.setNavigationBarColor(0xFF101725);
+            window.setNavigationBarColor(0xFF1A1A1F);
             window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         }
         dialog.show();
@@ -299,8 +296,8 @@ final class CupertinoSheet {
         View divider = new View(a);
         divider.setBackgroundColor(0x28FFFFFF);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(a, 1));
-        params.leftMargin = dp(a, 62);
-        params.rightMargin = dp(a, 16);
+        params.leftMargin = dp(a, 21);
+        params.rightMargin = dp(a, 19);
         holder.addView(divider, params);
     }
 
@@ -312,7 +309,7 @@ final class CupertinoSheet {
         field.setHintTextColor(SECONDARY);
         field.setHint(hint);
         field.setPadding(dp(a, 17), 0, dp(a, 17), 0);
-        field.setBackground(glass(a, 0xDA3F4B61, 15));
+        field.setBackground(glass(a, 0xEA404047, 15));
         return field;
     }
 
