@@ -100,26 +100,8 @@ final class HomeState {
                 }
             } catch (Exception ignored) {}
         }
-        if (raw.isEmpty()) {
-            String[] preferred = {"phone", "messag", "chrome", "camera"};
-            for (String target : preferred) for (AppCatalog.Entry app : apps.all) {
-                if (home.dock.size() >= 4) break;
-                if (app.packageName.toLowerCase(Locale.ROOT).contains(target)
-                        && !home.includes(app.key)) {
-                    home.dock.add(new Item(app.key));
-                    break;
-                }
-            }
-            for (AppCatalog.Entry app : apps.all) {
-                if (home.dock.size() >= 4) break;
-                if (!home.includes(app.key)) home.dock.add(new Item(app.key));
-            }
-        }
-        for (AppCatalog.Entry app : apps.all) {
-            if (!home.includes(app.key) && !home.hidden.contains(app.key)) {
-                home.pages.add(new Item(app.key));
-            }
-        }
+        // Intentionally empty on first launch: never auto-populate the dock or home.
+        // Apps can be added explicitly using the swipe-up app library.
         while (home.dock.size() > 4) home.pages.add(0, home.dock.remove(home.dock.size() - 1));
         return home;
     }
