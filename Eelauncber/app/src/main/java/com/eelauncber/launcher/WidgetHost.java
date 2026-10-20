@@ -1,58 +1,173 @@
 package com.eelauncber.launcher;
-import android.appwidget.*;
+
 import android.app.Activity;
-import android.content.*;
+import android.appwidget.AppWidgetHost;
+import android.appwidget.AppWidgetHostView;
+import android.appwidget.AppWidgetManager;
+import android.appwidget.AppWidgetProviderInfo;
+import android.content.Intent;
 import android.os.Bundle;
-import android.view.*;
-import android.widget.*;
-import java.util.*;
+import android.graphics.Color;
+import android.view.View;
+import android.widget.TextView;
+
+/** Real AppWidgetHost with custom gallery, provider configuration and saved sizes. */
 final class WidgetHost {
- static final int HOST_ID=9826, PICK=812, CONFIG=813;
- final LauncherActivity a;
- final AppWidgetHost host;
- final AppWidgetManager manager;
- int pending=-1;
- WidgetHost(LauncherActivity a){this.a=a;host=new AppWidgetHost(a,HOST_ID);manager=AppWidgetManager.getInstance(a);}
- void start(){try{host.startListening();}catch(Exception ignored){}}
- void stop(){try{host.stopListening();}catch(Exception ignored){}}
- void pick(){
-  int id=host.allocateAppWidgetId();pending=id;
-  Intent i=new Intent(AppWidgetManager.ACTION_APPWIDGET_PICK);
-  i.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id);
-  try{a.startActivityForResult(i,PICK);}catch(Exception e){host.deleteAppWidgetId(id);pending=-1;CupertinoNotice.show(a,"Widget picker unavailable");}
- }
- boolean result(int request,int result,Intent data){
-  if(request!=PICK&&request!=CONFIG)return false;
-  int id=data==null?pending:data.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,pending);
-  if(result!=Activity.RESULT_OK||id<0){if(pending>=0)host.deleteAppWidgetId(pending);pending=-1;return true;}
-  AppWidgetProviderInfo info=manager.getAppWidgetInfo(id);
-  if(info==null){host.deleteAppWidgetId(id);pending=-1;return true;}
-  if(request==PICK&&info.configure!=null){
-   Intent config=new Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE);
-   config.setComponent(info.configure);config.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id);
-   try{a.startActivityForResult(config,CONFIG);return true;}catch(Exception e){host.deleteAppWidgetId(id);pending=-1;return true;}
-  }
-  pending=-1;
-  int sx=Math.max(2,Math.min(4,(info.minWidth+69)/70));
-  int sy=Math.max(1,Math.min(5,(info.minHeight+85)/86));
-  a.home.widgets.add(new HomeState.WidgetPlacement(id,info.provider.flattenToString(),Math.max(0,a.pager.getPage()),0,sx,sy));
-  a.home.save(a.prefs);HomeScreen.draw(a);return true;
- }
- View view(HomeState.WidgetPlacement p){
-  AppWidgetProviderInfo info=manager.getAppWidgetInfo(p.id);
-  if(info==null)return placeholder(p);
-  try{
-   AppWidgetHostView v=host.createView(a,p.id,info);
-   v.setAppWidget(p.id,info);
-   return v;
-  }catch(Exception ex){return placeholder(p);}
- }
- View placeholder(HomeState.WidgetPlacement p){
-  TextView t=LauncherUi.text(a,"Widget unavailable",13,0xffffffff,false);
-  t.setBackground(LauncherUi.bg(a,0x884F5970,17));return t;
- }
- void remove(HomeState.WidgetPlacement p){
-  a.home.widgets.remove(p);host.deleteAppWidgetId(p.id);
-  a.home.save(a.prefs);HomeScreen.draw(a);
- }
+    static final int HOST_ID = 9826, CONFIG = 813, BIND = 814;
+    final LauncherActivity a;
+    final AppWidgetHost host;
+    final AppWidgetManager manager;
+    private int pending = -1, pendingX = 2, pendingY = 2, pendingPage = 0;
+    private AppWidgetProviderInfo selected;
+
+    WidgetHost(LauncherActivity a) {
+        this.a = a;
+        host = new AppWidgetHost(a, HOST_ID);
+        manager = AppWidgetManager.getInstance(a);
+    }
+
+    void start() {try {host.startListening();}catch(Exception ignored) {}}
+    void stop() {try {host.stopListening();}catch(Exception ignored) {}}
+
+    void pick() {WidgetGallery.show(a);}
+
+    void beginAdd(AppWidgetProviderInfo info, int x, int y) {
+        if (pending >= 0) cancel();
+        selected = info;
+        pendingX = Math.max(1, Math.min(4, x));
+        pendingY = Math.max(1, Math.min(5, y));
+        pendingPage = a.pager == null ? 0 : a.pager.getPage();
+        try {
+            pending = host.allocateAppWidgetId();
+            if (manager.bindAppWidgetIdIfAllowed(pending, info.provider)) {
+                configureOrPlace();
+            } else {
+                Intent consent = new Intent(AppWidgetManager.ACTION_APPWIDGET_BIND);
+                consent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, pending);
+                consent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider);
+                a.startActivityForResult(consent, BIND);
+            }
+        } catch(Exception e) {
+            cancel();
+            CupertinoNotice.show(a, "Cannot add this widget");
+        }
+    }
+
+    boolean result(int request, int resultCode, Intent data) {
+        if (request != BIND && request != CONFIG) return false;
+        if (resultCode != Activity.RESULT_OK || pending < 0) {
+            cancel();
+            return true;
+        }
+        if (request == BIND) configureOrPlace();
+        else place();
+        return true;
+    }
+
+    private void configureOrPlace() {
+        if (pending < 0) return;
+        AppWidgetProviderInfo info = manager.getAppWidgetInfo(pending);
+        if (info == null) {
+            cancel();
+            CupertinoNotice.show(a, "Widget permission was not granted");
+            return;
+        }
+        if (info.configure != null) {
+            try {
+                Intent configure = new Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE);
+                configure.setComponent(info.configure);
+                configure.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, pending);
+                a.startActivityForResult(configure, CONFIG);
+                return;
+            } catch(Exception e) {
+                cancel();
+                CupertinoNotice.show(a, "Widget setup unavailable");
+                return;
+            }
+        }
+        place();
+    }
+
+    private void place() {
+        if (pending < 0 || selected == null) return;
+        int position = -1, page = pendingPage;
+        for (int p = pendingPage; p < 50; p++) {
+            boolean[] used = new boolean[20];
+            for (HomeState.WidgetPlacement w : a.home.widgets) {
+                if (w.page != p) continue;
+                int cell = HomePages.locate(used, w.cell, w.spanX, w.spanY);
+                if (cell >= 0) HomePages.occupy(used, cell, w.spanX, w.spanY);
+            }
+            position = HomePages.locate(used, 0, pendingX, pendingY);
+            if (position >= 0) {page = p; break;}
+        }
+        if (position < 0) {
+            cancel();
+            CupertinoNotice.show(a, "No space for this widget");
+            return;
+        }
+        a.home.widgets.add(new HomeState.WidgetPlacement(pending,
+                selected.provider.flattenToString(),
+                page, position, pendingX, pendingY));
+        pending = -1;
+        selected = null;
+        a.home.save(a.prefs);
+        HomeScreen.draw(a);
+    }
+
+    private void cancel() {
+        if (pending >= 0) {
+            try {host.deleteAppWidgetId(pending);}catch(Exception ignored) {}
+        }
+        pending = -1;
+        selected = null;
+    }
+
+    View view(HomeState.WidgetPlacement widget) {
+        AppWidgetProviderInfo info = manager.getAppWidgetInfo(widget.id);
+        if (info == null) return placeholder();
+        try {
+            AppWidgetHostView view = host.createView(a, widget.id, info);
+            view.setAppWidget(widget.id, info);
+            // No launcher-added widget card, background, or padding.
+            view.setBackgroundColor(Color.TRANSPARENT);
+            view.setPadding(0, 0, 0, 0);
+            view.setClipToPadding(false);
+            view.post(() -> updateSize(widget, view));
+            return view;
+        } catch(Exception e) {
+            return placeholder();
+        }
+    }
+
+    private View placeholder() {
+        TextView text = LauncherUi.text(a, "Widget unavailable", 13,
+                0xFFB5B9C5, false);
+        text.setBackgroundColor(Color.TRANSPARENT);
+        return text;
+    }
+
+    void updateSize(HomeState.WidgetPlacement widget, AppWidgetHostView view) {
+        if (!view.isAttachedToWindow()) return;
+        int actualWidth = view.getWidth();
+        int actualHeight = view.getHeight();
+        if (actualWidth <= 0 || actualHeight <= 0) return;
+        float density = a.getResources().getDisplayMetrics().density;
+        int width = Math.max(1, Math.round(actualWidth / density));
+        int height = Math.max(1, Math.round(actualHeight / density));
+        Bundle options = manager.getAppWidgetOptions(widget.id);
+        if (options == null) options = new Bundle();
+        options.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, width);
+        options.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, width);
+        options.putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, height);
+        options.putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, height);
+        manager.updateAppWidgetOptions(widget.id, options);
+    }
+
+    void remove(HomeState.WidgetPlacement widget) {
+        a.home.widgets.remove(widget);
+        try {host.deleteAppWidgetId(widget.id);}catch(Exception ignored) {}
+        a.home.save(a.prefs);
+        HomeScreen.draw(a);
+    }
 }
