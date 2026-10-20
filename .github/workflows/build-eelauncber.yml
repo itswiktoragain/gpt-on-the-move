@@ -3,7 +3,7 @@ name: Build Eelauncber APK
 on:
   push:
     branches:
-      - eelauncber-v4
+      - eelauncber-v5
     paths:
       - 'Eelauncber/**'
       - '.github/workflows/build-eelauncber.yml'
@@ -41,7 +41,7 @@ jobs:
           git add -f Eelauncber/Eelauncber.apk
           if ! git diff --cached --quiet; then
             git commit -m "Build Eelauncber APK [skip ci]"
-            git push origin HEAD:eelauncber-v4
+            git push origin HEAD:eelauncber-v5
           fi
       - uses: actions/upload-artifact@v4
         with:
