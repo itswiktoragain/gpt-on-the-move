@@ -1,5 +1,8 @@
 package com.eelauncber.launcher;
 import android.graphics.Color;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
+import android.view.animation.LinearInterpolator;
 import android.view.DragEvent;
 import android.view.Gravity;
 import android.view.View;
@@ -35,7 +38,17 @@ final class AppTile {
             cell.setOnClickListener(v->LauncherActions.open(a,item));
             cell.setOnLongClickListener(v->{HomeDrag.start(a,cell,item,dock,index);return true;});
             if(a.editing){
-                col.setRotation(index%2==0?-1.2f:1.2f);
+                final ObjectAnimator wobble=ObjectAnimator.ofFloat(col,"rotation",
+                    index%2==0?-2.2f:2.2f,index%2==0?2.2f:-2.2f);
+                wobble.setDuration(155+index%4*13);
+                wobble.setRepeatCount(ValueAnimator.INFINITE);
+                wobble.setRepeatMode(ValueAnimator.REVERSE);
+                wobble.setInterpolator(new LinearInterpolator());
+                col.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener(){
+                    @Override public void onViewAttachedToWindow(View v){wobble.start();}
+                    @Override public void onViewDetachedFromWindow(View v){wobble.cancel();col.setRotation(0);}
+                });
+                if(col.isAttachedToWindow())wobble.start();
                 TextView minus=LauncherUi.text(a,"−",17,0xFF29344B,true);
                 minus.setBackground(LauncherUi.bg(a,0xFFF4F6FC,12));
                 FrameLayout.LayoutParams bp=new FrameLayout.LayoutParams(
