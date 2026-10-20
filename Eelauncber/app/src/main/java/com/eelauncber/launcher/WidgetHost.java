@@ -19,7 +19,7 @@ final class WidgetHost {
   int id=host.allocateAppWidgetId();pending=id;
   Intent i=new Intent(AppWidgetManager.ACTION_APPWIDGET_PICK);
   i.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id);
-  try{a.startActivityForResult(i,PICK);}catch(Exception e){host.deleteAppWidgetId(id);pending=-1;Toast.makeText(a,"Widget picker unavailable",0).show();}
+  try{a.startActivityForResult(i,PICK);}catch(Exception e){host.deleteAppWidgetId(id);pending=-1;CupertinoNotice.show(a,"Widget picker unavailable");}
  }
  boolean result(int request,int result,Intent data){
   if(request!=PICK&&request!=CONFIG)return false;
