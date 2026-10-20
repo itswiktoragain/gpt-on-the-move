@@ -18,7 +18,7 @@ final class SearchResults {
             row.setPadding(LauncherUi.dp(a,8),0,0,0);
             ImageView image=LauncherUi.icon(a,app.key,41);
             row.addView(image,new LinearLayout.LayoutParams(LauncherUi.dp(a,41),LauncherUi.dp(a,41)));
-            TextView name=LauncherUi.text(a,app.label,16,0xFF293750,false);
+            TextView name=LauncherUi.text(a,app.label,16,0xFFF5F7FD,false);
             name.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);
             name.setPadding(LauncherUi.dp(a,14),0,0,0);
             row.addView(name,new LinearLayout.LayoutParams(-1,-1));
@@ -28,7 +28,7 @@ final class SearchResults {
             count++;
         }
         if(count==0){
-            TextView empty=LauncherUi.text(a,"No matching apps",16,0xFF69748A,false);
+            TextView empty=LauncherUi.text(a,"No matching apps",16,0xFFA7B4C9,false);
             list.addView(empty,new LinearLayout.LayoutParams(-1,LauncherUi.dp(a,90)));
         }
     }
