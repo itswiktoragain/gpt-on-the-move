@@ -24,29 +24,40 @@ final class HomeDrag {
     }
     static void drop(LauncherActivity a,Ref ref,boolean dock,int index,HomeState.Item target){
         if(ref.used)return;
-        ref.used=true;
-        if(ref.item==target){a.root.post(()->HomeScreen.draw(a));return;}
+        if(ref.item==target){ref.used=true;return;}
+        int page=index/20,cell=index%20;
+        if(!dock){
+            for(HomeState.WidgetPlacement w:a.home.widgets)if(w.page==page &&
+                cell%4>=w.cell%4 && cell%4<w.cell%4+w.spanX &&
+                cell/4>=w.cell/4 && cell/4<w.cell/4+w.spanY)return;
+        }
         ArrayList<HomeState.Item> from=ref.dock?a.home.dock:a.home.pages;
-        if(!from.remove(ref.item))return;
+        if(!from.contains(ref.item))return;
         ArrayList<HomeState.Item> into=dock?a.home.dock:a.home.pages;
-        if(target!=null&&into.contains(target)&&ref.item.apps.size()==1){
+        if(dock && target==null && a.home.dock.size()>=4 && !ref.dock)return;
+        ref.used=true;
+        from.remove(ref.item);
+        if(target!=null && into.contains(target) && ref.item.apps.size()==1){
             if(target.apps.size()==1){
                 HomeState.Item folder=new HomeState.Item();
                 folder.apps.addAll(target.apps);
                 folder.apps.addAll(ref.item.apps);
                 folder.name="Folder";
+                folder.page=target.page;folder.cell=target.cell;
                 into.set(into.indexOf(target),folder);
-            } else {
-                target.apps.add(ref.item.apps.get(0));
-            }
+            }else target.apps.add(ref.item.apps.get(0));
+        }else if(dock){
+            into.add(Math.max(0,Math.min(index,into.size())),ref.item);
+            ref.item.page=-1;ref.item.cell=-1;
         }else{
-            int destination=target==null?Math.min(index,into.size()):into.indexOf(target);
-            if(destination<0)destination=into.size();
-            into.add(destination,ref.item);
+            ref.item.page=page;ref.item.cell=cell;
+            into.add(ref.item);
         }
         while(a.home.dock.size()>4){
-            a.home.pages.add(0,a.home.dock.remove(a.home.dock.size()-1));
+            HomeState.Item extra=a.home.dock.remove(a.home.dock.size()-1);
+            extra.page=-1;extra.cell=-1;a.home.pages.add(extra);
         }
+        a.home.normalize();
         a.home.save(a.prefs);
         a.root.post(()->HomeScreen.draw(a));
     }
