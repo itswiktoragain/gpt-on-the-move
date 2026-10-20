@@ -4,6 +4,8 @@ import android.appwidget.AppWidgetProviderInfo;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
+import android.content.ClipData;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -47,6 +49,29 @@ final class WidgetTile {
         outer.addView(edit, ep);
         edit.setOnClickListener(v -> options(a, widget));
 
+        TextView move = LauncherUi.text(a, "Move", 13, 0xFFFFFFFF, true);
+        move.setGravity(Gravity.CENTER);
+        move.setBackground(GlassUi.chip(a, 16));
+        FrameLayout.LayoutParams mp = new FrameLayout.LayoutParams(
+                LauncherUi.dp(a, 78), LauncherUi.dp(a, 34),
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        mp.topMargin = LauncherUi.dp(a, 5);
+        outer.addView(move, mp);
+        View.OnLongClickListener moveStart = v -> {
+            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+            v.startDragAndDrop(ClipData.newPlainText("Eelauncber", "widget"),
+                    new View.DragShadowBuilder(outer), new WidgetMove.Ref(widget), 0);
+            return true;
+        };
+        move.setOnLongClickListener(moveStart);
+        move.setOnTouchListener((v, e) -> {
+            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                v.postDelayed(() -> {
+                    if (v.isPressed()) moveStart.onLongClick(v);
+                }, 260);
+            }
+            return false;
+        });
         TextView indicator = LauncherUi.text(a,
                 widget.spanX + " × " + widget.spanY, 12, 0xFFFFFFFF, true);
         indicator.setGravity(Gravity.CENTER);
