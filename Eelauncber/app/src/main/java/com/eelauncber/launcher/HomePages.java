@@ -7,44 +7,40 @@ final class HomePages {
  static final int PAGE_SIZE=20;
  static void draw(LauncherActivity a){
   if(a.pager==null||a.dock==null)return;
-  int last=a.pager.getPage();
-  int pageCount=Math.max(1,(a.home.pages.size()+19)/20);
-  for(HomeState.WidgetPlacement w:a.home.widgets)pageCount=Math.max(pageCount,Math.min(50,w.page+1));
+  int previous=a.pager.getPage();
+  a.home.normalize();
+  int last=0;
+  for(HomeState.Item item:a.home.pages)last=Math.max(last,item.page);
+  for(HomeState.WidgetPlacement w:a.home.widgets)last=Math.max(last,w.page);
+  int count=Math.min(50,Math.max(1,last+1+(a.editing?1:0)));
   ArrayList<View> views=new ArrayList<>();
-  int shortcut=0;
-  for(int page=0;page<pageCount;page++){
+  for(int page=0;page<count;page++){
    HomeGrid grid=new HomeGrid(a);
    grid.setOnLongClickListener(v->{a.controller.setEditing(true);return true;});
    boolean[] busy=new boolean[20];
    for(HomeState.WidgetPlacement w:a.home.widgets)if(w.page==page){
-    int target=locate(busy,w.cell,w.spanX,w.spanY);
-    if(target<0)continue;
-    w.cell=target;
-    occupy(busy,target,w.spanX,w.spanY);
-    grid.addView(WidgetTile.create(a,w),new HomeGrid.Params(target,w.spanX,w.spanY));
+    int spot=locate(busy,w.cell,w.spanX,w.spanY);
+    if(spot<0)continue;
+    w.cell=spot;occupy(busy,spot,w.spanX,w.spanY);
+    grid.addView(WidgetTile.create(a,w),new HomeGrid.Params(spot,w.spanX,w.spanY));
    }
-   for(int cell=0;cell<20&&shortcut<a.home.pages.size();cell++)if(!busy[cell]){
-    grid.addView(AppTile.create(a,a.home.pages.get(shortcut),false,shortcut),new HomeGrid.Params(cell,1,1));
-    shortcut++;
+   HomeState.Item[] slots=new HomeState.Item[20];
+   for(HomeState.Item item:a.home.pages)if(item.page==page&&item.cell>=0&&item.cell<20)
+    slots[item.cell]=item;
+   for(int cell=0;cell<20;cell++)if(!busy[cell]){
+    HomeState.Item item=slots[cell];
+    grid.addView(AppTile.create(a,item,false,page*20+cell),new HomeGrid.Params(cell,1,1));
    }
-   views.add(grid);
-  }
-  while(shortcut<a.home.pages.size()){
-   HomeGrid grid=new HomeGrid(a);
-   grid.setOnLongClickListener(v->{a.controller.setEditing(true);return true;});
-   for(int cell=0;cell<20&&shortcut<a.home.pages.size();cell++,shortcut++)
-    grid.addView(AppTile.create(a,a.home.pages.get(shortcut),false,shortcut),new HomeGrid.Params(cell,1,1));
    views.add(grid);
   }
   a.pager.replacePages(views);
-  if(last>0)a.pager.post(()->a.pager.animateTo(Math.min(last,a.pager.getCount()-1)));
+  if(previous>0)a.pager.post(()->a.pager.animateTo(Math.min(previous,a.pager.getCount()-1)));
   a.dock.removeAllViews();
   int color=a.prefs.getBoolean("dark_dock",false)?0xAA1C2843:0xBAE8EDF5;
   a.dock.setBackground(LauncherUi.bg(a,color,31));
   for(int i=0;i<4;i++){
    HomeState.Item item=i<a.home.dock.size()?a.home.dock.get(i):null;
-   View tile=AppTile.create(a,item,true,i);
-   a.dock.addView(tile,new LinearLayout.LayoutParams(0,-1,1));
+   a.dock.addView(AppTile.create(a,item,true,i),new LinearLayout.LayoutParams(0,-1,1));
   }
   updateDots(a,0,views.size());
  }
