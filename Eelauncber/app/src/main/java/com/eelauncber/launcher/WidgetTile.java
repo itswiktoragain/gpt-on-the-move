@@ -64,14 +64,7 @@ final class WidgetTile {
             return true;
         };
         move.setOnLongClickListener(moveStart);
-        move.setOnTouchListener((v, e) -> {
-            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) {
-                v.postDelayed(() -> {
-                    if (v.isPressed()) moveStart.onLongClick(v);
-                }, 260);
-            }
-            return false;
-        });
+
         TextView indicator = LauncherUi.text(a,
                 widget.spanX + " × " + widget.spanY, 12, 0xFFFFFFFF, true);
         indicator.setGravity(Gravity.CENTER);
@@ -100,7 +93,7 @@ final class WidgetTile {
         outer.setOnDragListener((v,event)->{
             if(!(event.getLocalState() instanceof WidgetMove.Ref))return false;
             if(event.getAction()==android.view.DragEvent.ACTION_DROP)
-                WidgetMove.drop(a,(WidgetMove.Ref)event.getLocalState(),widget.page,widget.cell);
+                WidgetMove.dropOnWidget(a,(WidgetMove.Ref)event.getLocalState(),outer,event,widget);
             return true;
         });
         outer.setOnLongClickListener(v -> { options(a, widget); return true; });
@@ -193,12 +186,10 @@ final class WidgetTile {
     private static void options(LauncherActivity a, HomeState.WidgetPlacement widget) {
         CupertinoSheet.show(a, "Edit Widget", "Drag the blue corner to resize",
                 CupertinoSheet.action("↔", "Move to Next Page", () -> {
-                    widget.page = Math.min(49, widget.page + 1);
-                    a.home.save(a.prefs); HomeScreen.draw(a);
+                    WidgetMove.moveToPage(a,widget,Math.min(49,widget.page+1));
                 }),
                 CupertinoSheet.action("↔", "Move to Previous Page", () -> {
-                    widget.page = Math.max(0, widget.page - 1);
-                    a.home.save(a.prefs); HomeScreen.draw(a);
+                    WidgetMove.moveToPage(a,widget,Math.max(0,widget.page-1));
                 }),
                 CupertinoSheet.danger("−", "Remove Widget",
                         () -> CupertinoSheet.confirm(a, "Remove Widget",
