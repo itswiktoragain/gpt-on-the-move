@@ -16,7 +16,7 @@ final class LauncherActions {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
             a.startActivity(intent);
         }catch(Exception ignored){
-            Toast.makeText(a,"Could not open this app",Toast.LENGTH_SHORT).show();
+            CupertinoNotice.show(a,"Could not open this app");
         }
     }
     static void open(LauncherActivity a,HomeState.Item item){
@@ -29,7 +29,7 @@ final class LauncherActions {
             a.home.pages.add(new HomeState.Item(key));
             save(a);
         }
-        Toast.makeText(a,"Added to Home Screen",Toast.LENGTH_SHORT).show();
+        CupertinoNotice.show(a,"Added to Home Screen");
     }
     static void remove(LauncherActivity a,HomeState.Item item,boolean dock){
         if(dock)a.home.dock.remove(item);else a.home.pages.remove(item);
