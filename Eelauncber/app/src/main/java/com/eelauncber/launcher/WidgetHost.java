@@ -124,6 +124,7 @@ final class WidgetHost {
     }
 
     View view(HomeState.WidgetPlacement widget) {
+        if(EelaWidgets.custom(widget))return EelaWidgets.view(a,widget);
         AppWidgetProviderInfo info = manager.getAppWidgetInfo(widget.id);
         if (info == null) return placeholder();
         try {
@@ -166,7 +167,7 @@ final class WidgetHost {
 
     void remove(HomeState.WidgetPlacement widget) {
         a.home.widgets.remove(widget);
-        try {host.deleteAppWidgetId(widget.id);}catch(Exception ignored) {}
+        if(!EelaWidgets.custom(widget))try {host.deleteAppWidgetId(widget.id);}catch(Exception ignored) {}
         a.home.save(a.prefs);
         HomeScreen.draw(a);
     }
