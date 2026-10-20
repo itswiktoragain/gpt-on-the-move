@@ -14,6 +14,7 @@ class LauncherActivity extends Activity {
  LinearLayout dock,dots;
  TextView clock,date,done;
  View shelf;
+ android.app.Dialog glassDialog;
  boolean editing,scanning;
  long lastScan;
  LauncherController controller;
@@ -37,5 +38,5 @@ class LauncherActivity extends Activity {
    else controller.home();
   }
  }
- @Override protected void onDestroy(){if(controller!=null)controller.stop();super.onDestroy();}
+ @Override protected void onDestroy(){if(controller!=null){controller.closeShelf();controller.stop();}super.onDestroy();}
 }
