@@ -73,6 +73,8 @@ final class SettingsSheet {
         sectionTitle(a, content, "HOME SCREEN");
         LinearLayout home = group(a);
         content.addView(home);
+        item(a, home, R.drawable.f7_size, "Edit Home Screen", null,
+                () -> { a.controller.closeShelf(); a.controller.setEditing(true); });
         toggle(a, home, R.drawable.f7_labels, "Show App Labels", a.prefs.getBoolean("labels", true),
                 value -> { a.prefs.edit().putBoolean("labels", value).apply(); HomeScreen.draw(a); });
         toggle(a, home, R.drawable.f7_dock, "Dark Dock", a.prefs.getBoolean("dark_dock", false),
