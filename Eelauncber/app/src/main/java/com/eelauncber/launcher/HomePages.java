@@ -16,7 +16,19 @@ final class HomePages {
   ArrayList<View> views=new ArrayList<>();
   for(int page=0;page<count;page++){
    HomeGrid grid=new HomeGrid(a);
+   final int pageNumber=page;
    grid.setOnLongClickListener(v->{a.controller.setEditing(true);return true;});
+   grid.setOnDragListener((v,event)->{
+    if(!(event.getLocalState() instanceof WidgetMove.Ref))return false;
+    if(event.getAction()==android.view.DragEvent.ACTION_DROP){
+     int column=Math.max(0,Math.min(3,(int)(event.getX()/Math.max(1,grid.getWidth()/4))));
+     int row=Math.max(0,Math.min(4,(int)(event.getY()/Math.max(1,grid.getHeight()/5))));
+     WidgetMove.drop(a,(WidgetMove.Ref)event.getLocalState(),pageNumber,row*4+column);
+    }
+    if(event.getAction()==android.view.DragEvent.ACTION_DRAG_ENDED)
+     WidgetMove.end(a,(WidgetMove.Ref)event.getLocalState());
+    return true;
+   });
    boolean[] busy=new boolean[20];
    for(HomeState.WidgetPlacement w:a.home.widgets)if(w.page==page){
     int spot=locate(busy,w.cell,w.spanX,w.spanY);
