@@ -20,7 +20,7 @@ final class LauncherUi {
         if(bold)v.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
         return v;
     }
-    static ImageView icon(MainActivity a,String key,int size){
+    static ImageView icon(LauncherActivity a,String key,int size){
         ImageView v=new ImageView(a);
         AppCatalog.Entry e=a.catalog.get(key);
         if(e==null||e.icon==null)v.setImageResource(android.R.drawable.sym_def_app_icon);
