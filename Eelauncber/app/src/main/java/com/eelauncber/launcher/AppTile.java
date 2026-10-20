@@ -13,9 +13,9 @@ final class AppTile {
         if(item!=null){
             int size=Math.max(48,Math.min(68,a.prefs.getInt("icon_size",58)));
             LinearLayout col=new LinearLayout(a);
-            col.setGravity(Gravity.TOP|Gravity.CENTER_HORIZONTAL);
+            col.setGravity(dock?Gravity.CENTER:Gravity.TOP|Gravity.CENTER_HORIZONTAL);
             col.setOrientation(LinearLayout.VERTICAL);
-            col.setPadding(0,LauncherUi.dp(a,dock?4:8),0,0);
+            col.setPadding(0,dock?0:LauncherUi.dp(a,8),0,0);
             View image=item.isFolder()?FolderIcon.create(a,item,size):
                     LauncherUi.icon(a,item.apps.get(0),size);
             col.addView(image,new LinearLayout.LayoutParams(LauncherUi.dp(a,size),LauncherUi.dp(a,size)));
