@@ -20,7 +20,12 @@ final class WidgetTile {
         outer.setClipToPadding(false);
         View content = a.widgets.view(widget);
         outer.addView(content, new FrameLayout.LayoutParams(-1, -1));
-        if (!a.editing) return outer;
+        if (!a.editing) {
+            View.OnLongClickListener edit = v -> {a.controller.setEditing(true);return true;};
+            outer.setOnLongClickListener(edit);
+            content.setOnLongClickListener(edit);
+            return outer;
+        }
 
         View border = new View(a);
         GradientDrawable stroke = new GradientDrawable();
