@@ -34,7 +34,7 @@ class LauncherActivity extends Activity {
   boolean alreadyOnHome=launcherVisible && hasWindowFocus();
   super.onNewIntent(i);
   if(controller!=null){
-   if(alreadyOnHome){controller.closeShelf();SearchPanel.show(this,"");}
+   if(alreadyOnHome){controller.closeShelf();AppDrawer.show(this,"");}
    else controller.home();
   }
  }
