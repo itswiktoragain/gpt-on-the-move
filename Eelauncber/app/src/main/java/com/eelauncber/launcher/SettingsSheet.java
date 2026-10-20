@@ -15,20 +15,20 @@ import java.util.ArrayList;
 
 /** iOS Settings-like grouped home customization, not a generic action dialog. */
 final class SettingsSheet {
-    static final int BG = 0xEF17181D;
-    static final int GROUP = 0xDA33353E;
+    static final int BG = 0x935B6B88;
+    static final int GROUP = 0x82576682;
     static final int TEXT = 0xFFF8F8FA;
     static final int MUTED = 0xFF9EA2AE;
 
     static void open(LauncherActivity a) {
         a.controller.closeShelf();
         FrameLayout overlay = new FrameLayout(a);
-        overlay.setBackgroundColor(0xB8101117);
+        overlay.setBackgroundColor(0x090B1118);
         overlay.setOnClickListener(v -> a.controller.closeShelf());
 
         LinearLayout panel = new LinearLayout(a);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setBackground(LauncherUi.bg(a, BG, 30));
+        panel.setBackground(GlassUi.sheet(a, 30));
         panel.setClickable(true);
         FrameLayout.LayoutParams panelParams = new FrameLayout.LayoutParams(-1, -1);
         panelParams.topMargin = LauncherUi.dp(a, 56);
@@ -106,11 +106,7 @@ final class SettingsSheet {
         item(a, extra, R.drawable.f7_hide, "Remove Home App", null,
                 () -> { a.controller.closeShelf(); chooseHidden(a); });
 
-        a.root.addView(overlay, new FrameLayout.LayoutParams(-1, -1));
-        a.shelf = overlay;
-        panel.setTranslationY(LauncherUi.dp(a, 110));
-        panel.setAlpha(.6f);
-        panel.animate().translationY(0).alpha(1f).setDuration(300).start();
+        GlassUi.show(a, overlay, panel);
     }
 
     private interface Change { void onChanged(boolean value); }
@@ -126,7 +122,7 @@ final class SettingsSheet {
     private static LinearLayout group(LauncherActivity a) {
         LinearLayout group = new LinearLayout(a);
         group.setOrientation(LinearLayout.VERTICAL);
-        group.setBackground(LauncherUi.bg(a, GROUP, 19));
+        group.setBackground(GlassUi.card(a, 19));
         group.setClipToOutline(true);
         return group;
     }
@@ -166,7 +162,7 @@ final class SettingsSheet {
         image.setColorFilter(0xFFFAFAFF);
         image.setPadding(LauncherUi.dp(a, 7), LauncherUi.dp(a, 7),
                 LauncherUi.dp(a, 7), LauncherUi.dp(a, 7));
-        image.setBackground(LauncherUi.bg(a, 0xFF3A85D9, 10));
+        image.setBackground(GlassUi.chip(a, 10));
         LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(
                 LauncherUi.dp(a, 34), LauncherUi.dp(a, 34));
         iconParams.rightMargin = LauncherUi.dp(a, 12);
