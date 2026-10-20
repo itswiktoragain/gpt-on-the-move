@@ -85,6 +85,7 @@ final class HomeState {
     static HomeState read(SharedPreferences prefs, AppCatalog apps) {
         HomeState home = new HomeState();
         String raw = prefs.getString("layout", "");
+        if (!validLayout(raw)) raw = prefs.getString("layout_backup", "");
         if (!raw.isEmpty()) {
             try {
                 JSONObject root = new JSONObject(raw);
@@ -134,13 +135,22 @@ final class HomeState {
         }
     }
 
+    private static boolean validLayout(String raw) {
+        if (raw == null || raw.isEmpty()) return false;
+        try {
+            JSONObject object = new JSONObject(raw);
+            return object.optJSONArray("pages") != null && object.optJSONArray("dock") != null;
+        } catch (Exception ignored) { return false; }
+    }
+
     private static void load(JSONArray array, ArrayList<Item> result, AppCatalog catalog) {
         if (array == null) return;
         for (int i = 0; i < array.length(); i++) {
             JSONObject obj = array.optJSONObject(i);
             if (obj == null) continue;
             Item item = Item.fromJson(obj);
-            item.apps.removeIf(key -> catalog.get(key) == null);
+            // Keep unavailable package IDs: the PackageManager can return an incomplete
+            // app list immediately after boot, and clearing them would erase the layout.
             if (!item.apps.isEmpty()) result.add(item);
         }
     }
@@ -157,7 +167,16 @@ final class HomeState {
             JSONObject root = new JSONObject();
             root.put("pages", apps); root.put("dock", bottom);
             root.put("widgets", widgetArray); root.put("hidden", hiddenArray);
-            prefs.edit().putString("layout", root.toString()).apply();
-        } catch (Exception ignored) {}
+            String json = root.toString();
+            // commit() writes to persistent storage before returning, including when the
+            // launcher is immediately stopped, restarted or the device shuts down.
+            boolean saved = prefs.edit()
+                    .putString("layout", json)
+                    .putString("layout_backup", json)
+                    .commit();
+            if (!saved) android.util.Log.e("Eelauncber", "Could not persist home layout");
+        } catch (Exception error) {
+            android.util.Log.e("Eelauncber", "Saving home layout failed", error);
+        }
     }
 }
