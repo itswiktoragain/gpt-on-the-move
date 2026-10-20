@@ -250,6 +250,7 @@ final class WidgetGallery {
    a.widgets.beginAdd(info,chosen.x,chosen.y);
   });
   dialog.setContentView(panel);
+  GlassUi.applyMenuInsets(a,panel,panel,false);
   Window window=dialog.getWindow();
   if(window!=null){
    window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -258,5 +259,6 @@ final class WidgetGallery {
    GlassUi.configure(a,window,false);
   }
   dialog.show();if(window!=null)window.setLayout(-1,-2);
+  panel.requestApplyInsets();
  }
 }
