@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS1 — TurboWarp Console</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:#111620;color:#edf1f8}
+body{display:flex;flex-direction:column}
+header{height:36px;flex:none;display:flex;align-items:center;gap:9px;padding:0 12px;background:#242a36;border-bottom:1px solid #414957}
+.dot{width:12px;height:12px;border-radius:50%;background:#657080;box-shadow:0 0 0 2px #38404e}
+.dot.on{background:#52d78e;box-shadow:0 0 10px #2cac69}
+.brand{font-weight:730;font-size:13px;letter-spacing:.08em}
+.sub{font-size:10px;color:#aab4c5;margin-left:auto;letter-spacing:.07em}
+#screen{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#040609}
+#screen iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+#off{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;color:#a3adbf;text-align:center;font-size:12px;padding:15px}
+#off .powericon{font-size:38px;color:#556174}
+#off strong{color:#e5ebf6;font-size:15px}
+#working{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(3,6,12,.9);text-align:center;padding:18px;font-size:12px;z-index:3;color:#cdd7ea}
+#working.active{display:flex}
+.toolbar{flex:none;display:flex;flex-direction:column;gap:5px;padding:8px 9px 6px;background:#1c2330;border-top:1px solid #303b4b}
+.buttons{display:flex;gap:5px;width:100%}
+button{min-width:0;flex:1;padding:7px 5px;background:#343f50;color:#f4f6fa;border:1px solid #536173;border-radius:5px;font-family:inherit;font-weight:650;font-size:10px;white-space:nowrap;cursor:pointer}
+button:hover{background:#48566d}
+button:focus-visible{outline:2px solid #8cb8fd;outline-offset:1px}
+#power{background:#254f40;border-color:#3a7960}
+#power:hover{background:#316d56}
+#eject{background:#483b32;border-color:#6f5a48}
+#status{font-size:10px;min-height:13px;color:#b9c6da;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+footer{height:20px;flex:none;display:flex;align-items:center;justify-content:center;padding:0 5px;color:#8190a8;background:#161b25;font-size:9px}
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+<header><span class="dot" id="led"></span><span class="brand">PLAYSTATION / EMULATION</span><span class="sub">MIPS R3000A · PSX</span></header>
+<div id="screen"><div id="off"><span class="powericon">⏻</span><strong>Console is off</strong><span>Power on with or without a disc.<br>Choose your SCPH1001 BIOS for authentic firmware.</span></div></div>
+<div id="working" aria-live="polite"></div>
+<div class="toolbar">
+<div class="buttons">
+<button id="power">⏻ POWER</button>
+<button id="bios">BIOS…</button>
+<button id="insert">INSERT…</button>
+<button id="eject">EJECT</button>
+<button id="reset">↻ RESET</button>
+</div>
+<div id="status" aria-live="polite">Tray empty · BIOS not selected</div>
+</div>
+<footer>Controller: use the emulator's input settings for keyboard/gamepad mapping · TurboWarp only</footer>
+<input id="biosfile" type="file" accept=".bin,.rom">
+<input id="discfile" type="file" accept=".bin,.cue,.zip,.7z,.chd,.pbp,.img,.tar.xz,.xz" multiple>
+<script>
+(function() {
+  "use strict";
+  var screen = document.getElementById("screen");
+  var working = document.getElementById("working");
+  var status = document.getElementById("status");
+  var led = document.getElementById("led");
+  var power = document.getElementById("power");
+  var biosInput = document.getElementById("biosfile");
+  var discInput = document.getElementById("discfile");
+  var isOn = false;
+  var biosUrl = "";
+  var discUrl = "";
+  var biosName = "";
+  var discName = "";
+  var dummyUrl = "";
+  var bootNumber = 0;
+
+  function info(message) { status.textContent = message; }
+  function busy(message) { working.textContent = message; working.className = "active"; info(message); }
+  function done() { working.className = ""; }
+  function revoke(url) { if (url && url.startsWith("blob:")) URL.revokeObjectURL(url); }
+  function buttonState() {
+    led.className = isOn ? "dot on" : "dot";
+    power.textContent = isOn ? "⏻ OFF" : "⏻ POWER";
+  }
+  function emptyScreen() {
+    screen.innerHTML = '<div id="off"><span class="powericon">⏻</span><strong>Console is off</strong><span>Press POWER to start the PS1.<br>Disc tray: ' + (discName ? "loaded" : "empty") + "</span></div>";
+  }
+  function updateInfo(extra) {
+    info((isOn ? "Power on" : "Power off") + " · " + (discName || "Tray empty") + " · " + (biosName || "No external BIOS") + (extra ? " · " + extra : ""));
+  }
+  function loadScript(url) {
+    return new Promise(function(resolve, reject) {
+      var script = document.createElement("script");
+      script.src = url;
+      script.onload = resolve;
+      script.onerror = function(){ reject(new Error("Could not load the XZ decompressor from the CDN")); };
+      document.head.appendChild(script);
+    });
+  }
+  // Stream a TAR.XZ file, collecting only the disc track instead of expanding
+  // the entire archive into a second multi-gigabyte ArrayBuffer.
+  async function unpackTarXZ(file) {
+    if (!window.xzwasm) await loadScript("https://cdn.jsdelivr.net/npm/xzwasm@0.1.2/dist/package/xzwasm.min.js");
+    if (!window.xzwasm || !xzwasm.XzReadableStream) throw new Error("XZ support unavailable");
+    var stream = new xzwasm.XzReadableStream(file.stream());
+    var reader = stream.getReader();
+    var remaining = new Uint8Array(0);
+    var decoder = new TextDecoder("utf-8");
+    var processed = 0;
+    async function pull(count, pieces) {
+      while (count > 0) {
+        if (!remaining.length) {
+          var result = await reader.read();
+          if (result.done) throw new Error("Archive ended before a TAR entry finished");
+          remaining = result.value;
+          if (!remaining || !remaining.length) continue;
+        }
+        var take = Math.min(count, remaining.length);
+        if (pieces) pieces.push(remaining.subarray(0, take));
+        remaining = remaining.subarray(take);
+        count -= take;
+        processed += take;
+      }
+    }
+    async function readSmall(count) {
+      var pieces = [];
+      await pull(count, pieces);
+      var out = new Uint8Array(count);
+      var n = 0;
+      for (var i = 0; i < pieces.length; i++) { out.set(pieces[i], n); n += pieces[i].length; }
+      return out;
+    }
+    var tracks = [];
+    var cues = [];
+    while (true) {
+      var header;
+      try { header = await readSmall(512); }
+      catch (error) { if (tracks.length) break; throw error; }
+      if (header.every(function(x){return x === 0;})) break;
+      var name = decoder.decode(header.subarray(0, 100)).split("\0")[0];
+      var sizeText = decoder.decode(header.subarray(124, 136)).replace(/\0/g, "").trim();
+      var size = parseInt(sizeText, 8) || 0;
+      var type = header[156];
+      if (size < 0 || !Number.isFinite(size) || size > 3000000000) throw new Error("Invalid TAR entry length");
+      if (type !== 53 && size > 0) {
+        var parts = [];
+        await pull(size, parts);
+        if (/\.bin$/i.test(name)) tracks.push({name:name, blob:new Blob(parts, {type:"application/octet-stream"})});
+        if (/\.cue$/i.test(name)) cues.push({name:name, blob:new Blob(parts)});
+      } else {
+        await pull(size, null);
+      }
+      await pull((512 - (size % 512)) % 512, null);
+      if (tracks.length) info("Found " + tracks.length + " track(s); scanned " + Math.round(processed/1048576) + " MiB");
+    }
+    try { await reader.cancel(); } catch(e) {}
+    if (!tracks.length) throw new Error("No .bin CD track found inside TAR.XZ");
+    if (tracks.length !== 1) info("Multiple BIN tracks found; using first track. Multi-track images need ZIP packaging.");
+    return {name:tracks[0].name.split("/").pop(), blob:tracks[0].blob, trackCount:tracks.length};
+  }
+  // The PCSX ReARMed web frontend requires content even for firmware boot.
+  // This blank MODE2 CD image is ONLY a fallback; no game data is fabricated.
+  function emptyDisc() {
+    if (dummyUrl) return dummyUrl;
+    var bytes = new Uint8Array(2352 * 450);
+    for (var i = 0; i < 450; i++) {
+      var pos = i * 2352;
+      bytes[pos] = 0;
+      for (var j = 1; j < 11; j++) bytes[pos+j] = 255;
+      bytes[pos+11] = 0;
+      bytes[pos+12] = 0;
+      bytes[pos+13] = Math.floor((i+150)/75);
+      bytes[pos+14] = (i+150)%75;
+      bytes[pos+15] = 2;
+    }
+    dummyUrl = URL.createObjectURL(new Blob([bytes], {type:"application/octet-stream"}));
+    return dummyUrl;
+  }
+  function boot() {
+    bootNumber++;
+    isOn = true;
+    buttonState();
+    var gameUrl = discUrl || emptyDisc();
+    var selectedName = discName || "Empty Tray";
+    var vars =
+      "window.EJS_player='#ejs';" +
+      "window.EJS_core='psx';" +
+      "window.EJS_pathtodata='https://cdn.emulatorjs.org/stable/data/';" +
+      "window.EJS_gameUrl=" + JSON.stringify(gameUrl) + ";" +
+      "window.EJS_biosUrl=" + JSON.stringify(biosUrl) + ";" +
+      "window.EJS_gameName=" + JSON.stringify(selectedName) + ";" +
+      "window.EJS_startOnLoaded=true;" +
+      "window.EJS_color='#2b74c6';" +
+      "window.EJS_volume=0.6;" +
+      "window.EJS_ready=function(){parent.postMessage({ps1:'core-ready'},'*')};";
+    var inner = '<!doctype html><html><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<style>html,body,#ejs{width:100%;height:100%;margin:0;background:black;overflow:hidden}</style></head><body>' +
+      '<div id="ejs"></div><scr'+'ipt>' + vars + '</scr'+'ipt>' +
+      '<scr'+'ipt src="https://cdn.emulatorjs.org/stable/data/loader.js"></scr'+'ipt></body></html>';
+    var frame = document.createElement("iframe");
+    frame.setAttribute("allow", "autoplay; fullscreen; gamepad");
+    frame.setAttribute("title", "PlayStation emulation video and controller");
+    frame.srcdoc = inner;
+    screen.innerHTML = "";
+    screen.appendChild(frame);
+    updateInfo(discUrl ? "Starting PS1 core" : "Blank CD used to attempt BIOS-only boot");
+  }
+  function shutdown() {
+    isOn = false;
+    bootNumber++;
+    buttonState();
+    emptyScreen();
+    updateInfo();
+  }
+  window.addEventListener("message", function(event) {
+    if (event.data && event.data.ps1 === "core-ready" && isOn) updateInfo("Core ready · use emulator input menu");
+  });
+  document.getElementById("power").onclick = function() { if (isOn) shutdown(); else boot(); };
+  document.getElementById("reset").onclick = function() { if (isOn) boot(); else updateInfo("Power on first"); };
+  document.getElementById("bios").onclick = function() { biosInput.click(); };
+  document.getElementById("insert").onclick = function() { discInput.click(); };
+  document.getElementById("eject").onclick = function() {
+    revoke(discUrl); discUrl = ""; discName = "";
+    if (isOn) boot(); else updateInfo("Tray empty");
+  };
+  biosInput.onchange = function() {
+    var file = biosInput.files && biosInput.files[0];
+    if (!file) return;
+    if (file.size !== 524288) info("Warning: expected a 512 KiB BIOS; selected " + file.size + " bytes.");
+    revoke(biosUrl);
+    biosUrl = URL.createObjectURL(file);
+    biosName = file.name;
+    if (isOn) boot(); else updateInfo();
+  };
+  discInput.onchange = async function() {
+    var files = Array.from(discInput.files || []);
+    if (!files.length) return;
+    try {
+      busy("Preparing CD-ROM image… for a large TAR.XZ this may take memory.");
+      var file = files.find(function(f){return /\.tar\.xz$|\.xz$/i.test(f.name);}) || files.find(function(f){return /\.zip$|\.7z$|\.chd$|\.pbp$|\.img$/i.test(f.name);}) ||
+        files.find(function(f){return /\.bin$/i.test(f.name);});
+      if (!file) throw new Error("Please select a BIN, ZIP, CHD, PBP or TAR.XZ archive (not CUE by itself)");
+      var loaded;
+      if (/\.tar\.xz$|\.xz$/i.test(file.name)) loaded = await unpackTarXZ(file);
+      else loaded = {name:file.name, blob:file};
+      var newUrl = URL.createObjectURL(loaded.blob);
+      revoke(discUrl);
+      discUrl = newUrl;
+      discName = loaded.name;
+      if (isOn) boot(); else updateInfo("Disc inserted, ready to power on");
+      if (loaded.trackCount > 1) info("Multiple BIN tracks: first loaded. For complete audio, repack tracks and CUE as ZIP.");
+    } catch (error) {
+      info("Disc load failed: " + (error && error.message || String(error)));
+    } finally {
+      done();
+      discInput.value = "";
+    }
+  };
+  buttonState();
+  updateInfo();
+})();
+</script>
+</body>
+</html>
