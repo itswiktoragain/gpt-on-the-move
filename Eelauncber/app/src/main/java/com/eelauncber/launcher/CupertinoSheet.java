@@ -217,10 +217,10 @@ final class CupertinoSheet {
         row.setMinimumHeight(dp(a, 56));
         row.setBackground(ripple(a, dp(a, 17)));
 
-        TextView icon = label(a, choice.glyph == null ? "•" : choice.glyph,
-                23, choice.dangerous ? DANGER : ACCENT, false);
-        icon.setGravity(Gravity.CENTER);
-        icon.setBackground(glass(a, 0x484C607C, 12));
+        android.widget.ImageView icon = new android.widget.ImageView(a);
+        icon.setImageResource(symbolFor(choice.label));
+        icon.setColorFilter(choice.dangerous ? DANGER : TEXT);
+        icon.setPadding(dp(a, 7), dp(a, 7), dp(a, 7), dp(a, 7));
         LinearLayout.LayoutParams ilp =
                 new LinearLayout.LayoutParams(dp(a, 34), dp(a, 34));
         ilp.rightMargin = dp(a, 13);
@@ -249,6 +249,17 @@ final class CupertinoSheet {
             if (choice.callback != null) choice.callback.run();
         });
         return row;
+    }
+
+    private static int symbolFor(String title) {
+        String s = title.toLowerCase(java.util.Locale.ROOT);
+        if (s.contains("widget")) return R.drawable.f7_widget;
+        if (s.contains("label") || s.contains("name") || s.contains("rename")) return R.drawable.f7_labels;
+        if (s.contains("dock")) return R.drawable.f7_dock;
+        if (s.contains("icon") || s.contains("size")) return R.drawable.f7_size;
+        if (s.contains("wallpaper")) return R.drawable.f7_wallpaper;
+        if (s.contains("hide") || s.contains("remove") || s.contains("ungroup")) return R.drawable.f7_hide;
+        return R.drawable.f7_widget;
     }
 
     private static void present(LauncherActivity a, Dialog dialog, LinearLayout panel) {
