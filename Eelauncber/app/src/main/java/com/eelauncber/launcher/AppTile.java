@@ -59,6 +59,11 @@ final class AppTile {
             }
         } else cell.setOnLongClickListener(v->{if(dock)AppDrawer.show(a,"");else GridPlacement.choose(a,index);return true;});
         cell.setOnDragListener((v,event)->{
+            if(event.getLocalState() instanceof WidgetMove.Ref){
+                if(event.getAction()==DragEvent.ACTION_DROP && !dock)
+                    WidgetMove.drop(a,(WidgetMove.Ref)event.getLocalState(),index/20,index%20);
+                return true;
+            }
             if(!(event.getLocalState() instanceof HomeDrag.Ref))return false;
             if(event.getAction()==DragEvent.ACTION_DROP)
                 HomeDrag.drop(a,(HomeDrag.Ref)event.getLocalState(),dock,index,item);
