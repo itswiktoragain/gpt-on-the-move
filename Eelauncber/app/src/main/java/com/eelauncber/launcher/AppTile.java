@@ -57,7 +57,7 @@ final class AppTile {
                 cell.addView(minus,bp);
                 minus.setOnClickListener(v->LauncherActions.remove(a,item,dock));
             }
-        } else cell.setOnLongClickListener(v->{AppDrawer.show(a,"");return true;});
+        } else cell.setOnLongClickListener(v->{if(dock)AppDrawer.show(a,"");else GridPlacement.choose(a,index);return true;});
         cell.setOnDragListener((v,event)->{
             if(!(event.getLocalState() instanceof HomeDrag.Ref))return false;
             if(event.getAction()==DragEvent.ACTION_DROP)
