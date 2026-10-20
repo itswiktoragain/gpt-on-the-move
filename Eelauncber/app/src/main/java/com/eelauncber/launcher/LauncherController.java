@@ -51,6 +51,7 @@ final class LauncherController {
         });
     }
     boolean back(){
+        if(a.glassDialog!=null){closeShelf();return true;}
         if(a.shelf!=null){closeShelf();return true;}
         if(a.editing){setEditing(false);return true;}
         if(a.pager!=null&&a.pager.getPage()>0){a.pager.animateTo(0);return true;}
@@ -62,6 +63,11 @@ final class LauncherController {
         if(a.editing)setEditing(false);
     }
     void closeShelf(){
+        if(a.glassDialog!=null){
+            android.app.Dialog old=a.glassDialog;
+            a.glassDialog=null;
+            old.dismiss();
+        }
         if(a.shelf!=null){a.root.removeView(a.shelf);a.shelf=null;}
     }
     void setEditing(boolean editing){
