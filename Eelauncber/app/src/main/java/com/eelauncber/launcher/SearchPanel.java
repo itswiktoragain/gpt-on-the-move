@@ -23,12 +23,12 @@ final class SearchPanel {
     static void show(LauncherActivity a, String initial) {
         a.controller.closeShelf();
         FrameLayout overlay = new FrameLayout(a);
-        overlay.setBackgroundColor(0xE60C0E14);
+        overlay.setBackgroundColor(0x090C0E14);
         overlay.setOnClickListener(v -> dismiss(a));
 
         LinearLayout panel = new LinearLayout(a);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setBackground(LauncherUi.bg(a, 0xF71C1D23, 31));
+        panel.setBackground(GlassUi.sheet(a, 31));
         panel.setClickable(true);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, -1);
         lp.topMargin = LauncherUi.dp(a, 53);
@@ -55,7 +55,7 @@ final class SearchPanel {
         dismiss.setColorFilter(0xFFE1E2E8);
         dismiss.setPadding(LauncherUi.dp(a, 12), LauncherUi.dp(a, 12),
                 LauncherUi.dp(a, 12), LauncherUi.dp(a, 12));
-        dismiss.setBackground(LauncherUi.bg(a, 0xFF34363E, 22));
+        dismiss.setBackground(GlassUi.chip(a, 22));
         titleBar.addView(dismiss, new LinearLayout.LayoutParams(
                 LauncherUi.dp(a, 41), LauncherUi.dp(a, 41)));
         dismiss.setOnClickListener(v -> dismiss(a));
@@ -64,7 +64,7 @@ final class SearchPanel {
         LinearLayout searchBar = new LinearLayout(a);
         searchBar.setGravity(Gravity.CENTER_VERTICAL);
         searchBar.setPadding(LauncherUi.dp(a, 12), 0, LauncherUi.dp(a, 9), 0);
-        searchBar.setBackground(LauncherUi.bg(a, 0xFF34353E, 15));
+        searchBar.setBackground(GlassUi.input(a, 15));
         LinearLayout.LayoutParams sbp = new LinearLayout.LayoutParams(-1, LauncherUi.dp(a, 49));
         sbp.leftMargin = LauncherUi.dp(a, 22);
         sbp.rightMargin = LauncherUi.dp(a, 22);
@@ -92,7 +92,7 @@ final class SearchPanel {
         clear.setColorFilter(0xFFE6E8EC);
         clear.setPadding(LauncherUi.dp(a, 7), LauncherUi.dp(a, 7),
                 LauncherUi.dp(a, 7), LauncherUi.dp(a, 7));
-        clear.setBackground(LauncherUi.bg(a, 0xFF575963, 16));
+        clear.setBackground(GlassUi.chip(a, 16));
         searchBar.addView(clear, new LinearLayout.LayoutParams(
                 LauncherUi.dp(a, 27), LauncherUi.dp(a, 27)));
         clear.setOnClickListener(v -> field.setText(""));
@@ -148,11 +148,7 @@ final class SearchPanel {
             public void afterTextChanged(Editable e) {}
         });
 
-        a.root.addView(overlay, new FrameLayout.LayoutParams(-1, -1));
-        a.shelf = overlay;
-        panel.setAlpha(0.75f);
-        panel.setTranslationY(LauncherUi.dp(a, 85));
-        panel.animate().translationY(0).alpha(1f).setDuration(260).start();
+        GlassUi.show(a, overlay, panel);
         field.setText(initial);
         refresh.run();
     }
@@ -167,7 +163,7 @@ final class SearchPanel {
         grid.setOrientation(LinearLayout.VERTICAL);
         grid.setPadding(LauncherUi.dp(a, 6), LauncherUi.dp(a, 9),
                 LauncherUi.dp(a, 6), LauncherUi.dp(a, 6));
-        grid.setBackground(LauncherUi.bg(a, 0xCC303039, 20));
+        grid.setBackground(GlassUi.card(a, 20));
         into.addView(grid, new LinearLayout.LayoutParams(-1, -2));
 
         int visible = Math.min(8, a.catalog.all.size());
@@ -209,8 +205,8 @@ final class SearchPanel {
     private static void dismiss(LauncherActivity a) {
         InputMethodManager imm =
                 (InputMethodManager) a.getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null && a.shelf != null)
-            imm.hideSoftInputFromWindow(a.shelf.getWindowToken(), 0);
+        if (imm != null && a.glassDialog != null)
+            imm.hideSoftInputFromWindow(a.glassDialog.getWindow().getDecorView().getWindowToken(), 0);
         a.controller.closeShelf();
     }
 }
