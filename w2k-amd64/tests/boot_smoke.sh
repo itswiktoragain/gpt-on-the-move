@@ -5,7 +5,7 @@ mkdir -p build
 log="build/qemu-serial.log"
 rm -f "$log"
 set +e
-timeout 35s qemu-system-x86_64 \
+timeout 14s qemu-system-x86_64 \
   -machine pc -cpu qemu64 -m 512 -smp 2 \
   -boot order=d -cdrom build/w2k64-amd64.iso \
   -serial "file:$PWD/$log" \
