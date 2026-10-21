@@ -117,12 +117,12 @@ gdt_descriptor:
     dd gdt64
 
 SECTION .bss
-ALIGN 4096
+ALIGNB 4096
 page_level4: resb 4096
 page_directory_pointer: resb 4096
 page_directories: resb 16384
-ALIGN 16
+ALIGNB 16
 mb2_address: resd 1
-ALIGN 16
+ALIGNB 16
 bootstrap_stack: resb 65536
 bootstrap_stack_end:
