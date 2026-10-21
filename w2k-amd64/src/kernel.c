@@ -225,11 +225,15 @@ static void init_mb2(uintptr_t mb2){
     if(!mb2)return;
     const uint8_t *m=(const uint8_t*)mb2;
     uint32_t total=*(const uint32_t*)m;
+    serial_str("MB2 total bytes="); serial_u64(total); serial_str("\r\n");
     if(total<16 || total>1024*1024)return;
     const uint8_t *limit=m+total;
-    for(const uint8_t *p=m+8;p+8<=limit;){
+    unsigned tags_seen=0;
+    for(const uint8_t *p=m+8;p+8<=limit && tags_seen++<128;){
         uint32_t type=*(const uint32_t*)p;
         uint32_t size=*(const uint32_t*)(p+4);
+        serial_str("MB2 tag type=");serial_u64(type);
+        serial_str(" length=");serial_u64(size);serial_str("\r\n");
         if(type==0)break;
         if(size<8 || size>(size_t)(limit-p))break;
         if(type==8 && size>=38){
@@ -282,6 +286,7 @@ static void init_mb2(uintptr_t mb2){
         }
         p+=(size+7u)&~7u;
     }
+    serial_str("MB2 scan done\r\n");
 }
 static void ps2_send_mouse(uint8_t value){
     for(uint32_t x=0;x<400000 && (inb(0x64)&2);++x)cpu_pause();
