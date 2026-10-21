@@ -338,7 +338,8 @@ static void on_mouse_byte(uint8_t byte){
     uint8_t flags=mouse_packet[0];
     if(flags&0xC0)return;
     mouse_x+=(int8_t)mouse_packet[1];mouse_y-=(int8_t)mouse_packet[2];
-    if(mouse_x<0)mouse_x=0;if(mouse_y<0)mouse_y=0;
+    if(mouse_x<0) mouse_x=0;
+    if(mouse_y<0) mouse_y=0;
     if(mouse_x>=(int)fb.w)mouse_x=(int)fb.w-1;
     if(mouse_y>=(int)fb.h)mouse_y=(int)fb.h-1;
     int pressed=(flags&1)!=0;
