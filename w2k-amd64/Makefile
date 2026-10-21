@@ -2,7 +2,7 @@ SHELL := /bin/bash
 CC := gcc
 NASM := nasm
 LD := ld
-CFLAGS := -std=c11 -O2 -Wall -Wextra -Werror -ffreestanding -fno-stack-protector -fno-pie -fno-pic -m64 -mno-red-zone -mcmodel=kernel -fno-builtin -fno-asynchronous-unwind-tables -fno-omit-frame-pointer
+CFLAGS := -std=c11 -O2 -Wall -Wextra -Werror -ffreestanding -fno-stack-protector -fno-pie -fno-pic -m64 -mno-red-zone -mgeneral-regs-only -mcmodel=kernel -fno-builtin -fno-asynchronous-unwind-tables -fno-omit-frame-pointer
 LDFLAGS := -nostdlib -static -m elf_x86_64 -z max-page-size=0x1000 -T src/link.ld
 
 .PHONY: all clean test
