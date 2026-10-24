@@ -4,6 +4,7 @@ Produces full framebuffer screenshot and checks whether the desktop is actually 
 """
 from pathlib import Path
 import os
+import shutil
 import socket
 import subprocess
 import tempfile
@@ -18,26 +19,34 @@ def run(firmware):
     sock = OUT / f"{firmware}.sock"
     screen = OUT / f"{firmware}.ppm"
     log = OUT / f"{firmware}.serial.log"
-    for f in (sock, screen, log):
+    error_file = OUT / f"{firmware}.qemu-stderr.txt"
+    for f in (sock, screen, log, error_file):
         if f.exists(): f.unlink()
     cmd = ["qemu-system-x86_64","-machine","pc","-cpu","qemu64","-m","512",
            "-vga","vmware","-boot","order=d","-cdrom",str(ISO),
            "-display","none","-net","none","-monitor",f"unix:{sock},server=on,wait=off",
            "-serial",f"file:{log}","-no-reboot","-no-shutdown"]
     if firmware == "uefi":
-        choices = ["/usr/share/OVMF/OVMF_CODE_4M.fd","/usr/share/OVMF/OVMF_CODE.fd"]
-        firmware_file = next((x for x in choices if os.path.isfile(x)),None)
-        if not firmware_file: raise RuntimeError("ovmf is not installed")
-        cmd += ["-bios", firmware_file]
-    p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        pairs = [("/usr/share/OVMF/OVMF_CODE_4M.fd","/usr/share/OVMF/OVMF_VARS_4M.fd"),
+                 ("/usr/share/OVMF/OVMF_CODE.fd","/usr/share/OVMF/OVMF_VARS.fd")]
+        matched = next(((code, vars) for code,vars in pairs if os.path.isfile(code) and os.path.isfile(vars)),None)
+        if not matched: raise RuntimeError("ovmf is not installed")
+        vars_copy = OUT / "UEFI-vars.fd"
+        shutil.copyfile(matched[1],vars_copy)
+        cmd += ["-drive",f"if=pflash,format=raw,unit=0,readonly=on,file={matched[0]}",
+                "-drive",f"if=pflash,format=raw,unit=1,file={vars_copy}"]
+    error_stream = error_file.open("wb")
+    p = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=error_stream)
     try:
-        for _ in range(100):
+        for _ in range(110):
             if log.exists() and "W2K64: INPUT_LOOP=1" in log.read_text(errors="replace"):
                 break
             if p.poll() is not None:break
             time.sleep(0.15)
         log_text = log.read_text(errors="replace") if log.exists() else ""
         print(f"[{firmware}] Serial last lines:\n"+"\n".join(log_text.splitlines()[-12:]),flush=True)
+        if p.poll() is not None:
+            raise RuntimeError(f"{firmware}: QEMU exited with code {p.returncode}: "+error_file.read_text(errors="replace")[-1800:])
         if not sock.exists(): raise RuntimeError(f"{firmware}: QEMU monitor socket missing")
         with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as s:
             s.settimeout(4)
@@ -71,6 +80,7 @@ def run(firmware):
         p.terminate()
         try:p.wait(timeout=2)
         except subprocess.TimeoutExpired:p.kill()
+        error_stream.close()
 
 for fw in ("bios","uefi"):run(fw)
 print("PASS: VMware-style SVGA desktop visible under legacy BIOS and UEFI")
