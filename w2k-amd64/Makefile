@@ -14,17 +14,20 @@ build:
 build/boot.o: src/boot.asm | build
 	$(NASM) -f elf64 $< -o $@
 
-build/kernel.o: src/kernel.c src/font8x8.h src/dos16.h src/pe.h | build
+build/kernel.o: src/kernel.c src/font8x8.h src/dos16.h src/pe.h src/vmware_svga.h | build
 	$(CC) $(CFLAGS) -c $< -o $@
 
 build/dos16.o: src/dos16.c src/dos16.h | build
 	$(CC) $(CFLAGS) -c $< -o $@
 
+build/vmware_svga.o: src/vmware_svga.c src/vmware_svga.h | build
+	$(CC) $(CFLAGS) -c $< -o $@
+
 build/pe.o: src/pe.c src/pe.h | build
 	$(CC) $(CFLAGS) -c $< -o $@
 
-build/w2k64.elf: build/boot.o build/kernel.o build/dos16.o build/pe.o src/link.ld | build
-	$(LD) $(LDFLAGS) -o $@ build/boot.o build/kernel.o build/dos16.o build/pe.o
+build/w2k64.elf: build/boot.o build/kernel.o build/dos16.o build/pe.o build/vmware_svga.o src/link.ld | build
+	$(LD) $(LDFLAGS) -o $@ build/boot.o build/kernel.o build/dos16.o build/pe.o build/vmware_svga.o
 	grub-file --is-x86-multiboot2 $@
 	readelf -h $@ | grep 'ELF64'
 	readelf -h $@ | grep 'Advanced Micro Devices X86-64'
