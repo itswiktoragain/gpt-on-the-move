@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">Bezel Motion</string>
-    <string name="service_name">Bezel Motion button detection</string>
-    <string name="service_description">Detects volume-button presses to display a visual effect at the screen edge. Does not read typed text or screen content. An optional animation can also appear when the screen wakes. Power button interception is restricted by Android.</string>
-</resources>
