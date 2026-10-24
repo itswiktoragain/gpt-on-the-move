@@ -8,6 +8,10 @@ on:
       - ".github/workflows/w2k-amd64-build.yml"
   workflow_dispatch:
 
+concurrency:
+  group: w2k-amd64-main-release
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -33,6 +37,17 @@ jobs:
         run: bash w2k-amd64/tests/boot_smoke.sh
       - name: VMware SVGA framebuffer visibility (BIOS and UEFI)
         run: python3 w2k-amd64/tests/vmware_graphics_test.py
+      - name: Keep VMware boot diagnostics even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vmware-bios-uefi-diagnostics
+          path: |
+            w2k-amd64/build/eltorito.txt
+            w2k-amd64/build/vmware-probe/*.serial.log
+            w2k-amd64/build/vmware-probe/*.qemu-stderr.txt
+            w2k-amd64/build/vmware-probe/*.ppm
+          if-no-files-found: warn
       - name: Upload tested ISO as an Actions artifact
         uses: actions/upload-artifact@v4
         with:
