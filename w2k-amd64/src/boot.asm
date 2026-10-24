@@ -19,6 +19,7 @@ header_end:
 
 SECTION .text
 GLOBAL start32
+GLOBAL page_level4
 EXTERN kernel_main
 
 start32:
