@@ -41,6 +41,8 @@ build/w2k64-amd64.iso: build/w2k64.elf build/hello.com grub.cfg | build
 	cp build/hello.com build/iso/boot/hello.com
 	cp grub.cfg build/iso/boot/grub/grub.cfg
 	grub-mkrescue -o $@ build/iso
+	xorriso -indev $@ -report_el_torito plain > build/eltorito.txt 2>&1
+	grep -Ei 'EFI' build/eltorito.txt
 
 test: all
 	bash tests/boot_smoke.sh
