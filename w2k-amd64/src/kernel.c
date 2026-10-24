@@ -7,6 +7,7 @@
 #include "font8x8.h"
 #include "dos16.h"
 #include "pe.h"
+#include "vmware_svga.h"
 
 #define RGB(r,g,b) (((uint32_t)(r)<<16)|((uint32_t)(g)<<8)|(uint32_t)(b))
 #define COM1 0x3F8
@@ -45,9 +46,12 @@ typedef struct {
     uint8_t *base;
     uint32_t pitch,w,h;
     uint8_t bpp,red_pos,red_size,green_pos,green_size,blue_pos,blue_size;
-    uint8_t ready;
+    uint8_t ready,indexed;
 } framebuffer_t;
 static framebuffer_t fb;
+static uint8_t indexed_palette[256][3];
+static uint16_t indexed_count;
+static int vmware_driver_active;
 static uint16_t vga_cursor;
 static uint64_t ram_megabytes;
 static uint32_t module_count;
@@ -77,6 +81,18 @@ static uint32_t mask8(uint8_t value,uint8_t size,uint8_t position){
     return (uint32_t)(value>>(8-size))<<position;
 }
 static uint32_t color_pack(uint32_t c){
+    if(fb.indexed) {
+        uint32_t best=UINT32_MAX,choice=0;
+        int r=(int)((c>>16)&255u),g=(int)((c>>8)&255u),b=(int)(c&255u);
+        for(unsigned i=0;i<indexed_count;++i){
+            int dr=r-indexed_palette[i][0];
+            int dg=g-indexed_palette[i][1];
+            int db=b-indexed_palette[i][2];
+            uint32_t dist=(uint32_t)(dr*dr+dg*dg+db*db);
+            if(dist<best){best=dist;choice=i;if(!dist)break;}
+        }
+        return choice;
+    }
     return mask8((uint8_t)(c>>16),fb.red_size,fb.red_pos)|
            mask8((uint8_t)(c>>8),fb.green_size,fb.green_pos)|
            mask8((uint8_t)c,fb.blue_size,fb.blue_pos);
@@ -84,7 +100,9 @@ static uint32_t color_pack(uint32_t c){
 static void put_pixel(int x,int y,uint32_t packed){
     if(!fb.ready||x<0||y<0||(unsigned)x>=fb.w||(unsigned)y>=fb.h)return;
     volatile uint8_t *p=fb.base+(size_t)y*fb.pitch+(size_t)x*(fb.bpp/8);
-    p[0]=(uint8_t)packed;p[1]=(uint8_t)(packed>>8);p[2]=(uint8_t)(packed>>16);
+    p[0]=(uint8_t)packed;
+    if(fb.bpp>=16)p[1]=(uint8_t)(packed>>8);
+    if(fb.bpp>=24)p[2]=(uint8_t)(packed>>16);
     if(fb.bpp==32)p[3]=(uint8_t)(packed>>24);
 }
 static void rect(int x,int y,int w,int h,uint32_t color){
@@ -204,6 +222,7 @@ static void redraw(void){
         text(54,y+169,"Close menu [Esc]",BLACK,1);
     }
     draw_cursor();
+    if(vmware_driver_active)vmware_svga_present(fb.w,fb.h);
 }
 static void output_from_dos(char c,void *opaque){
     (void)opaque;
@@ -236,22 +255,44 @@ static void init_mb2(uintptr_t mb2){
         serial_str(" length=");serial_u64(size);serial_str("\r\n");
         if(type==0)break;
         if(size<8 || size>(size_t)(limit-p))break;
-        if(type==8 && size>=38){
+        if(type==8 && size>=32){
             uint64_t physical=*(const uint64_t*)(p+8);
             uint32_t pitch=*(const uint32_t*)(p+16);
             uint32_t width=*(const uint32_t*)(p+20);
             uint32_t height=*(const uint32_t*)(p+24);
             uint8_t bits=p[28],format=p[29];
-            if(format==1 && (bits==24||bits==32) && width>=640 && height>=480 &&
-               width<=1920 && height<=1200 && pitch>=width*(bits/8) && 
-               physical<0x100000000ULL &&
-               (uint64_t)pitch*height<=0x100000000ULL-physical) {
-                fb.base=(uint8_t*)(uintptr_t)physical;
-                fb.pitch=pitch;fb.w=width;fb.h=height;fb.bpp=bits;
-                fb.red_pos=p[32];fb.red_size=p[33];
-                fb.green_pos=p[34];fb.green_size=p[35];
-                fb.blue_pos=p[36];fb.blue_size=p[37];
-                fb.ready=1;
+            serial_str("VIDEO MB2: type=");serial_u64(format);
+            serial_str(" bpp=");serial_u64(bits);
+            serial_str(" width=");serial_u64(width);
+            serial_str(" height=");serial_u64(height);
+            serial_str(" physical=");serial_u64(physical);serial_str("\r\n");
+            if(width>=640 && height>=480 && width<=1920 && height<=1200 &&
+               pitch>=width*((bits+7u)/8u) && pitch<128*1024 &&
+               (uint64_t)pitch*height<64*1024*1024 &&
+               ((format==1 && size>=38 && (bits==16||bits==24||bits==32)) ||
+                (format==0 && size>=34 && bits==8))) {
+                uint8_t *mapped=(uint8_t*)video_map_physical(physical,(uint64_t)pitch*height,0);
+                if(mapped){
+                    fb.base=mapped;
+                    fb.pitch=pitch;fb.w=width;fb.h=height;fb.bpp=bits;
+                    fb.indexed=(format==0);
+                    if(format==1){
+                        fb.red_pos=p[32];fb.red_size=p[33];
+                        fb.green_pos=p[34];fb.green_size=p[35];
+                        fb.blue_pos=p[36];fb.blue_size=p[37];
+                        fb.ready=1;
+                    }else{
+                        uint16_t count=*(const uint16_t*)(p+32);
+                        if(count>256)count=256;
+                        if((size_t)(p+size-(p+34))>=(size_t)count*3u && count>0){
+                            indexed_count=count;
+                            for(unsigned j=0;j<count;++j)
+                                for(unsigned z=0;z<3;++z)
+                                    indexed_palette[j][z]=p[34+j*3+z];
+                            fb.ready=1;
+                        }
+                    }
+                }
             }
         }else if(type==3 && size>=17){
             ++module_count;
@@ -360,6 +401,19 @@ void kernel_main(uint32_t multiboot_information){
     serial_str("RAM MiB (available map): ");serial_u64(ram_megabytes);serial_str("\r\n");
     serial_str("Modules found: ");serial_u64(module_count);serial_str("\r\n");
     serial_str("WOW64: not implemented | NTVDM/Win16: not implemented\r\n");
+    run_dos_demo();
+    vmware_fb_info native_info;
+    if(vmware_svga_start(&native_info)){
+        fb.base=native_info.base;
+        fb.pitch=native_info.pitch;
+        fb.w=native_info.width;fb.h=native_info.height;fb.bpp=native_info.bpp;
+        fb.red_pos=native_info.red_pos;fb.red_size=native_info.red_size;
+        fb.green_pos=native_info.green_pos;fb.green_size=native_info.green_size;
+        fb.blue_pos=native_info.blue_pos;fb.blue_size=native_info.blue_size;
+        fb.indexed=0;fb.ready=1;vmware_driver_active=1;
+        serial_str("VIDEO: VMware SVGA II native driver active ");
+        serial_u64(fb.w);serial_str("x");serial_u64(fb.h);serial_str("\r\n");
+    }
     run_dos_demo();
     if(fb.ready){
         serial_str("GUI: framebuffer ready\r\n");
