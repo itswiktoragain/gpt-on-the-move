@@ -1,0 +1,41 @@
+name: Build AlphaModern v0.8.1
+on:
+  push:
+    branches:
+      - alphamodern-v0.8.1-download
+    paths:
+      - "alpha-v0.8.1/**"
+      - ".github/workflows/alphamodern-v0.8.1.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "8"
+      - name: Build complete v0.8.1 Java agent
+        run: sh alpha-v0.8.1/build.sh
+      - name: Verify built JAR and source
+        run: |
+          unzip -t AlphaModern-776-v0.8.1.jar
+          unzip -t AlphaModern-v0.8.1-source.zip
+          unzip -p AlphaModern-776-v0.8.1.jar META-INF/MANIFEST.MF | grep 'Premain-Class: alphamodern.AlphaModernShim'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AlphaModern-v0.8.1
+          path: |
+            AlphaModern-776-v0.8.1.jar
+            AlphaModern-v0.8.1-source.zip
+            alpha-v0.8.1/README.md
+      - name: Publish direct-download JAR on branch
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@users.noreply.github.com
+          git add AlphaModern-776-v0.8.1.jar AlphaModern-v0.8.1-source.zip
+          git commit -m "Publish compiled AlphaModern v0.8.1 Java agent [skip ci]" || true
+          git push
