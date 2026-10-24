@@ -20,7 +20,7 @@ jobs:
       - name: Install toolchain and QEMU
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc binutils nasm make grub-pc-bin grub-common xorriso mtools qemu-system-x86 python3
+          sudo apt-get install -y gcc binutils nasm make grub-pc-bin grub-common xorriso mtools qemu-system-x86 ovmf python3
       - name: Build the actual native AMD64 ISO
         run: make -C w2k-amd64 all
       - name: Unit test DOS16 and PE32/PE32+ support
@@ -31,6 +31,8 @@ jobs:
           w2k-amd64/build/unit-test
       - name: Boot the ISO in QEMU and verify AMD64 serial markers
         run: bash w2k-amd64/tests/boot_smoke.sh
+      - name: VMware SVGA framebuffer visibility (BIOS and UEFI)
+        run: python3 w2k-amd64/tests/vmware_graphics_test.py
       - name: Upload tested ISO as an Actions artifact
         uses: actions/upload-artifact@v4
         with:
@@ -38,6 +40,8 @@ jobs:
           path: |
             w2k-amd64/build/w2k64-amd64.iso
             w2k-amd64/build/qemu-serial.log
+            w2k-amd64/build/vmware-probe/*.ppm
+            w2k-amd64/build/vmware-probe/*.serial.log
           if-no-files-found: error
       - name: Publish boot-verified public GitHub pre-release
         if: github.ref == 'refs/heads/main'
