@@ -54,7 +54,7 @@ jobs:
       - name: Verify production JAR and Mixin refmap
         run: |
           set -euo pipefail
-          JAR=bullet/build/libs/bullet-1.0.2.jar
+          JAR=bullet/build/libs/bullet-1.0.3.jar
           test -s "$JAR"
           unzip -l "$JAR" | grep -E 'fabric.mod.json|BulletEntity.class|GameRendererMixin.class'
           unzip -l "$JAR" | grep -F 'client-bullet-refmap.json'
@@ -66,20 +66,29 @@ jobs:
           print('Found Mixin refmap:', refmap)
           assert refmap.get('mappings') or refmap.get('data'), 'Mixin refmap has no mappings'
           assert 'method_' in str(refmap), 'Expected mapped intermediary method names'
+          mixins = refmap['mappings']
+          fov = mixins['dev/bullet/mixin/GameRendererMixin']['getFov']
+          assert fov.endswith(')F'), f'Unexpected Minecraft 1.21.4 FOV method signature: {fov}'
           print('PASS: Mixin name mappings included for production Fabric')
           PY
+          javap -v -p -classpath "$JAR" dev.bullet.mixin.GameRendererMixin > /tmp/bullet-mixin-javap.txt
+          grep -F 'Ljava/lang/Float;' /tmp/bullet-mixin-javap.txt
+          if grep -Fq 'Ljava/lang/Double;' /tmp/bullet-mixin-javap.txt; then
+            echo 'ERROR: FOV mixin callback is using the wrong Java type.'
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
-          name: Bullet-Fabric-1.21.4-v1.0.2
-          path: bullet/build/libs/bullet-1.0.2.jar
+          name: Bullet-Fabric-1.21.4-v1.0.3
+          path: bullet/build/libs/bullet-1.0.3.jar
           if-no-files-found: error
       - name: Publish JAR as a direct download
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE=bullet-fabric-1.21.4-v1.0.2
+          RELEASE=bullet-fabric-1.21.4-v1.0.3
           if gh release view "$RELEASE" >/dev/null 2>&1; then
-            gh release upload "$RELEASE" bullet/build/libs/bullet-1.0.2.jar --clobber
+            gh release upload "$RELEASE" bullet/build/libs/bullet-1.0.3.jar --clobber
           else
-            gh release create "$RELEASE" bullet/build/libs/bullet-1.0.2.jar --target "$GITHUB_SHA" --title "Bullet 1.0.2 for Minecraft 1.21.4" --notes "Fabric 1.21.4. Requires Fabric API and Java 21. Craft a Bullet vehicle, enter destination coordinates, experience 720 FOV + shaking, and teleport with the vehicle."
+            gh release create "$RELEASE" bullet/build/libs/bullet-1.0.3.jar --target "$GITHUB_SHA" --title "Bullet 1.0.3 for Minecraft 1.21.4" --notes "Fabric 1.21.4. Requires Fabric API and Java 21. Craft a Bullet vehicle, enter destination coordinates, experience 720 FOV + shaking, and teleport with the vehicle."
           fi

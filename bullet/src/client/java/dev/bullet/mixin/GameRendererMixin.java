@@ -13,10 +13,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class GameRendererMixin {
     @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
     private void bullet$boostFov(Camera camera, float tickDelta, boolean changingFov,
-                                 CallbackInfoReturnable<Double> cir) {
+                                 CallbackInfoReturnable<Float> cir) {
         double fov = BulletClient.effectiveFov(tickDelta);
         if (!Double.isNaN(fov)) {
-            cir.setReturnValue(fov);
+            cir.setReturnValue((float) fov);
         }
     }
 }
