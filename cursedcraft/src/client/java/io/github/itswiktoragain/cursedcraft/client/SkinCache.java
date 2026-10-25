@@ -2,6 +2,7 @@ package io.github.itswiktoragain.cursedcraft.client;
 
 import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.yggdrasil.ProfileResult;
 import io.github.itswiktoragain.cursedcraft.CursedCraft;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.entity.state.ZombieEntityRenderState;
@@ -25,7 +26,8 @@ public final class SkinCache {
     private record Identity(String name, String uuid, boolean giant) {}
     private static final Map<ZombieEntityRenderState, Identity> RENDER_IDENTITIES = new IdentityHashMap<>();
     private static final Map<String, CompletableFuture<UUID>> ONLINE_UUIDS = new ConcurrentHashMap<>();
-    private static final Map<String, Supplier<SkinTextures>> SKIN_SUPPLIERS = new ConcurrentHashMap<>();
+    private static final Map<UUID, CompletableFuture<GameProfile>> SIGNED_PROFILES = new ConcurrentHashMap<>();
+    private static final Map<UUID, Supplier<SkinTextures>> SKIN_SUPPLIERS = new ConcurrentHashMap<>();
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(4)).build();
 
@@ -79,9 +81,24 @@ public final class SkinCache {
             }
             if (uuid == null) return fallback; // Keeps fetching in the background.
             UUID finalId = uuid;
+            // Vanilla's skin provider only reads the signed 'textures' property.
+            // A GameProfile(UUID, username) alone always falls back to Steve/Alex.
+            CompletableFuture<GameProfile> fullProfile = SIGNED_PROFILES.computeIfAbsent(
+                    finalId, key -> CompletableFuture.supplyAsync(() -> {
+                        try {
+                            ProfileResult result = MinecraftClient.getInstance()
+                                    .getSessionService().fetchProfile(key, true);
+                            return result == null ? null : result.profile();
+                        } catch (Exception ex) {
+                            CursedCraft.LOGGER.warn("Failed to fetch signed skin for {}", identity.name(), ex);
+                            return null;
+                        }
+                    }));
+            GameProfile signed = fullProfile.getNow(null);
+            if (signed == null) return fallback;
             Supplier<SkinTextures> supplier = SKIN_SUPPLIERS.computeIfAbsent(
-                    finalId.toString(), key -> MinecraftClient.getInstance().getSkinProvider()
-                            .getSkinTexturesSupplier(new GameProfile(finalId, identity.name())));
+                    finalId, key -> MinecraftClient.getInstance().getSkinProvider()
+                            .getSkinTexturesSupplier(signed));
             SkinTextures textures = supplier.get();
             return textures == null ? fallback : textures.texture();
         } catch (Exception ex) {
