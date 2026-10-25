@@ -73,7 +73,7 @@ public final class AlternateSeedCorruption {
             long alternateSeed = RANDOM.nextLong();
             NoiseConfig alternateNoise = NoiseConfig.create(
                     noise.getSettings().value(),
-                    world.getRegistryManager().get(RegistryKeys.NOISE_PARAMETERS),
+                    world.getRegistryManager().getOrThrow(RegistryKeys.NOISE_PARAMETERS),
                     alternateSeed);
             transfer = new Transfer(cx + dx, cz + dz, alternateSeed, alternateNoise);
             CursedCraft.LOGGER.info("Other-seed terrain: chunk {},{} from seed {}",
