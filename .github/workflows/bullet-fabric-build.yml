@@ -1,0 +1,42 @@
+name: Build Bullet (Fabric 1.21.4)
+on:
+  push:
+    branches:
+      - bullet-fabric-1.21.4
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  jar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.12.1'
+      - name: Compile and remap Bullet
+        run: gradle -p bullet build --no-daemon --stacktrace
+      - name: Confirm mod archive
+        run: |
+          test -s bullet/build/libs/bullet-1.0.0.jar
+          unzip -l bullet/build/libs/bullet-1.0.0.jar | grep -E 'fabric.mod.json|BulletEntity.class|GameRendererMixin.class'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bullet-Fabric-1.21.4
+          path: bullet/build/libs/bullet-1.0.0.jar
+          if-no-files-found: error
+      - name: Publish JAR as a direct download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RELEASE=bullet-fabric-1.21.4-v1.0.0
+          if gh release view "$RELEASE" >/dev/null 2>&1; then
+            gh release upload "$RELEASE" bullet/build/libs/bullet-1.0.0.jar --clobber
+          else
+            gh release create "$RELEASE" bullet/build/libs/bullet-1.0.0.jar --target "$GITHUB_SHA" --title "Bullet 1.0.0 for Minecraft 1.21.4" --notes "Fabric 1.21.4. Requires Fabric API and Java 21. Craft a Bullet vehicle, enter destination coordinates, experience 720 FOV + shaking, and teleport with the vehicle."
+          fi

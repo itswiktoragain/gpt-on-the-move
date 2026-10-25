@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "bullet",
+  "version": "${version}",
+  "name": "Bullet",
+  "description": "A craftable coordinate-powered warp vehicle with a 720-degree FOV launch sequence.",
+  "authors": ["Wiktor", "OpenAI"],
+  "environment": "*",
+  "entrypoints": {
+    "main": ["dev.bullet.BulletMod"],
+    "client": ["dev.bullet.client.BulletClient"]
+  },
+  "mixins": [{"config": "bullet.mixins.json", "environment": "client"}],
+  "depends": {
+    "fabricloader": ">=0.16.10",
+    "minecraft": "1.21.4",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

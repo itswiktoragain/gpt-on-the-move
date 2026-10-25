@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "transportation",
+  "pattern": [
+    "IRI",
+    "CEC",
+    "IRI"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:redstone",
+    "C": "minecraft:copper_ingot",
+    "E": "minecraft:ender_pearl"
+  },
+  "result": { "id": "bullet:bullet", "count": 1 }
+}
