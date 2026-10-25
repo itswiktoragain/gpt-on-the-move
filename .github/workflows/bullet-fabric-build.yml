@@ -39,7 +39,12 @@ jobs:
               exit 0
             fi
             if grep -Eq 'Minecraft Crash Report|Game crashed!|Exception in thread' /tmp/bullet-startup.log; then
-              tail -n 120 /tmp/bullet-startup.log
+              echo '===== EARLIEST EXCEPTION DETAILS ====='
+              grep -n -m 12 -E -C 12 'Exception|Error|Caused by:|BULLET_|Wrong FOV|Unsafe projection|did not return|startFov' /tmp/bullet-startup.log | head -n 170 || true
+              echo '===== COMPLETE STARTUP LOG FIRST 220 LINES ====='
+              head -n 220 /tmp/bullet-startup.log
+              echo '===== CRASH LOG LAST 80 LINES ====='
+              tail -n 80 /tmp/bullet-startup.log
               exit 1
             fi
             if ! kill -0 "$runner_pid" 2>/dev/null; then
