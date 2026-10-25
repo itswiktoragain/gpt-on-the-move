@@ -2,6 +2,7 @@ package io.github.itswiktoragain.cursedcraft;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.FallingBlockEntity;
+import io.github.itswiktoragain.cursedcraft.mixin.FallingBlockEntityAccessor;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.decoration.DisplayEntity;
@@ -87,7 +88,11 @@ public final class BlockBloomController {
             double z = current.origin.getZ() + .5 + dz;
             double y = targetY + dy;
             if (current.world.isOutOfHeightLimit((int)y)) continue;
-            FallingBlockEntity falling = new FallingBlockEntity(current.world, x, y, z, current.state);
+            FallingBlockEntity falling = EntityType.FALLING_BLOCK.create(current.world, SpawnReason.EVENT);
+            if (falling == null) continue;
+            ((FallingBlockEntityAccessor)(Object)falling).cursedcraft$setBlock(current.state);
+            falling.refreshPositionAndAngles(x, y, z, 0, 0);
+            falling.setFallingBlockPos(BlockPos.ofFloored(x, y, z));
             falling.setNoGravity(true);
             falling.setDestroyedOnLanding();
             if (current.world.spawnEntity(falling)) current.falling.add(falling);
