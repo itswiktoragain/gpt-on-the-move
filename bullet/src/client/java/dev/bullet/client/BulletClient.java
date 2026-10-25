@@ -69,7 +69,7 @@ public final class BulletClient implements ClientModInitializer {
                 lastVehicleId = Integer.MIN_VALUE;
             }
         });
-        // Intentionally no HudRenderCallback: no "FOV 720" widget, no overlay.
+        // Intentionally no HUD drawing callback: no on-screen FOV widget.
     }
 
     public static void beginLaunch() {
