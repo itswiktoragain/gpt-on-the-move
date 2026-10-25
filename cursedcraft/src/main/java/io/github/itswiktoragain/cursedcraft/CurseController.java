@@ -54,6 +54,7 @@ public final class CurseController {
         victimWorld = player.getServerWorld();
         epicenter = player.getPos();
         activeSave = server.getSavePath(WorldSavePath.ROOT).toAbsolutePath().normalize();
+        AlternateSeedCorruption.reset();
         apocalypseAt = System.nanoTime() + 5_000_000_000L;
         player.sendMessage(Text.literal("§4§lCURSEDCRAFT §cThe world is unraveling. 5 seconds."), true);
         CursedCraft.LOGGER.warn("CursedCraft {} apocalypse in {} (delete={})", why, activeSave,
@@ -89,7 +90,7 @@ public final class CurseController {
                 }
                 return;
             }
-            corrupt(victimWorld, epicenter);
+            AlternateSeedCorruption.tick(victimWorld, epicenter, Config.INSTANCE.corruptionRadiusBlocks);
             return;
         }
 
@@ -184,6 +185,7 @@ public final class CurseController {
 
     public static void onServerStopped(MinecraftServer server) {
         if (!cleanupScheduled) {
+            AlternateSeedCorruption.reset();
             LAST_POS.clear();
             DISTANCES.clear();
             apocalypseAt = -1L;
