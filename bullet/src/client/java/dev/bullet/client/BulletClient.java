@@ -108,11 +108,16 @@ public final class BulletClient implements ClientModInitializer {
 
     /** The shader-safe projection follows the same exponential progress. */
     public static float renderedFov(float tickDelta, float vanillaFov) {
-        if (!Float.isFinite(vanillaFov) || vanillaFov <= 0) return 90.0f;
         if (!isAnimating()) {
-            lastNormalFov = vanillaFov;
+            // The main menu sometimes reports a zero camera FOV because no
+            // in-world camera is ready. Do not adopt it as the launch baseline.
+            if (Float.isFinite(vanillaFov) && vanillaFov >= 30.0f && vanillaFov < 180.0f) {
+                lastNormalFov = vanillaFov;
+            }
             return vanillaFov;
         }
+        // Once launched, use the captured FOV. A missing/uninitialized vanilla
+        // camera must not suppress the exponential effect in the regression test.
         double logical = logicalFov(tickDelta);
         double portion = (logical - startFov) / (PEAK_LOGICAL_FOV - startFov);
         portion = Math.max(0.0, Math.min(1.0, portion));
