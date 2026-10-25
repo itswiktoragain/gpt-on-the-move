@@ -57,11 +57,11 @@ jobs:
           JAR=bullet/build/libs/bullet-1.0.2.jar
           test -s "$JAR"
           unzip -l "$JAR" | grep -E 'fabric.mod.json|BulletEntity.class|GameRendererMixin.class'
-          unzip -l "$JAR" | grep -F 'bullet-refmap.json'
-          unzip -p "$JAR" bullet-refmap.json > /tmp/bullet-refmap.json
+          unzip -l "$JAR" | grep -F 'client-bullet-refmap.json'
+          unzip -p "$JAR" client-bullet-refmap.json > /tmp/client-bullet-refmap.json
           python3 - <<'PY'
           import json
-          with open('/tmp/bullet-refmap.json') as f:
+          with open('/tmp/client-bullet-refmap.json') as f:
               refmap = json.load(f)
           print('Found Mixin refmap:', refmap)
           assert refmap.get('mappings') or refmap.get('data'), 'Mixin refmap has no mappings'

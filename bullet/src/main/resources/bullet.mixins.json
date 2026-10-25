@@ -1,7 +1,7 @@
 {
   "required": true,
   "package": "dev.bullet.mixin",
-  "refmap": "bullet-refmap.json",
+  "refmap": "client-bullet-refmap.json",
   "compatibilityLevel": "JAVA_21",
   "client": ["GameRendererMixin", "CameraMixin"],
   "injectors": { "defaultRequire": 1 }
