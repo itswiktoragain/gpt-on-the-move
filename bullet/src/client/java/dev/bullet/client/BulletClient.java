@@ -13,12 +13,20 @@ import net.minecraft.client.gui.DrawContext;
 public final class BulletClient implements ClientModInitializer {
     private static int animationTick = -1;
     private static int lastVehicleId = Integer.MIN_VALUE;
+    private static boolean menuLogged = false;
+    private static int menuScreenTicks = 0;
 
     @Override
     public void onInitializeClient() {
         EntityRendererRegistry.register(BulletMod.BULLET_ENTITY, BulletEntityRenderer::new);
         ClientLifecycleEvents.CLIENT_STARTED.register(client -> System.out.println("[Bullet] BULLET_CLIENT_READY"));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            // Report *after* the full client renderer initializes and the menu is ticking.
+            // CLIENT_STARTED is too early: GameRenderer can still crash after it fires.
+            if (!menuLogged && client.currentScreen != null && ++menuScreenTicks >= 20) {
+                menuLogged = true;
+                System.out.println("[Bullet] BULLET_MAIN_MENU_READY");
+            }
             if (client.player == null) {
                 animationTick = -1;
                 lastVehicleId = Integer.MIN_VALUE;

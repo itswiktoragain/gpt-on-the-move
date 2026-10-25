@@ -8,6 +8,9 @@ base { archivesName = project.archives_base_name }
 repositories { mavenCentral() }
 loom {
     splitEnvironmentSourceSets()
+    mixin {
+        defaultRefmapName = 'bullet-refmap.json'
+    }
     mods {
         "bullet" {
             sourceSet sourceSets.main

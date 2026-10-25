@@ -3,7 +3,7 @@
 A tiny rideable, craftable teleport machine with vanilla-feeling coordinate-entry UI.
 
 ## Install
-Use Minecraft Java Edition 1.21.4 with Fabric Loader and Fabric API. Drop bullet-1.0.0.jar into the mods folder.
+Use Minecraft Java Edition 1.21.4 with Fabric Loader and Fabric API. Drop bullet-1.0.2.jar into the mods folder.
 
 ## Crafting
 Iron | Redstone | Iron
