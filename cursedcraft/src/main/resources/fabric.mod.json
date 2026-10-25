@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "cursedcraft",
+  "version": "${version}",
+  "name": "CursedCraft",
+  "description": "Shrinking legs, hostile mannequins and a surreal five-second apocalypse.",
+  "authors": ["CursedCraft contributors"],
+  "environment": "*",
+  "entrypoints": {
+    "main": ["io.github.itswiktoragain.cursedcraft.CursedCraft"],
+    "client": ["io.github.itswiktoragain.cursedcraft.client.CursedCraftClient"]
+  },
+  "mixins": [
+    "cursedcraft.mixins.json",
+    {"config": "cursedcraft.client.mixins.json", "environment": "client"}
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.10",
+    "minecraft": "~1.21.4",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
