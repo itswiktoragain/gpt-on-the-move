@@ -2,47 +2,64 @@ package dev.bullet.client;
 
 import dev.bullet.BulletEntity;
 import dev.bullet.BulletMod;
+import java.lang.reflect.Method;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.GameRenderer;
-import java.lang.reflect.Method;
-import net.minecraft.client.gui.DrawContext;
 
+/**
+ * Drives Bullet's launch/recovery camera effect, without any FOV HUD overlay.
+ *
+ * Perspective cameras cannot directly project 720 degrees: at 180 and 360
+ * their tangent-based projection becomes singular. Keep a mathematical 720
+ * degree target, and map it to a safe 170-degree maximum for the actual
+ * perspective matrix. Both curves accelerate exponentially, frame by frame.
+ */
 public final class BulletClient implements ClientModInitializer {
+    public static final int RECOVERY_TICKS = 80;
+    public static final float MAX_RENDER_FOV = 170.0f;
+    public static final double PEAK_LOGICAL_FOV = 720.0;
+
     private static int animationTick = -1;
     private static int lastVehicleId = Integer.MIN_VALUE;
+    private static float startFov = 90.0f;
+    private static float lastNormalFov = 90.0f;
     private static boolean menuLogged = false;
     private static int menuScreenTicks = 0;
 
     @Override
     public void onInitializeClient() {
         EntityRendererRegistry.register(BulletMod.BULLET_ENTITY, BulletEntityRenderer::new);
-        ClientLifecycleEvents.CLIENT_STARTED.register(client -> System.out.println("[Bullet] BULLET_CLIENT_READY"));
+        ClientLifecycleEvents.CLIENT_STARTED.register(client ->
+            System.out.println("[Bullet] BULLET_CLIENT_READY"));
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            // Report *after* the full client renderer initializes and the menu is ticking.
-            // CLIENT_STARTED is too early: GameRenderer can still crash after it fires.
+            // Smoke-test the real Minecraft camera path in CI, not just classloading.
             if (!menuLogged && client.currentScreen != null && ++menuScreenTicks >= 20) {
                 menuLogged = true;
                 if (Boolean.getBoolean("bullet.fovSmokeTest")) {
-                    verifyFovEffectRuns(client);
+                    verifyExponentialFov(client);
                 }
                 System.out.println("[Bullet] BULLET_MAIN_MENU_READY");
             }
+
             if (client.player == null) {
                 animationTick = -1;
                 lastVehicleId = Integer.MIN_VALUE;
                 return;
             }
-            if (animationTick >= 0 && ++animationTick > 115) {
+
+            if (animationTick >= 0 && ++animationTick > totalAnimationTicks()) {
                 animationTick = -1;
             }
+
             if (client.player.getVehicle() instanceof BulletEntity bullet) {
-                if (lastVehicleId != bullet.getId() && animationTick < 0 && client.currentScreen == null) {
+                if (lastVehicleId != bullet.getId()
+                        && animationTick < 0 && client.currentScreen == null) {
                     lastVehicleId = bullet.getId();
                     client.setScreen(new BulletDestinationScreen());
                 } else {
@@ -52,56 +69,18 @@ public final class BulletClient implements ClientModInitializer {
                 lastVehicleId = Integer.MIN_VALUE;
             }
         });
-
-        HudRenderCallback.EVENT.register((drawContext, tickCounter) -> {
-            if (animationTick < 0) return;
-            MinecraftClient client = MinecraftClient.getInstance();
-            if (client.player == null) return;
-            int width = drawContext.getScaledWindowWidth();
-            int height = drawContext.getScaledWindowHeight();
-            int fov = (int) Math.round(effectiveFov(0));
-            String phase = animationTick < BulletEntity.LAUNCH_TICKS ? "CHARGING" : "ARRIVED";
-            drawContext.drawCenteredTextWithShadow(client.textRenderer,
-                "BULLET  /  " + phase, width / 2, height / 2 - 40, 0xffe59b);
-            drawContext.drawCenteredTextWithShadow(client.textRenderer,
-                "FOV  " + fov + "°", width / 2, height - 55, 0xffffff);
-        });
-    }
-
-    /**
-     * CI regression test: invoke Minecraft's actual getFov() while our launch is
-     * active, so a Float/Double callback mismatch causes a failing build.
-     * This code is dormant in published games unless explicitly enabled.
-     */
-    private static void verifyFovEffectRuns(MinecraftClient client) {
-        int previousTick = animationTick;
-        try {
-            Method getFov = GameRenderer.class.getDeclaredMethod(
-                "getFov", Camera.class, float.class, boolean.class);
-            getFov.setAccessible(true);
-            for (int tick : new int[] { 0, 14, BulletEntity.LAUNCH_TICKS, 75, 115 }) {
-                animationTick = tick;
-                Object output = getFov.invoke(client.gameRenderer,
-                    client.gameRenderer.getCamera(), 0.0f, true);
-                if (!(output instanceof Float actual)) {
-                    throw new IllegalStateException("GameRenderer.getFov did not return Float: " + output);
-                }
-                float expected = (float) effectiveFov(0.0f);
-                if (!Float.isFinite(actual) || Math.abs(actual - expected) > 0.125f) {
-                    throw new IllegalStateException("FOV regression at tick " + tick
-                        + ": expected " + expected + ", got " + actual);
-                }
-            }
-            System.out.println("[Bullet] BULLET_FOV_SMOKE_PASS");
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Bullet FOV injection smoke test failed", e);
-        } finally {
-            animationTick = previousTick;
-        }
+        // Intentionally no HudRenderCallback: no "FOV 720" widget, no overlay.
     }
 
     public static void beginLaunch() {
+        if (Float.isFinite(lastNormalFov)) {
+            startFov = Math.min(150.0f, Math.max(40.0f, lastNormalFov));
+        }
         animationTick = 0;
+    }
+
+    public static int totalAnimationTicks() {
+        return BulletEntity.LAUNCH_TICKS + RECOVERY_TICKS;
     }
 
     public static boolean isAnimating() {
@@ -112,24 +91,103 @@ public final class BulletClient implements ClientModInitializer {
         return animationTick;
     }
 
-    // The logical FOV intentionally goes well past Quake Pro to 720 degrees.
-    public static double effectiveFov(float tickDelta) {
-        if (animationTick < 0) return Double.NaN;
-        double t = animationTick + tickDelta;
-        double p;
-        if (t <= BulletEntity.LAUNCH_TICKS) {
-            p = Math.min(1.0, t / BulletEntity.LAUNCH_TICKS);
-            p = p * p * (3.0 - 2.0 * p);
-        } else {
-            p = Math.min(1.0, (t - BulletEntity.LAUNCH_TICKS) / 60.0);
-            p = 1.0 - p * p * (3.0 - 2.0 * p);
+    private static double progress(float tickDelta) {
+        if (animationTick < 0) return 0.0;
+        double time = Math.max(0, Math.min(totalAnimationTicks(), animationTick + tickDelta));
+        if (time <= BulletEntity.LAUNCH_TICKS) {
+            return time / BulletEntity.LAUNCH_TICKS;
         }
-        return 90.0 + 630.0 * p;
+        return Math.max(0.0, 1.0 - (time - BulletEntity.LAUNCH_TICKS) / RECOVERY_TICKS);
+    }
+
+    /** Real exponential curve: startFov * (720/startFov)^progress. */
+    public static double logicalFov(float tickDelta) {
+        if (!isAnimating()) return Double.NaN;
+        return startFov * Math.pow(PEAK_LOGICAL_FOV / startFov, progress(tickDelta));
+    }
+
+    /** The shader-safe projection follows the same exponential progress. */
+    public static float renderedFov(float tickDelta, float vanillaFov) {
+        if (!Float.isFinite(vanillaFov) || vanillaFov <= 0) return 90.0f;
+        if (!isAnimating()) {
+            lastNormalFov = vanillaFov;
+            return vanillaFov;
+        }
+        double logical = logicalFov(tickDelta);
+        double portion = (logical - startFov) / (PEAK_LOGICAL_FOV - startFov);
+        portion = Math.max(0.0, Math.min(1.0, portion));
+        double display = startFov + (MAX_RENDER_FOV - startFov) * portion;
+        return (float) Math.min(MAX_RENDER_FOV, Math.max(startFov, display));
     }
 
     public static double shakeAmount(float tickDelta) {
-        if (animationTick < 0) return 0;
-        double fov = effectiveFov(tickDelta);
-        return Math.max(0, (fov - 90.0) / 630.0);
+        if (!isAnimating()) return 0.0;
+        return Math.max(0.0, Math.min(1.0,
+            (logicalFov(tickDelta) - startFov) / (PEAK_LOGICAL_FOV - startFov)));
+    }
+
+    /**
+     * Runs through every frame of the curve using Minecraft's actual getFov
+     * method and its real Mixin. This also verifies no sudden initial jump,
+     * 720 logical degrees at teleport, and a smooth return to vanilla.
+     */
+    private static void verifyExponentialFov(MinecraftClient client) {
+        int savedTick = animationTick;
+        float savedStart = startFov;
+        float savedVanilla = lastNormalFov;
+        try {
+            Method method = GameRenderer.class.getDeclaredMethod(
+                "getFov", Camera.class, float.class, boolean.class);
+            method.setAccessible(true);
+            Camera camera = client.gameRenderer.getCamera();
+            animationTick = -1;
+            Object normalResult = method.invoke(client.gameRenderer, camera, 0.0f, true);
+            if (!(normalResult instanceof Float normal) || !Float.isFinite(normal)) {
+                throw new IllegalStateException("Vanilla getFov must return a finite float");
+            }
+            beginLaunch();
+
+            float previous = Float.NEGATIVE_INFINITY;
+            float firstTickFov = Float.NaN;
+            for (int t = 0; t <= totalAnimationTicks(); t++) {
+                animationTick = t;
+                Object result = method.invoke(client.gameRenderer, camera, 0.0f, true);
+                if (!(result instanceof Float actual) || !Float.isFinite(actual)
+                    || actual <= 0 || actual > MAX_RENDER_FOV + 0.0001f) {
+                    throw new IllegalStateException("Unsafe projection at tick " + t + ": " + result);
+                }
+
+                float expected = renderedFov(0.0f, normal);
+                if (Math.abs(actual - expected) > 0.01f) {
+                    throw new IllegalStateException("Wrong FOV at tick " + t
+                        + ": expected " + expected + " but found " + actual);
+                }
+                if (t > 0 && t <= BulletEntity.LAUNCH_TICKS && actual < previous - 0.01f) {
+                    throw new IllegalStateException("Launch FOV decreased at tick " + t);
+                }
+                if (t > BulletEntity.LAUNCH_TICKS && actual > previous + 0.01f) {
+                    throw new IllegalStateException("Recovery FOV increased at tick " + t);
+                }
+                if (t == 1) firstTickFov = actual;
+                if (t == BulletEntity.LAUNCH_TICKS
+                        && Math.abs(logicalFov(0.0f) - 720.0) > 0.001) {
+                    throw new IllegalStateException("Logical FOV did not reach 720");
+                }
+                previous = actual;
+            }
+            if (Math.abs(firstTickFov - startFov) > 2.0f) {
+                throw new IllegalStateException("FOV jumped instantly after launch");
+            }
+            if (Math.abs(previous - startFov) > 0.01f) {
+                throw new IllegalStateException("FOV did not return to normal");
+            }
+            System.out.println("[Bullet] BULLET_EXPONENTIAL_FOV_TEST_PASS");
+        } catch (ReflectiveOperationException ex) {
+            throw new IllegalStateException("Bullet camera regression test failed", ex);
+        } finally {
+            animationTick = savedTick;
+            startFov = savedStart;
+            lastNormalFov = savedVanilla;
+        }
     }
 }

@@ -18,7 +18,7 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 public final class BulletEntity extends Entity {
-    public static final int LAUNCH_TICKS = 55;
+    public static final int LAUNCH_TICKS = 100;
 
     private int countdown;
     private Vec3d destination;

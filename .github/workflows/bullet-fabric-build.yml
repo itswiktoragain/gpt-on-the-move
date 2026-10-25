@@ -34,8 +34,8 @@ jobs:
           runner_pid=$!
           trap 'kill "$runner_pid" >/dev/null 2>&1 || true' EXIT
           for i in $(seq 1 150); do
-            if grep -Fq 'BULLET_MAIN_MENU_READY' /tmp/bullet-startup.log && grep -Fq 'BULLET_FOV_SMOKE_PASS' /tmp/bullet-startup.log; then
-              echo "PASS: Bullet reached a ticking menu and exercised real GameRenderer.getFov at five points in the 720-degree animation."
+            if grep -Fq 'BULLET_MAIN_MENU_READY' /tmp/bullet-startup.log && grep -Fq 'BULLET_EXPONENTIAL_FOV_TEST_PASS' /tmp/bullet-startup.log; then
+              echo "PASS: Bullet tested every animation tick through real GameRenderer.getFov; exponential peak 720 and no overlay."
               exit 0
             fi
             if grep -Eq 'Minecraft Crash Report|Game crashed!|Exception in thread' /tmp/bullet-startup.log; then
@@ -51,10 +51,17 @@ jobs:
           tail -n 120 /tmp/bullet-startup.log
           echo "Client startup test timed out"
           exit 1
+      - name: Assert no on-screen FOV widget is present
+        run: |
+          if grep -Rq 'HudRenderCallback' bullet/src/client/java/dev/bullet/client; then
+            echo "ERROR: Forbidden on-screen FOV display was reintroduced"
+            exit 1
+          fi
+          echo "PASS: No FOV widget."
       - name: Verify production JAR and Mixin refmap
         run: |
           set -euo pipefail
-          JAR=bullet/build/libs/bullet-1.0.4.jar
+          JAR=bullet/build/libs/bullet-1.0.5.jar
           test -s "$JAR"
           unzip -l "$JAR" | grep -E 'fabric.mod.json|BulletEntity.class|GameRendererMixin.class'
           unzip -l "$JAR" | grep -F 'client-bullet-refmap.json'
@@ -79,16 +86,16 @@ jobs:
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: Bullet-Fabric-1.21.4-v1.0.4
-          path: bullet/build/libs/bullet-1.0.4.jar
+          name: Bullet-Fabric-1.21.4-v1.0.5
+          path: bullet/build/libs/bullet-1.0.5.jar
           if-no-files-found: error
       - name: Publish JAR as a direct download
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE=bullet-fabric-1.21.4-v1.0.4
+          RELEASE=bullet-fabric-1.21.4-v1.0.5
           if gh release view "$RELEASE" >/dev/null 2>&1; then
-            gh release upload "$RELEASE" bullet/build/libs/bullet-1.0.4.jar --clobber
+            gh release upload "$RELEASE" bullet/build/libs/bullet-1.0.5.jar --clobber
           else
-            gh release create "$RELEASE" bullet/build/libs/bullet-1.0.4.jar --target "$GITHUB_SHA" --title "Bullet 1.0.4 for Minecraft 1.21.4" --notes "Fabric 1.21.4. Requires Fabric API and Java 21. Craft a Bullet vehicle, enter destination coordinates, experience 720 FOV + shaking, and teleport with the vehicle."
+            gh release create "$RELEASE" bullet/build/libs/bullet-1.0.5.jar --target "$GITHUB_SHA" --title "Bullet 1.0.5 for Minecraft 1.21.4" --notes "Fabric 1.21.4. Requires Fabric API and Java 21. Craft a Bullet vehicle, enter destination coordinates, experience 720 FOV + shaking, and teleport with the vehicle."
           fi
