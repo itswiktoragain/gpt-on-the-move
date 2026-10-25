@@ -30,12 +30,12 @@ jobs:
             sudo apt-get install -y xvfb
           fi
           export LIBGL_ALWAYS_SOFTWARE=1
-          timeout 180s xvfb-run -a -s "-screen 0 1280x800x24" gradle -p bullet runClient --no-daemon > /tmp/bullet-startup.log 2>&1 &
+          timeout 180s xvfb-run -a -s "-screen 0 1280x800x24" env JAVA_TOOL_OPTIONS="-Dbullet.fovSmokeTest=true" gradle -p bullet runClient --no-daemon > /tmp/bullet-startup.log 2>&1 &
           runner_pid=$!
           trap 'kill "$runner_pid" >/dev/null 2>&1 || true' EXIT
           for i in $(seq 1 150); do
-            if grep -Fq 'BULLET_MAIN_MENU_READY' /tmp/bullet-startup.log; then
-              echo "PASS: Bullet reached a ticking Minecraft menu after renderer initialization."
+            if grep -Fq 'BULLET_MAIN_MENU_READY' /tmp/bullet-startup.log && grep -Fq 'BULLET_FOV_SMOKE_PASS' /tmp/bullet-startup.log; then
+              echo "PASS: Bullet reached a ticking menu and exercised real GameRenderer.getFov at five points in the 720-degree animation."
               exit 0
             fi
             if grep -Eq 'Minecraft Crash Report|Game crashed!|Exception in thread' /tmp/bullet-startup.log; then
@@ -54,7 +54,7 @@ jobs:
       - name: Verify production JAR and Mixin refmap
         run: |
           set -euo pipefail
-          JAR=bullet/build/libs/bullet-1.0.3.jar
+          JAR=bullet/build/libs/bullet-1.0.4.jar
           test -s "$JAR"
           unzip -l "$JAR" | grep -E 'fabric.mod.json|BulletEntity.class|GameRendererMixin.class'
           unzip -l "$JAR" | grep -F 'client-bullet-refmap.json'
@@ -79,16 +79,16 @@ jobs:
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: Bullet-Fabric-1.21.4-v1.0.3
-          path: bullet/build/libs/bullet-1.0.3.jar
+          name: Bullet-Fabric-1.21.4-v1.0.4
+          path: bullet/build/libs/bullet-1.0.4.jar
           if-no-files-found: error
       - name: Publish JAR as a direct download
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE=bullet-fabric-1.21.4-v1.0.3
+          RELEASE=bullet-fabric-1.21.4-v1.0.4
           if gh release view "$RELEASE" >/dev/null 2>&1; then
-            gh release upload "$RELEASE" bullet/build/libs/bullet-1.0.3.jar --clobber
+            gh release upload "$RELEASE" bullet/build/libs/bullet-1.0.4.jar --clobber
           else
-            gh release create "$RELEASE" bullet/build/libs/bullet-1.0.3.jar --target "$GITHUB_SHA" --title "Bullet 1.0.3 for Minecraft 1.21.4" --notes "Fabric 1.21.4. Requires Fabric API and Java 21. Craft a Bullet vehicle, enter destination coordinates, experience 720 FOV + shaking, and teleport with the vehicle."
+            gh release create "$RELEASE" bullet/build/libs/bullet-1.0.4.jar --target "$GITHUB_SHA" --title "Bullet 1.0.4 for Minecraft 1.21.4" --notes "Fabric 1.21.4. Requires Fabric API and Java 21. Craft a Bullet vehicle, enter destination coordinates, experience 720 FOV + shaking, and teleport with the vehicle."
           fi

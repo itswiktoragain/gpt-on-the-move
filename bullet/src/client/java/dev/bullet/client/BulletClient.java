@@ -8,6 +8,9 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.Camera;
+import net.minecraft.client.render.GameRenderer;
+import java.lang.reflect.Method;
 import net.minecraft.client.gui.DrawContext;
 
 public final class BulletClient implements ClientModInitializer {
@@ -25,6 +28,9 @@ public final class BulletClient implements ClientModInitializer {
             // CLIENT_STARTED is too early: GameRenderer can still crash after it fires.
             if (!menuLogged && client.currentScreen != null && ++menuScreenTicks >= 20) {
                 menuLogged = true;
+                if (Boolean.getBoolean("bullet.fovSmokeTest")) {
+                    verifyFovEffectRuns(client);
+                }
                 System.out.println("[Bullet] BULLET_MAIN_MENU_READY");
             }
             if (client.player == null) {
@@ -60,6 +66,38 @@ public final class BulletClient implements ClientModInitializer {
             drawContext.drawCenteredTextWithShadow(client.textRenderer,
                 "FOV  " + fov + "°", width / 2, height - 55, 0xffffff);
         });
+    }
+
+    /**
+     * CI regression test: invoke Minecraft's actual getFov() while our launch is
+     * active, so a Float/Double callback mismatch causes a failing build.
+     * This code is dormant in published games unless explicitly enabled.
+     */
+    private static void verifyFovEffectRuns(MinecraftClient client) {
+        int previousTick = animationTick;
+        try {
+            Method getFov = GameRenderer.class.getDeclaredMethod(
+                "getFov", Camera.class, float.class, boolean.class);
+            getFov.setAccessible(true);
+            for (int tick : new int[] { 0, 14, BulletEntity.LAUNCH_TICKS, 75, 115 }) {
+                animationTick = tick;
+                Object output = getFov.invoke(client.gameRenderer,
+                    client.gameRenderer.getCamera(), 0.0f, true);
+                if (!(output instanceof Float actual)) {
+                    throw new IllegalStateException("GameRenderer.getFov did not return Float: " + output);
+                }
+                float expected = (float) effectiveFov(0.0f);
+                if (!Float.isFinite(actual) || Math.abs(actual - expected) > 0.125f) {
+                    throw new IllegalStateException("FOV regression at tick " + tick
+                        + ": expected " + expected + ", got " + actual);
+                }
+            }
+            System.out.println("[Bullet] BULLET_FOV_SMOKE_PASS");
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Bullet FOV injection smoke test failed", e);
+        } finally {
+            animationTick = previousTick;
+        }
     }
 
     public static void beginLaunch() {
