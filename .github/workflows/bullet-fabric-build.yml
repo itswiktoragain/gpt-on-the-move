@@ -21,22 +21,52 @@ jobs:
           gradle-version: '8.12.1'
       - name: Compile and remap Bullet
         run: gradle -p bullet build --no-daemon --stacktrace
+      - name: Confirm game reaches client initialization
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y xvfb
+          fi
+          export LIBGL_ALWAYS_SOFTWARE=1
+          timeout 180s xvfb-run -a -s "-screen 0 1280x800x24" gradle -p bullet runClient --no-daemon > /tmp/bullet-startup.log 2>&1 &
+          runner_pid=$!
+          trap 'kill "$runner_pid" >/dev/null 2>&1 || true' EXIT
+          for i in $(seq 1 150); do
+            if grep -Fq 'BULLET_CLIENT_READY' /tmp/bullet-startup.log; then
+              echo "PASS: Bullet reached Minecraft client startup."
+              exit 0
+            fi
+            if grep -Eq 'Minecraft Crash Report|Game crashed!|Exception in thread' /tmp/bullet-startup.log; then
+              tail -n 120 /tmp/bullet-startup.log
+              exit 1
+            fi
+            if ! kill -0 "$runner_pid" 2>/dev/null; then
+              tail -n 120 /tmp/bullet-startup.log
+              exit 1
+            fi
+            sleep 1
+          done
+          tail -n 120 /tmp/bullet-startup.log
+          echo "Client startup test timed out"
+          exit 1
       - name: Confirm mod archive
         run: |
-          test -s bullet/build/libs/bullet-1.0.0.jar
-          unzip -l bullet/build/libs/bullet-1.0.0.jar | grep -E 'fabric.mod.json|BulletEntity.class|GameRendererMixin.class'
+          test -s bullet/build/libs/bullet-1.0.1.jar
+          unzip -l bullet/build/libs/bullet-1.0.1.jar | grep -E 'fabric.mod.json|BulletEntity.class|GameRendererMixin.class'
       - uses: actions/upload-artifact@v4
         with:
-          name: Bullet-Fabric-1.21.4
-          path: bullet/build/libs/bullet-1.0.0.jar
+          name: Bullet-Fabric-1.21.4-fixed
+          path: bullet/build/libs/bullet-1.0.1.jar
           if-no-files-found: error
       - name: Publish JAR as a direct download
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE=bullet-fabric-1.21.4-v1.0.0
+          RELEASE=bullet-fabric-1.21.4-v1.0.1
           if gh release view "$RELEASE" >/dev/null 2>&1; then
-            gh release upload "$RELEASE" bullet/build/libs/bullet-1.0.0.jar --clobber
+            gh release upload "$RELEASE" bullet/build/libs/bullet-1.0.1.jar --clobber
           else
-            gh release create "$RELEASE" bullet/build/libs/bullet-1.0.0.jar --target "$GITHUB_SHA" --title "Bullet 1.0.0 for Minecraft 1.21.4" --notes "Fabric 1.21.4. Requires Fabric API and Java 21. Craft a Bullet vehicle, enter destination coordinates, experience 720 FOV + shaking, and teleport with the vehicle."
+            gh release create "$RELEASE" bullet/build/libs/bullet-1.0.1.jar --target "$GITHUB_SHA" --title "Bullet 1.0.1 for Minecraft 1.21.4" --notes "Fabric 1.21.4. Requires Fabric API and Java 21. Craft a Bullet vehicle, enter destination coordinates, experience 720 FOV + shaking, and teleport with the vehicle."
           fi

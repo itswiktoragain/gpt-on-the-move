@@ -1,4 +1,6 @@
-package dev.bullet.client;
+package dev.bullet.mixin;
+
+import dev.bullet.client.BulletClient;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
