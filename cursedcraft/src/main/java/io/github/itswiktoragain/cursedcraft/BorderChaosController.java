@@ -29,7 +29,7 @@ public final class BorderChaosController {
     private static final Map<UUID, Flight> FLIGHTS = new HashMap<>();
     private static final Map<UUID, Long> COOLDOWNS = new HashMap<>();
     private static final Queue<FarlandsTask> FARLANDS = new ArrayDeque<>();
-    private static final int MAX_WORLD_COORD = 29999800;
+    private static final int MAX_WORLD_COORD = 29999920;
 
     private BorderChaosController() {}
 
