@@ -139,7 +139,7 @@ public final class CurseController {
         MannequinEntity copy = CursedCraft.MANNEQUIN.create(world, SpawnReason.EVENT);
         if (copy == null) return;
         copy.refreshPositionAndAngles(source.getX(), source.getY() + 0.7, source.getZ(), 0, 0);
-        copy.setIdentity(player.getGameProfile().getName(), true);
+        copy.setIdentity(player.getGameProfile().getName(), true, player.getUuid().toString());
         copy.setVelocity((RANDOM.nextDouble() - .5) * 1.2, .65, (RANDOM.nextDouble() - .5) * 1.2);
         copy.setTarget(player);
         world.spawnEntity(copy);

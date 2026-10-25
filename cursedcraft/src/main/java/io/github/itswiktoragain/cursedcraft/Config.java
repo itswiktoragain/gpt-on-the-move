@@ -18,6 +18,10 @@ public final class Config {
     public int maxMannequinsNearby = 5;
     public int corruptionRadiusBlocks = 500;
     public int corruptionPatchesPerTick = 14;
+    public int fallingBlocksPerTick = 128;
+    public int giantCheckIntervalTicks = 900;
+    public double giantSpawnChance = 0.65;
+    public double randomBorderTeleportChance = 0.00022;
     public boolean deleteCurrentSingleplayerWorld = true;
     public boolean downloadPlayerSkins = true;
 
@@ -37,6 +41,10 @@ public final class Config {
             INSTANCE.maxMannequinsNearby = Math.max(0, Math.min(20, INSTANCE.maxMannequinsNearby));
             INSTANCE.corruptionRadiusBlocks = Math.max(16, Math.min(500, INSTANCE.corruptionRadiusBlocks));
             INSTANCE.corruptionPatchesPerTick = Math.max(1, Math.min(40, INSTANCE.corruptionPatchesPerTick));
+            INSTANCE.fallingBlocksPerTick = Math.max(16, Math.min(256, INSTANCE.fallingBlocksPerTick));
+            INSTANCE.giantCheckIntervalTicks = Math.max(80, INSTANCE.giantCheckIntervalTicks);
+            INSTANCE.giantSpawnChance = Math.max(0, Math.min(1, INSTANCE.giantSpawnChance));
+            INSTANCE.randomBorderTeleportChance = Math.max(0, Math.min(0.01, INSTANCE.randomBorderTeleportChance));
             Files.writeString(path, GSON.toJson(INSTANCE) + "\n", StandardCharsets.UTF_8);
         } catch (Exception e) {
             CursedCraft.LOGGER.warn("Could not load CursedCraft configuration", e);

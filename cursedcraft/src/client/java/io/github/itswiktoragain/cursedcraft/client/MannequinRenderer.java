@@ -22,7 +22,7 @@ public final class MannequinRenderer extends ZombieEntityRenderer {
     public void updateRenderState(net.minecraft.entity.mob.ZombieEntity entity, ZombieEntityRenderState state, float tickDelta) {
         super.updateRenderState(entity, state, tickDelta);
         if (entity instanceof MannequinEntity mannequin) {
-            SkinCache.remember(state, mannequin.getSkinName());
+            SkinCache.remember(state, mannequin.getSkinName(), mannequin.getSkinUuid(), mannequin.isGiant());
         }
     }
 }
