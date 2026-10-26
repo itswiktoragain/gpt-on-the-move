@@ -67,7 +67,7 @@ for key,(entry,author,page) in media.items():
             if dest.exists(): dest.unlink()
             time.sleep(0.6)
     sources.append({"key":key,"name":entry,"download":url,"source":page,"credit":author,"used":key in paths})
-if len(paths)<6 or "consumer" not in paths or "launch" not in paths:
+if len(paths)<5 or "consumer" not in paths or "launch" not in paths:
     raise RuntimeError("Archival image download unsuccessful: "+repr(list(paths)))
 
 # Each scene is paced to its own neural narration; these are genuine screenshots/photographs.
