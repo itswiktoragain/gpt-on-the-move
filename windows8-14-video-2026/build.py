@@ -44,7 +44,18 @@ media={
  "start81":("Start81.png","Wikimedia Commons / see file page","https://commons.wikimedia.org/wiki/File:Start81.png"),
  "bsod":("BSOD Windows 8.png","Wikimedia Commons / see file page","https://commons.wikimedia.org/wiki/File:BSOD_Windows_8.png"),
  "consumer":("https://blogs.microsoft.com/wp-content/uploads/2012/02/3426.Windows-8-Start-Screen.png","Microsoft; used as archival illustration in critical historical commentary","https://blogs.microsoft.com/blog/2012/02/29/the-midweek-download-feb-29th-edition-microsoft-unveils-the-windows-8-consumer-preview-craig-mundie-hosts-techforum-2012-plus-microsoft-research-visual-studio-11-beta-windows-phone/"),
- "taskmgr":("https://images.hanselman.com/blog/Windows-Live-Writer/b08027a5172c_9C1C/image_6.png","Scott Hanselman; historical Windows 8 Task Manager screenshot, used for commentary","https://www.hanselman.com/blog/initial-impressions-of-the-3rd-generation-ivy-bridge-intel-ultrabook-reference-hardware-for-developers-on-windows-8")
+ "taskmgr":("https://images.hanselman.com/blog/Windows-Live-Writer/b08027a5172c_9C1C/image_6.png","Scott Hanselman; historical Windows 8 Task Manager screenshot, used for commentary","https://www.hanselman.com/blog/initial-impressions-of-the-3rd-generation-ivy-bridge-intel-ultrabook-reference-hardware-for-developers-on-windows-8"),
+ "tiles_more":("https://cdn.mos.cms.futurecdn.net/0c6c13ea18300a60c3468e3d191697ac.jpg","PC Gamer / Windows 8 Consumer Preview archival screenshot","https://www.pcgamer.com/windows-8-beta-first-impressions-brave-but-flawed/"),
+ "charms2":("https://images.techhive.com/images/article/2012/10/charmsba-100010353-orig.png","PCWorld / Windows 8 Charms archival screenshot","https://www.pcworld.com/article/461766/master-windows-8-gesture-commands.html"),
+ "explorer":("https://cdn.neowin.com/news/images/galleries/1197/Captureexpl2.png","Neowin / Windows 8 Explorer archival screenshot","https://www.neowin.net/news/windows-8-whats-new-on-the-desktop-experience/"),
+ "explorer2":("https://toastytech.com/guis/win8explorerribbon.png","ToastyTech / Windows 8 Explorer archival screenshot","https://toastytech.com/guis/win83.html"),
+ "taskmgr2":("https://scr.wfcdn.de/7747/Windows-8-Final-Build-9200-1343953066-0-0.jpg","WinFuture / Windows 8 Task Manager archival screenshot","https://winfuture.de/screenshots/Windows-8-Final-Build-9200-7747-1.html"),
+ "snap":("https://www.addictivetips.com/app/uploads/2011/09/Snap.jpg","AddictiveTips / Windows 8 Snap archival screenshot","https://www.addictivetips.com/windows-tips/enable-windows-8-snap-feature-and-how-to-snap-metro-application/"),
+ "win81real":("https://cassette.sphdigital.com.sg/image/hardwarezone/b1b1202e6493d736e20b02fcf853e7faeb8864331260b2217a4844eafd534e72?q=85&w=1000","HardwareZone / Windows 8.1 archival screenshot","https://www.hardwarezone.com.sg/pc/laptops/feature-windows-81-update-bridging-touch-and-desktop-gap"),
+ "store":("https://news-cdn.softpedia.com/images/news2/Windows-8-Consumer-Preview-Windows-Store-10.png","Softpedia / Windows Store archival screenshot","https://news.softpedia.com/news/Windows-8-Consumer-Preview-Windows-Store-255907.shtml"),
+ "win10real":("https://images.techhive.com/images/article/2015/07/windows-10-hands-on-start-menu-100596948-orig.png","PCWorld / Windows 10 Start menu archival screenshot","https://www.pcworld.com/article/2949095/windows/windows-10-the-pre-review-six-things-build-10240-reveals-about-the-new-os.html"),
+ "bsodreal":("https://media.wired.com/photos/669a5b817d477aacd389098d/4%3A3/w_548%2Ch_411%2Cc_limit/bsod.jpeg","Wired / Windows 8 blue screen archival screenshot","https://www.wired.com/story/windows-8-bsod/"),
+ "desktop":("https://techcommunity.microsoft.com/t5/image/serverpage/image-id/93137i7147597C790B80C4","Microsoft TechCommunity / Windows 8 desktop screenshot","https://techcommunity.microsoft.com/blog/askperf/windows-8--windows-server-2012-how-do-i-print-in-windows-8-modern-ui-application/375292"),
 }
 paths={}
 sources=[]
@@ -146,66 +157,112 @@ def fittext(draw,txt,maxwidth,start=100,minsize=56):
     s=start
     while s>minsize and draw.textbbox((0,0),txt,font=font(s,True))[2]>maxwidth: s-=2
     return font(s,True)
-def draw_frame(i,scene):
-    chapter,major,sub,strap,key,words=scene
-    # alternate documentary full-bleed photos and archival screenshot "gallery" frames.
-    photo=key in ["launch","ballmer","surface","consumer","boot","bsod"]
-    if key not in paths:
-        key="consumer"
-    if photo:
-        art=cover_image(paths[key],W,H)
-        art=ImageEnhance.Contrast(art).enhance(1.07)
-        canvas=overlay_gradient(art).convert("RGB")
+def draw_frame(i,scene,shot):
+    chapter,major,sub,strap,original,words=scene
+    # Each chapter has two substantially different real archival images.
+    candidates={
+       0:[["consumer","tiles_more"],["launch","ballmer"],["consumer","tiles_more"],["surface","snap"],
+          ["desktop","consumer"],["taskmgr","taskmgr2"],["explorer","explorer2"],
+          ["desktop","explorer2"],["charms2","consumer"],["store","surface"],
+          ["ballmer","launch"],["win81real","start81"],["win10real","consumer"],
+          ["launch","snap"],["bsodreal","desktop"],["consumer","tiles_more"]],
+       1:[["launch","consumer"],["ballmer","surface"],["tiles_more","consumer"],["snap","surface"],
+          ["explorer2","taskmgr"],["explorer","taskmgr2"],["explorer2","taskmgr"],
+          ["explorer","desktop"],["desktop","charms2"],["surface","store"],
+          ["launch","ballmer"],["consumer","win81real"],["win81real","win10real"],
+          ["surface","ballmer"],["consumer","bsodreal"],["launch","consumer"]]
+    }
+    desired=candidates[shot][i]+[original,"consumer","launch"]
+    key=next((a for a in desired if a in paths),"consumer")
+    archival=Image.open(paths[key]).convert("RGB")
+    dummydraw=ImageDraw.Draw(Image.new("RGB",(W,H)))
+    canvas=Image.new("RGB",(W,H),BG)
+    if shot==0:
+        # Full-screen archival evidence with uncut screenshot in central matte.
+        if key in ("launch","ballmer","surface"):
+            canvas=cover_image(paths[key],W,H)
+            canvas=ImageEnhance.Color(canvas).enhance(.88)
+            overlay=Image.new("RGBA",(W,H))
+            grad=np.zeros((H,W,4),dtype=np.uint8)
+            grad[:,:,0]=6;grad[:,:,1]=13;grad[:,:,2]=24
+            grad[:,:,3]=(25 + 210*np.clip((np.arange(H)[:,None]-H*.54)/(H*.46),0,1)).astype(np.uint8)
+            overlay=Image.fromarray(grad,"RGBA")
+            canvas=Image.alpha_composite(canvas.convert("RGBA"),overlay).convert("RGB")
+        else:
+            bg=cover_image(paths[key],W,H).filter(ImageFilter.GaussianBlur(18))
+            canvas=Image.blend(bg,Image.new("RGB",(W,H),(6,16,28)),.48)
+            scale=min((W-140)/archival.width,(H-195)/archival.height)
+            original_w=max(1,round(archival.width*scale));original_h=max(1,round(archival.height*scale))
+            pic=archival.resize((original_w,original_h),Image.Resampling.LANCZOS)
+            xp=(W-original_w)//2;yp=(H-original_h)//2-12
+            canvas.paste(pic,(xp,yp))
+            draw_edge=ImageDraw.Draw(canvas)
+            draw_edge.rectangle((xp-2,yp-2,xp+original_w+1,yp+original_h+1),outline=(128,152,174),width=2)
+            # A compact documentary lower third. Don't cover the Windows UI.
+            dd=Image.new("RGBA",(W,H),(0,0,0,0))
+            grad=np.zeros((H,W,4),dtype=np.uint8)
+            grad[:,:,0]=7;grad[:,:,1]=15;grad[:,:,2]=26
+            grad[:,:,3]=(215*np.clip((np.arange(H)[:,None]-H*.72)/(H*.28),0,1)).astype(np.uint8)
+            canvas=Image.alpha_composite(canvas.convert("RGBA"),Image.fromarray(grad,"RGBA")).convert("RGB")
+        d=ImageDraw.Draw(canvas)
+        d.rectangle((0,0,12,H),fill=ACC)
+        d.rectangle((96,813,168,819),fill=ACC)
+        d.text((97,833),major,font=fittext(d,major,1450,74,47),fill=WHITE,stroke_width=1,stroke_fill=(8,15,24))
+        d.text((100,929),sub,font=fittext(d,sub,1450,36,26),fill=(237,244,250))
+        d.text((98,65),"WINDOWS 8   /   THE 14-YEAR RETROSPECTIVE",font=font(23,True),fill=(244,250,255),stroke_width=2,stroke_fill=(8,18,26))
+        d.text((W-95,72),f"{i+1:02} / 16",font=font(23),fill=(244,250,255),anchor="ra",stroke_width=1,stroke_fill=(8,18,26))
     else:
-        canvas=Image.new("RGB",(W,H),BG)
-        # Gallery mode with a large, real, unaltered image on the right
-        pic=Image.open(paths[key]).convert("RGB")
-        maxw,maxh=1050,800
-        ratio=min(maxw/pic.width,maxh/pic.height)
-        pic=pic.resize((max(1,int(pic.width*ratio)),max(1,int(pic.height*ratio))),Image.Resampling.LANCZOS)
-        xx=1850-pic.width;yy=(H-pic.height)//2
-        shadow=Image.new("RGBA",(pic.width+50,pic.height+50),(0,0,0,0))
-        sd=ImageDraw.Draw(shadow)
-        sd.rounded_rectangle((25,25,pic.width+25,pic.height+25),radius=14,fill=(0,0,0,135))
-        shadow=shadow.filter(ImageFilter.GaussianBlur(18))
-        canvas.paste(shadow.convert("RGB"),(xx-25,yy-22))
-        canvas.paste(pic,(xx,yy))
-        d0=ImageDraw.Draw(canvas)
-        d0.rectangle((xx-2,yy-2,xx+pic.width+1,yy+pic.height+1),outline=(62,78,94),width=3)
-        # blur-free UI screenshots: preserve their original crisp pixels
+        # Editorial gallery: archival capture is large and legible on the right;
+        # narrative headline is kept on the left instead of covering the shot.
+        bg=cover_image(paths[key],W,H).filter(ImageFilter.GaussianBlur(25))
+        canvas=Image.blend(bg,Image.new("RGB",(W,H),(6,17,30)),.84)
+        pic=archival
+        maxw,maxh=1040,790
+        scale=min(maxw/pic.width,maxh/pic.height)
+        pic=pic.resize((max(1,int(pic.width*scale)),max(1,int(pic.height*scale))),Image.Resampling.LANCZOS)
+        xp=1844-pic.width; yp=(H-pic.height)//2
+        # clean framing and shadow
+        d=ImageDraw.Draw(canvas)
+        d.rounded_rectangle((xp-22,yp-22,xp+pic.width+22,yp+pic.height+22),radius=10,fill=(2,10,19))
+        canvas.paste(pic,(xp,yp))
+        d=ImageDraw.Draw(canvas)
+        d.rectangle((xp-1,yp-1,xp+pic.width,yp+pic.height),outline=(83,113,138),width=2)
+        d.rectangle((0,0,12,H),fill=ACC)
+        d.text((96,90),"A WINDOWS 8 RETROSPECTIVE",font=font(25,True),fill=(181,211,228))
+        d.rectangle((100,162,168,169),fill=ACC)
+        d.text((95,293),major,font=fittext(d,major,830,88,51),fill=WHITE)
+        d.text((98,416),sub,font=fittext(d,sub,850,40,29),fill=(226,240,248))
+        d.text((100,532),strap,font=fittext(d,strap,790,27,21),fill=(178,205,221))
+        d.text((98,929),f"{i+1:02d} / 16    {chapter}",font=font(22,True),fill=(196,216,230))
+        d.text((W-93,1007),"2012 — 2026",font=font(22),fill=(194,211,224),anchor="ra")
     d=ImageDraw.Draw(canvas)
-    d.rectangle((0,0,17,H),fill=ACC)
-    d.text((99,97),"WINDOWS 8  /  14TH ANNIVERSARY",font=font(27,True),fill=(215,230,242))
-    d.rectangle((99,151,195,160),fill=ACC)
-    # Text matte behind left-aligned title when photo is visually busy
-    d.text((96,298),major,font=fittext(d,major,900,104,60),fill=WHITE,stroke_width=1,stroke_fill=(0,12,24))
-    d.text((100,427),sub,font=fittext(d,sub,900,47,31),fill=(239,246,250))
-    d.rectangle((100,528,176,534),fill=ACC)
-    d.text((100,562),strap,font=fittext(d,strap,830,28,21),fill=(222,233,239))
-    d.text((100,919),f"{i+1:02d} / {len(SCENES):02d}   •   {chapter}",font=font(23,True),fill=(219,232,242))
-    d.text((W-95,922),"2012 — 2026",font=font(22),fill=(220,233,243),anchor="ra")
-    # A thin progress strip
-    d.rectangle((0,H-9,W,H),fill=(17,48,66))
-    d.rectangle((0,H-9,round(W*(i+1)/len(SCENES)),H),fill=ACC)
-    out=WORK/f"frame_{i:02}.jpg";canvas.save(out,quality=93,subsampling=0)
+    d.rectangle((0,H-7,W,H),fill=(18,42,58))
+    d.rectangle((0,H-7,round(W*(i+((shot+1)/2))/len(SCENES)),H),fill=ACC)
+    out=WORK/f"frame_{i:02}_{shot}.jpg"
+    canvas.save(out,quality=93,subsampling=0)
+    print("FRAME",i,shot,"asset",key,flush=True)
     return out
 
-framefiles=[draw_frame(i,s) for i,s in enumerate(SCENES)]
-# Create cleanly-cut cinematic shots. Slight pan/zoom adds motion without smearing historic screenshots.
-for i,fr in enumerate(framefiles):
+# Use ~two distinct shots per narration chapter rather than one static slide.
+CLIPS=[]
+for i,s in enumerate(SCENES):
     t=timings[i]["duration"]
-    clip=WORK/f"v_{i:02}.mp4"
-    # Frame-correct audio/video duration; constrain render threads for CI memory.
-    vf="zoompan=z='min(zoom+0.00006,1.05)':d=1:x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':s=1920x1080:fps=30,format=yuv420p"
-    run(["ffmpeg","-y","-loglevel","error","-loop","1","-framerate","30","-i",fr,
-         "-t",str(t),"-vf",vf,"-an","-c:v","libx264","-preset","veryfast","-crf","21",
-         "-threads","2","-pix_fmt","yuv420p","-movflags","+faststart",clip])
+    part_a=round((t*.49)*FPS)/FPS
+    for shot,shotdur in enumerate([part_a,t-part_a]):
+        fr=draw_frame(i,s,shot)
+        clip=WORK/f"v_{i:02}_{shot}.mp4"
+        # Very gentle push-in, avoiding the aggressive motion of an animated slideshow.
+        vf="zoompan=z='min(zoom+0.000045,1.045)':d=1:x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':s=1920x1080:fps=30,format=yuv420p"
+        run(["ffmpeg","-y","-loglevel","error","-loop","1","-framerate","30","-i",fr,
+             "-t",str(shotdur),"-vf",vf,"-an","-c:v","libx264","-preset","veryfast","-crf","21",
+             "-threads","2","-pix_fmt","yuv420p","-movflags","+faststart",clip])
+        CLIPS.append(clip)
     wav=WORK/f"a_{i:02}.wav"
     run(["ffmpeg","-y","-loglevel","error","-i",WORK/f"narr_{i:02}.mp3",
          "-af","apad","-t",str(t),"-ar","44100","-ac","1","-c:a","pcm_s16le",wav])
     print("RENDER",i+1,"/",len(SCENES),flush=True)
-( WORK/"videos.txt").write_text("".join("file '"+str(WORK/f"v_{i:02}.mp4")+"'\n" for i in range(len(SCENES))))
-( WORK/"voices.txt").write_text("".join("file '"+str(WORK/f"a_{i:02}.wav")+"'\n" for i in range(len(SCENES))))
+(WORK/"videos.txt").write_text("".join("file '"+str(clip)+"'\n" for clip in CLIPS))
+(WORK/"voices.txt").write_text("".join("file '"+str(WORK/f"a_{i:02}.wav")+"'\n" for i in range(len(SCENES))))
 run(["ffmpeg","-y","-loglevel","error","-safe","0","-f","concat","-i",WORK/"videos.txt","-c","copy",WORK/"video.mp4"])
 run(["ffmpeg","-y","-loglevel","error","-safe","0","-f","concat","-i",WORK/"voices.txt","-c:a","pcm_s16le",WORK/"voice.wav"])
 
@@ -241,7 +298,7 @@ final=OUT/"Windows_8_14th_Anniversary_Professional_2026.mp4"
 run(["ffmpeg","-y","-loglevel","error","-i",WORK/"video.mp4","-i",WORK/"voice.wav","-i",WORK/"music.wav",
      "-filter_complex","[1:a]volume=1.05[v];[2:a]volume=0.68[m];[v][m]amix=inputs=2:duration=first:dropout_transition=0,alimiter=limit=0.94[a]",
      "-map","0:v:0","-map","[a]","-c:v","copy","-c:a","aac","-b:a","192k","-ar","44100",
-     "-movflags","+faststart","-metadata","title","Windows 8 Turns 14: Bold, Flawed, Unforgettable","-shortest",final])
+     "-movflags","+faststart","-metadata","title=Windows 8 Turns 14: Bold, Flawed, Unforgettable","-shortest",final])
 def fmt(x):
     ms=round(x*1000)
     h,rem=divmod(ms,3600000); m,rem=divmod(rem,60000);s,ms=divmod(rem,1000)
