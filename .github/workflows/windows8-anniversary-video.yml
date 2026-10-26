@@ -1,0 +1,32 @@
+name: Render Windows 8 Anniversary Documentary
+on:
+  workflow_dispatch:
+  push:
+    branches: [windows8-14-video-2026]
+    paths:
+      - 'windows8-14-video-2026/**'
+      - '.github/workflows/windows8-anniversary-video.yml'
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install production tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          python -m pip install --upgrade pip
+          python -m pip install pillow numpy soundfile edge-tts requests
+      - name: Render MP4 with archival images and neural narration
+        run: |
+          python windows8-14-video-2026/build.py
+      - name: Upload MP4 and credits
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-8-14th-Anniversary-Professional-MP4
+          path: windows8-14-video-2026/output/
+          retention-days: 30
+          if-no-files-found: error
