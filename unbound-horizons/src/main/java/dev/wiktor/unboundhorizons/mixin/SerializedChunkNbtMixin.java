@@ -1,47 +1,50 @@
 package dev.wiktor.unboundhorizons.mixin;
 
 import com.llamalad7.mixinextras.sugar.Local;
+import java.util.List;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtList;
 import net.minecraft.world.chunk.SerializedChunk;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Vanilla 1.21.4 saves each vertical chunk section's Y as a *signed byte*.
- * That was sufficient for -2032..+2031 but wraps at -4096.
- *
- * We use an integer tag for section Y and read both the new integer tags and
- * old vanilla byte tags with NbtCompound.getInt("Y").
- * The integer is required to distinguish section -188 from +68.
- */
 @Mixin(SerializedChunk.class)
 public abstract class SerializedChunkNbtMixin {
-    /**
-     * fromNbt local 29: section's NbtCompound.
-     * fromNbt local 30: the section Y integer, immediately after getByte("Y").
-     */
+    @Shadow @Final private List<?> sectionData;
+
     @ModifyVariable(method = "fromNbt", at = @At(value = "STORE"), index = 30)
     private static int unboundhorizons$readIntegerSectionY(
-        int vanillaByteY, @Local(index = 29) NbtCompound section
+        int original, @Local(index = 29) NbtCompound nbt
     ) {
-        return section.getInt("Y");
+        return nbt.getInt("Y");
     }
 
-    /**
-     * serialize local 5: SerializedChunk.SectionData; access its private
-     * record's int y field via a strongly typed Mixin accessor.
-     */
-    @Redirect(
-        method = "serialize",
-        at = @At(value = "INVOKE",
-                 target = "Lnet/minecraft/nbt/NbtCompound;putByte(Ljava/lang/String;B)V")
-    )
-    private void unboundhorizons$writeIntegerSectionY(
-        NbtCompound sectionNbt, String tag, byte wrappedVanillaValue,
-        @Local(index = 5) Object sectionData
-    ) {
-        sectionNbt.putInt(tag, ((SectionDataYAccessor)sectionData).unboundhorizons$getY());
+    @Inject(method = "serialize", at = @At("RETURN"))
+    private void unboundhorizons$restoreFullSectionIdentifiers(CallbackInfoReturnable<NbtCompound> ci) {
+        NbtList nbtSections = ci.getReturnValue().getList("sections", 10);
+        int nbtIndex = 0;
+        for (Object raw : this.sectionData) {
+            SectionDataYAccessor record = (SectionDataYAccessor)raw;
+            if (record.unboundhorizons$getSection() == null
+                && record.unboundhorizons$getBlockLight() == null
+                && record.unboundhorizons$getSkyLight() == null) continue;
+            if (nbtIndex >= nbtSections.size()) {
+                throw new IllegalStateException("Too few serialized sections");
+            }
+            NbtCompound section = nbtSections.getCompound(nbtIndex++);
+            int exactY = record.unboundhorizons$getY();
+            if (section.getByte("Y") != (byte)exactY) {
+                throw new IllegalStateException("Section ordering mismatch at Y=" + exactY);
+            }
+            section.putInt("Y", exactY);
+        }
+        if (nbtIndex != nbtSections.size()) {
+            throw new IllegalStateException("Unexpected trailing serialized sections");
+        }
     }
 }
