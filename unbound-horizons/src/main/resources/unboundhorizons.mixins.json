@@ -3,6 +3,7 @@
   "package": "dev.wiktor.unboundhorizons.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "BlockPosPackingMixin",
     "ChunkSectionMixin",
     "EntityMixin",
     "LivingEntityMixin",

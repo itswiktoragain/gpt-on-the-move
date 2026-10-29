@@ -1,48 +1,43 @@
-# Unbound Horizons 0.3.0 — Minecraft 1.21.4 / Fabric
+# Unbound Horizons 0.4.0 Engine Height Experiment
 
-**World-generation only. No LOD engine, LOD renderer, LOD cache, keybindings,
-fog manipulation, or render-distance overrides.**
-Install **Distant Horizons** separately for distant-terrain LOD.
+Minecraft 1.21.4, Fabric Loader, Fabric API and Java 21.
 
-## What changed
-- Removes the entire built-in LOD client implementation and its settings hook.
-- Restores Minecraft's standard Render Distance option; Distant Horizons handles its own LOD.
-- Uses the deepest vanilla-supported dimension height range:
-  **Y = −2032 to +2031** (4064 blocks total).
-- The **Overworld noise generator** now generates rock and caves from
-  **Y = −2032 through +319**; upper space remains buildable, mostly empty.
-- Continues near-vanilla Overworld generation from Y ≥ −512, while deep
-  Y < −512 contains deepslate/stone with additional noise-carved caverns.
-- Prevents vanilla aquifers from turning natural **cave air below Y=-64 into lava**
-  while leaving explicit player-placed lava and natural Nether lava alone.
-- Removes the surface rule that places new unbreakable bedrock.
-- Preserves void-damage override; descending past Y=-2032 is STILL not a real
-  block world. There is no true infinite-Y Minecraft 1.21.4 mod in this code.
+## Actual engine modification (not just datapack height)
+The mod rewrites BlockPos's packed-position bit allocation early during static
+initialization, before DimensionType computes its vertical limits.
+- Vanilla: 26 bits X + 12 bits Y + 26 bits Z
+- Experiment: 25 bits X + 14 bits Y + 25 bits Z
+- The dimension can now legally represent up to ~16,352 vertical blocks.
+- This **version uses Y -4096..+4095**, 8,192 blocks total.
+- Overworld stone/caves generate down to -4096. The upper region above Y=319
+  remains primarily open sky. Nether/End keep their original noise bounds.
+- No built-in LOD or render distance modification. Use Distant Horizons separately.
+- The mod removes bedrock from new terrain and avoids deep lava-filled cave air.
 
-## Important limitations
-**This is NOT infinite height.** Minecraft 1.21.4 and its network, chunk,
-coordinate and lighting code have hard-coded vertical ranges. Seamless endless
-Y would require restructuring the game far beyond dimension JSON edits.
+## Mandatory tradeoff
+This reduces **valid horizontal packed coordinates to about +/-16.7 million**
+blocks on both X and Z. The mod reduces huge world borders to a safe 30-million
+diameter (roughly +/-15 million X/Z), protecting from block-position collisions.
+It is not mathematically possible to store wider X, Z and Y coordinates in the
+same 64-bit packed structure without changing networking/storage protocols.
 
-**Save compatibility**: worlds created using older mod versions have
-different vertical section layouts. Deep rock only appears in freshly generated
-chunks. Make a new world, or a backup first. Do NOT run this against valued
-existing worlds without a backup.
+## Test safety
+This is a work-in-progress full-engine compatibility experiment, not a
+guarantee of compatibility with other mods (including Distant Horizons).
+Backup your worlds or create a new world. Never open an important existing save
+with the experimental binary: it changes existing BlockPos bit layout and may
+alter on-disk block entity positions, packed light keys and world borders.
 
-**Performance**: up to 4064 vertical blocks per chunk is several times vanilla.
-Allocate enough RAM (typically 6-8 GiB to start) and lower vanilla render
-distance if generation becomes slow. Distant Horizons' support for unusually
-large vertical worlds is not guaranteed.
+The GitHub build CI will release the JAR only if:
+1. Production Fabric JAR compiles.
+2. A new Minecraft server generates real stone below the previous -2032 limit.
+3. Block positions at Y=-3000 and Y=1096 survive an independent same-XZ write
+   and read (these heights collide under the old 12-bit packed Y format).
+4. The same two blocks **survive a save and server restart**.
+5. The below-Y=-64 aquifer conversion prevents pervasive natural lava.
 
-**Worldgen**: Deep custom noise caves differ from vanilla caves. The Nether
-and End retain their native noise distribution; they do not receive deep-rock
-Overworld generation. Ore placements may not extend to new lower depths.
+Even a passing server test does not guarantee client rendering (including
+with Distant Horizons), lighting, mob AI, or huge-coordinate compatibility.
 
-Requires Minecraft 1.21.4, Fabric Loader, Fabric API, and Java 21.
-
-## Verification
-CI builds the production-remapped JAR and starts a new **normal** Overworld.
-It tests for real rock at Y=-80, -256, -512, -768, -1200, -1600 and -1952,
-and checks for below-Y=-64 aquifer cave-air interception. CI also requires
-there to be no widespread deep lava at those sampled positions.
-A passing server test does not prove Distant Horizons client compatibility.
+## Build
+`gradle build` from the unbound-horizons project folder.
