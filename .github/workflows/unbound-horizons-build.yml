@@ -24,7 +24,7 @@ jobs:
       - name: Build remapped Fabric mod
         working-directory: unbound-horizons
         run: gradle build --no-daemon --stacktrace
-      - name: Smoke-test dedicated server, dimension registry and world loading
+      - name: Smoke-test dedicated server and world startup
         working-directory: unbound-horizons
         shell: bash
         run: |
@@ -53,17 +53,17 @@ jobs:
       - name: Upload tested JAR
         uses: actions/upload-artifact@v4
         with:
-          name: unboundhorizons-1.21.4-v0.1.1
-          path: unbound-horizons/build/libs/unboundhorizons-0.1.1.jar
+          name: unboundhorizons-1.21.4-v0.2.0
+          path: unbound-horizons/build/libs/unboundhorizons-0.2.0.jar
           if-no-files-found: error
       - name: Publish tested JAR to branch
         run: |
           mkdir -p unbound-horizons/dist
-          cp unbound-horizons/build/libs/unboundhorizons-0.1.1.jar unbound-horizons/dist/unboundhorizons-0.1.1.jar
+          cp unbound-horizons/build/libs/unboundhorizons-0.2.0.jar unbound-horizons/dist/unboundhorizons-0.2.0.jar
           git config user.name 'GitHub Actions'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add -f unbound-horizons/dist/unboundhorizons-0.1.1.jar
+          git add -f unbound-horizons/dist/unboundhorizons-0.2.0.jar
           if ! git diff --cached --quiet; then
-            git commit -m 'Publish tested 0.1.1 JAR [skip ci]'
+            git commit -m 'Publish tested 0.2.0 JAR [skip ci]'
             git push
           fi
