@@ -1,0 +1,45 @@
+name: Publish tested Unbound Horizons 0.4.2 JAR
+on:
+  push:
+    branches: [build/unbound-horizons-engine-height]
+    paths: ['.github/workflows/unbound-height-publish.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.12.1'
+      - name: Rebuild exactly the v0.4.2 source that passed deep-world and save/reload tests
+        working-directory: unbound-horizons
+        run: |
+          grep -qx 'mod_version=0.4.2' gradle.properties
+          gradle build --no-daemon --console=plain
+          test -s build/libs/unboundhorizons-0.4.2.jar
+      - name: Upload tested version JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: unboundhorizons-1.21.4-v0.4.2
+          path: unbound-horizons/build/libs/unboundhorizons-0.4.2.jar
+          if-no-files-found: error
+      - name: Publish JAR to GitHub branch
+        run: |
+          mkdir -p unbound-horizons/dist
+          cp unbound-horizons/build/libs/unboundhorizons-0.4.2.jar unbound-horizons/dist/unboundhorizons-0.4.2.jar
+          git config user.name 'GitHub Actions'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -f unbound-horizons/dist/unboundhorizons-0.4.2.jar
+          if ! git diff --cached --quiet; then
+            git commit -m 'Publish tested height-engine 0.4.2 JAR [skip ci]'
+            git pull --rebase origin build/unbound-horizons-engine-height
+            git push
+          fi
