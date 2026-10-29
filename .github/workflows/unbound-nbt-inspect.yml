@@ -1,0 +1,71 @@
+name: Inspect vertical chunk section save serialization
+on:
+  push:
+    branches: [build/unbound-height-nbt-inspect]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.12.1'
+      - name: Resolve mapped Minecraft jar
+        working-directory: unbound-horizons
+        run: gradle compileJava --no-daemon --console=plain
+      - name: Dump chunk NBT serialization bytecode
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os,subprocess,zipfile
+          root='/home/runner/.gradle'
+          selected=None
+          for path,_,names in os.walk(root):
+              for name in names:
+                  if not name.endswith('.jar') or 'minecraft' not in name:continue
+                  fp=os.path.join(path,name)
+                  try:
+                      with zipfile.ZipFile(fp) as f:
+                          if 'net/minecraft/world/chunk/SerializedChunk.class' in f.namelist():
+                              selected=fp
+                              break
+                  except:pass
+              if selected:break
+          print('Mapped Minecraft JAR',selected)
+          if not selected:raise SystemExit(1)
+          classes=[
+            'net.minecraft.world.chunk.SerializedChunk',
+            'net.minecraft.world.storage.ChunkSerializer',
+            'net.minecraft.world.chunk.ChunkSerializer',
+            'net.minecraft.nbt.NbtCompound'
+          ]
+          os.makedirs('/tmp/height-nbt-bytecode',exist_ok=True)
+          for cls in classes:
+              result=subprocess.run(['javap','-p','-c','-classpath',selected,cls],capture_output=True,text=True,timeout=90)
+              file=os.path.join('/tmp/height-nbt-bytecode',cls.rsplit('.',1)[-1]+'.txt')
+              with open(file,'w') as f:
+                  f.write(result.stdout+'\n'+result.stderr)
+              print('\n======',cls,'======')
+              lines=result.stdout.splitlines()
+              matches=[i for i,line in enumerate(lines) if any(k in line for k in ['putByte','getByte','putInt','getInt','String Y','String sections','readNbt','serialize','deserialize','put('])]
+              print('Matched bytecode locations',len(matches))
+              recent=-10
+              for i in matches[:95]:
+                  for k in range(max(0,i-3),min(len(lines),i+5)):
+                      if k<=recent:continue
+                      print('%5d: %s'%(k+1,lines[k]))
+                      recent=k
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: height-nbt-mapped-bytecode
+          path: /tmp/height-nbt-bytecode/*.txt
+          if-no-files-found: error
