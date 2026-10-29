@@ -24,7 +24,7 @@ jobs:
       - name: Compile production Fabric JAR
         working-directory: unbound-horizons
         run: gradle build --no-daemon --console=plain
-      - name: Test true engine height, unique block positions, and save/reload
+      - name: Test world height, packed positions, and graceful save/reload
         working-directory: unbound-horizons
         shell: bash
         run: |
@@ -39,38 +39,109 @@ jobs:
           generate-structures=false
           online-mode=false
           spawn-protection=0
+          enable-rcon=true
+          rcon.port=25575
+          rcon.password=unboundheightCI-5821
           PROPS
+          graceful_stop() {
+            python3 - <<'PY'
+          import socket,struct
+          def recvall(s,n):
+              b=b''
+              while len(b)<n:
+                  part=s.recv(n-len(b))
+                  if not part: raise RuntimeError('RCON closed')
+                  b+=part
+              return b
+          def receive(s):
+              size=struct.unpack('<i',recvall(s,4))[0]
+              if size<10 or size>4096:raise RuntimeError('Invalid RCON response length')
+              p=recvall(s,size)
+              rid,t=struct.unpack('<ii',p[:8])
+              return rid,t,p[8:-2]
+          def send(s,request_id,ptype,body):
+              b=body.encode('utf-8')
+              s.sendall(struct.pack('<iii',len(b)+10,request_id,ptype)+b+b'\x00\x00')
+          with socket.create_connection(('127.0.0.1',25575),timeout=12) as s:
+              s.settimeout(12)
+              send(s,3100,3,'unboundheightCI-5821')
+              ok=False
+              for _ in range(3):
+                  rid,t,p=receive(s)
+                  if rid==-1:raise RuntimeError('RCON authentication rejected')
+                  if rid==3100:
+                      ok=True
+                      break
+              if not ok:raise RuntimeError('No RCON authentication response')
+              send(s,3101,2,'stop')
+              print('Sent Minecraft /stop via authenticated RCON.')
+          PY
+          }
           run_phase() {
             local flag="$1" pass="$2" logfile="$3"
             JAVA_TOOL_OPTIONS="-Dunboundhorizons.${flag}=true -Xmx5G" gradle runServer --no-daemon --console=plain > "$logfile" 2>&1 &
             local pid=$! ok=0
-            for i in $(seq 1 250); do
+            for i in $(seq 1 210); do
               if grep -Fq "$pass" "$logfile"; then ok=1; break; fi
               if grep -Fq 'UNBOUND_ENGINE_HEIGHT_CHECK_FAIL' "$logfile" || grep -Fq 'UNBOUND_SAVE_RELOAD_FAIL' "$logfile"; then break; fi
               if ! kill -0 "$pid" 2>/dev/null; then break; fi
               sleep 1
             done
-            echo "---------- ${flag}: last 120 lines ----------"
-            tail -n 120 "$logfile"
-            # Interrupt Gradle and child Java process; JVM shutdown hooks save world.
-            pkill -INT -P "$pid" || true
-            kill -INT "$pid" 2>/dev/null || true
-            sleep 4
-            pkill -TERM -P "$pid" || true
-            kill -TERM "$pid" 2>/dev/null || true
-            wait "$pid" || true
-            test "$ok" -eq 1
+            if [ "$ok" -eq 0 ]; then
+              echo "::error::${flag} server test did not pass"
+              tail -n 160 "$logfile"
+              kill -TERM "$pid" 2>/dev/null || true
+              wait "$pid" || true
+              return 1
+            fi
+            if ! graceful_stop; then
+              echo "::error::Failed to send graceful stop command; refusing to publish"
+              tail -n 120 "$logfile"
+              kill -TERM "$pid" 2>/dev/null || true
+              wait "$pid" || true
+              return 1
+            fi
+            local stopped=0
+            for i in $(seq 1 60); do
+              if ! kill -0 "$pid" 2>/dev/null; then stopped=1; break; fi
+              sleep 1
+            done
+            if [ "$stopped" -eq 0 ]; then
+              echo "::error::Server did not shut down after /stop"
+              tail -n 140 "$logfile"
+              kill -TERM "$pid" 2>/dev/null || true
+              wait "$pid" || true
+              return 1
+            fi
+            set +e
+            wait "$pid"
+            local status=$?
+            set -e
+            tail -n 130 "$logfile"
+            if [ "$status" -ne 0 ]; then
+              echo "::error::Server process exited nonzero after /stop"
+              return 1
+            fi
+            if ! grep -q 'Saving chunks' "$logfile"; then
+              echo "::error::Server shutdown did not report a save"
+              return 1
+            fi
+            if grep -q 'Failed to create block entity' "$logfile"; then
+              echo "::error::Corrupt/missing block entity detected"
+              return 1
+            fi
+            echo "${flag}: test passed, world safely saved."
           }
           run_phase "verifyTerrain" "UNBOUND_ENGINE_HEIGHT_CHECK_PASS" /tmp/unbound-engine-terrain.log
           run_phase "verifyReload" "UNBOUND_SAVE_RELOAD_PASS" /tmp/unbound-engine-reload.log
-          echo "All extended-height engine checks PASSED."
-      - name: Upload proven JAR
+          echo "All extended-height worldgen, independent block positions, and persistence checks passed."
+      - name: Upload tested JAR
         uses: actions/upload-artifact@v4
         with:
           name: unboundhorizons-1.21.4-v0.4.0-engine
           path: unbound-horizons/build/libs/unboundhorizons-0.4.0.jar
           if-no-files-found: error
-      - name: Publish experimental JAR on engine branch
+      - name: Publish tested JAR to engine branch
         run: |
           mkdir -p unbound-horizons/dist
           cp unbound-horizons/build/libs/unboundhorizons-0.4.0.jar unbound-horizons/dist/unboundhorizons-0.4.0.jar
