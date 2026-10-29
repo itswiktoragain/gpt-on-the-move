@@ -1,25 +1,47 @@
-# Unbound Horizons 0.2.0 (Minecraft 1.21.4 / Fabric)
+# Unbound Horizons 0.2.1 (Minecraft 1.21.4 / Fabric)
 
-**Experimental** expanded-height world and cached explored-terrain LOD.
+**Experimental** extended-height overworld with cached previously visited terrain LOD.
 
-## Changes from 0.1.1
-- Render distance: keep 12 real chunks for interaction/terrain, with automatic LOD beyond.
-- 8x8 LOD tiles near the vanilla horizon and 16x16 tiles farther away, replacing the old uniformly coarse, high-cost 4x4 tiles.
-- Limit the LOD render to 14,000 quads and skip far geometry behind the camera.
-- Cache terrain at **chunk load**, instead of relying on slow periodic sampling.
-- Save cache to the local world folder (or a server-specific cache folder for multiplayer) and reload on subsequent sessions.
-- During LOD drawing only, extend GPU fog to avoid having vanilla fog hide distant cached tiles. The original fog is restored immediately afterward.
-- Press **L** to cycle **Light (32 chunks)**, **Balanced (64 chunks)**, and **Far (96 chunks)**. Default is Balanced.
+## Generation fix in 0.2.1
 
-## Important limitations
+Vanilla Minecraft 1.21.4 separates the dimension **build height** from its
+noise generator's vertical range. Changing the dimension to Y=-512..1535 in
+0.1/0.2 let players place blocks below -64, but DID NOT generate stone there.
 
-- LOD **only shows previously received terrain**. A client cannot render genuinely unexplored chunks from no information. Explore the map once to populate the cache; it will then persist.
-- LOD consists of a coarse top-surface approximation, not full textured distant models or caves. Features such as trees are simplified.
-- The mod expands buildable dimension range to **Y=-512..1535**, not actually infinite Y. Vanilla world generation may leave air outside its original noise span.
-- Newly written bedrock is replaced with deepslate. Existing bedrock may remain.
-- Void-damage handlers are overridden, but no new terrain exists below the minimum height.
-- Back up worlds; the mod overrides built-in dimension types. Use on a new test world first. Not compatible with vanilla-only servers.
-- Requires **Java 21**, **Minecraft 1.21.4**, **Fabric Loader**, and **Fabric API**.
+This version overrides Minecraft 1.21.4's `worldgen/noise_settings/overworld.json`:
+- Noise min Y: -512 (was -64).
+- Noise height: 832 (was 384), generating blocks through Y=319.
+- The bedrock-floor noise taper is shifted down to Y=-512..-488.
+- Underground noodle-cave density sampling now reaches Y=-508.
+- The dimension allows block placement up through Y=1535, **but the
+  upper region is not automatically full of generated mountains**.
+- Some ore generation placements follow the old vanilla distribution and
+  may not be uniform at the new depths.
 
-CI validates Gradle compilation and world registry/server start. This does not
-verify all client graphics and multiplayer compatibility.
+New generation only affects **new chunks and new worlds**, not existing empty
+underground sections in already generated chunks. Back up the world first.
+
+## LOD improvements in 0.2.0 (included here)
+- 12 detailed chunks with explored terrain surface LOD up to 64 chunks by default.
+- Press **L**: Light (32), Balanced (64), Far (96).
+- Captures chunks as soon as they load and saves them to disk.
+- Reduces tile detail as distance grows: 8x8 near, 16x16 far.
+- Extends fog specifically for LOD drawing so cached tiles don't vanish due
+  to the normal short draw-distance fog.
+- LOD cannot render terrain that has never reached the client; unexplored
+  areas stay empty until visited and cached.
+
+## Limits
+
+This is NOT an actually infinite-height world. The dimension builds from
+-512 through +1535; the Overworld generates normal terrain from -512 through
++319. The Nether and End retain their own noise generation spans.
+Already-generated bedrock is not removed; newly generated bedrock is replaced
+with deepslate. The mod changes built-in dimension registries and may conflict
+with other worldgen mods or unmodified servers.
+
+Requires Minecraft 1.21.4, Java 21, Fabric Loader and Fabric API. Use a
+fresh backed-up test world. CI now starts a **normal noise-generated Overworld**
+and checks for real solid blocks at Y=-80, -160, -320 and -480 before publishing
+the JAR. A passing CI build still does not prove complete client rendering
+compatibility or long-term save stability.
