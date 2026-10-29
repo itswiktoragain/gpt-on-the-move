@@ -1,0 +1,91 @@
+name: Inspect Minecraft 1.21.4 engine coordinate constraints
+on:
+  push:
+    branches: [build/unbound-horizons-engine-height]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.12.1'
+      - name: Compile mappings and find the remapped Minecraft classes
+        working-directory: unbound-horizons
+        run: gradle compileJava --no-daemon --console=plain
+      - name: Investigate range checks and packed position layout
+        shell: bash
+        run: |
+          set -eu
+          python3 - <<'PY'
+          import os,subprocess,zipfile
+          root='/home/runner/.gradle'
+          candidates=[]
+          for path, _, fs in os.walk(root):
+              for name in fs:
+                  if name.endswith('.jar') and ('minecraft' in name or 'merged' in name):
+                      p=os.path.join(path,name)
+                      if os.path.getsize(p)>2000000: candidates.append(p)
+          names=['net/minecraft/util/math/BlockPos.class','net/minecraft/world/dimension/DimensionType.class']
+          selected=None
+          for p in candidates:
+              try:
+                  with zipfile.ZipFile(p) as z:
+                      if all(n in z.namelist() for n in names):
+                          selected=p
+                          break
+              except Exception:
+                  pass
+          print('Candidates',candidates[:20])
+          print('Selected mapped JAR',selected)
+          if not selected: raise SystemExit('Missing mapped Minecraft JAR')
+          classes=[
+             'net.minecraft.util.math.BlockPos',
+             'net.minecraft.world.dimension.DimensionType',
+             'net.minecraft.world.gen.chunk.GenerationShapeConfig',
+             'net.minecraft.world.gen.chunk.ChunkGeneratorSettings',
+             'net.minecraft.world.HeightLimitView',
+             'net.minecraft.world.chunk.Chunk',
+             'net.minecraft.world.chunk.ChunkSection',
+             'net.minecraft.world.gen.chunk.NoiseChunkGenerator'
+          ]
+          needles=['4064','2032','4096','32768','30000000','intRange','asLong(','unpackLongY','unpackLongX','unpackLongZ','checkY','min_y','minY','height','HEIGHT']
+          lines=[]
+          for cls in classes:
+              print('\n========== '+cls+' ==========')
+              try:
+                  data=subprocess.run(['javap','-p','-c','-classpath',selected,cls],capture_output=True,text=True,timeout=60,check=True).stdout
+              except Exception as e:
+                  print('ERROR',e);continue
+              ls=data.splitlines()
+              print('METHODS:')
+              print('\n'.join([line for line in ls if line.strip().startswith(('public','private','static','protected'))][:75]))
+              indices=[i for i,l in enumerate(ls) if any(key in l for key in needles) and not 'LineNumberTable' in l]
+              print('SELECTED BYTECODE (first 180 hits):')
+              ranges=set()
+              for idx in indices[:180]:
+                  for j in range(max(0,idx-3),min(len(ls),idx+5)):ranges.add(j)
+              last=-10
+              for idx in sorted(ranges):
+                  if idx>last+1:print('...')
+                  print(f'{idx+1:5d} {ls[idx]}')
+                  last=idx
+              lines.append(cls+'\n'+data)
+          os.makedirs('/tmp/unbound-engine-inspect',exist_ok=True)
+          with open('/tmp/unbound-engine-inspect/mapped-bytecode.txt','w') as f:
+              f.write('\n\n'.join(lines))
+          PY
+      - name: Upload full bytecode inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: unbound-height-bytecode-inspection
+          path: /tmp/unbound-engine-inspect/mapped-bytecode.txt
+          if-no-files-found: error
