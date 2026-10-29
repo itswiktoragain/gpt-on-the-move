@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "dev.wiktor.unboundhorizons.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "ChunkSectionMixin",
+    "EntityMixin",
+    "LivingEntityMixin"
+  ],
+  "client": ["VideoOptionsScreenMixin"],
+  "injectors": {"defaultRequire": 1}
+}

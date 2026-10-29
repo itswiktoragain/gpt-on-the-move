@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "unboundhorizons",
+  "version": "${version}",
+  "name": "Unbound Horizons",
+  "description": "Bedrock-free extended height with a real explored-terrain LOD cache for Minecraft 1.21.4.",
+  "authors": ["Wiktor", "OpenAI"],
+  "environment": "*",
+  "entrypoints": {
+    "main": ["dev.wiktor.unboundhorizons.UnboundHorizons"],
+    "client": ["dev.wiktor.unboundhorizons.client.UnboundHorizonsClient"]
+  },
+  "mixins": ["unboundhorizons.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.10",
+    "minecraft": "1.21.4",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
