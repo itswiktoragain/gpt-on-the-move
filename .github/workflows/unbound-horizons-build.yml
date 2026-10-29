@@ -24,20 +24,46 @@ jobs:
       - name: Build remapped Fabric mod
         working-directory: unbound-horizons
         run: gradle build --no-daemon --stacktrace
-      - name: Upload JAR as workflow artifact
+      - name: Smoke-test dedicated server, dimension registry and world loading
+        working-directory: unbound-horizons
+        shell: bash
+        run: |
+          mkdir -p run
+          printf 'eula=true\n' > run/eula.txt
+          cat > run/server.properties <<'PROPS'
+          max-players=1
+          view-distance=3
+          simulation-distance=3
+          level-type=minecraft:flat
+          generate-structures=false
+          online-mode=false
+          spawn-protection=0
+          PROPS
+          set +e
+          timeout --signal=INT --kill-after=10s 150s gradle runServer --no-daemon --console=plain > /tmp/unboundhorizons-server-smoke.log 2>&1
+          status=$?
+          set -e
+          echo "Server runner exit status: $status"
+          tail -n 180 /tmp/unboundhorizons-server-smoke.log
+          if ! grep -Eq 'Done \([0-9.,]+s\)!' /tmp/unboundhorizons-server-smoke.log; then
+            echo "::error::Server never reached world-ready state. Refusing to publish JAR."
+            exit 1
+          fi
+          echo "World startup passed."
+      - name: Upload tested JAR
         uses: actions/upload-artifact@v4
         with:
-          name: unboundhorizons-1.21.4
-          path: unbound-horizons/build/libs/unboundhorizons-0.1.0.jar
+          name: unboundhorizons-1.21.4-v0.1.1
+          path: unbound-horizons/build/libs/unboundhorizons-0.1.1.jar
           if-no-files-found: error
-      - name: Put built JAR on the build branch for direct download
+      - name: Publish tested JAR to branch
         run: |
           mkdir -p unbound-horizons/dist
-          cp unbound-horizons/build/libs/unboundhorizons-0.1.0.jar unbound-horizons/dist/unboundhorizons-0.1.0.jar
+          cp unbound-horizons/build/libs/unboundhorizons-0.1.1.jar unbound-horizons/dist/unboundhorizons-0.1.1.jar
           git config user.name 'GitHub Actions'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add -f unbound-horizons/dist/unboundhorizons-0.1.0.jar
+          git add -f unbound-horizons/dist/unboundhorizons-0.1.1.jar
           if ! git diff --cached --quiet; then
-            git commit -m 'Build Unbound Horizons 1.21.4 JAR [skip ci]'
+            git commit -m 'Publish tested 0.1.1 JAR [skip ci]'
             git push
           fi
