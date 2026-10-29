@@ -1,47 +1,48 @@
-# Unbound Horizons 0.2.1 (Minecraft 1.21.4 / Fabric)
+# Unbound Horizons 0.3.0 — Minecraft 1.21.4 / Fabric
 
-**Experimental** extended-height overworld with cached previously visited terrain LOD.
+**World-generation only. No LOD engine, LOD renderer, LOD cache, keybindings,
+fog manipulation, or render-distance overrides.**
+Install **Distant Horizons** separately for distant-terrain LOD.
 
-## Generation fix in 0.2.1
+## What changed
+- Removes the entire built-in LOD client implementation and its settings hook.
+- Restores Minecraft's standard Render Distance option; Distant Horizons handles its own LOD.
+- Uses the deepest vanilla-supported dimension height range:
+  **Y = −2032 to +2031** (4064 blocks total).
+- The **Overworld noise generator** now generates rock and caves from
+  **Y = −2032 through +319**; upper space remains buildable, mostly empty.
+- Continues near-vanilla Overworld generation from Y ≥ −512, while deep
+  Y < −512 contains deepslate/stone with additional noise-carved caverns.
+- Prevents vanilla aquifers from turning natural **cave air below Y=-64 into lava**
+  while leaving explicit player-placed lava and natural Nether lava alone.
+- Removes the surface rule that places new unbreakable bedrock.
+- Preserves void-damage override; descending past Y=-2032 is STILL not a real
+  block world. There is no true infinite-Y Minecraft 1.21.4 mod in this code.
 
-Vanilla Minecraft 1.21.4 separates the dimension **build height** from its
-noise generator's vertical range. Changing the dimension to Y=-512..1535 in
-0.1/0.2 let players place blocks below -64, but DID NOT generate stone there.
+## Important limitations
+**This is NOT infinite height.** Minecraft 1.21.4 and its network, chunk,
+coordinate and lighting code have hard-coded vertical ranges. Seamless endless
+Y would require restructuring the game far beyond dimension JSON edits.
 
-This version overrides Minecraft 1.21.4's `worldgen/noise_settings/overworld.json`:
-- Noise min Y: -512 (was -64).
-- Noise height: 832 (was 384), generating blocks through Y=319.
-- The bedrock-floor noise taper is shifted down to Y=-512..-488.
-- Underground noodle-cave density sampling now reaches Y=-508.
-- The dimension allows block placement up through Y=1535, **but the
-  upper region is not automatically full of generated mountains**.
-- Some ore generation placements follow the old vanilla distribution and
-  may not be uniform at the new depths.
+**Save compatibility**: worlds created using older mod versions have
+different vertical section layouts. Deep rock only appears in freshly generated
+chunks. Make a new world, or a backup first. Do NOT run this against valued
+existing worlds without a backup.
 
-New generation only affects **new chunks and new worlds**, not existing empty
-underground sections in already generated chunks. Back up the world first.
+**Performance**: up to 4064 vertical blocks per chunk is several times vanilla.
+Allocate enough RAM (typically 6-8 GiB to start) and lower vanilla render
+distance if generation becomes slow. Distant Horizons' support for unusually
+large vertical worlds is not guaranteed.
 
-## LOD improvements in 0.2.0 (included here)
-- 12 detailed chunks with explored terrain surface LOD up to 64 chunks by default.
-- Press **L**: Light (32), Balanced (64), Far (96).
-- Captures chunks as soon as they load and saves them to disk.
-- Reduces tile detail as distance grows: 8x8 near, 16x16 far.
-- Extends fog specifically for LOD drawing so cached tiles don't vanish due
-  to the normal short draw-distance fog.
-- LOD cannot render terrain that has never reached the client; unexplored
-  areas stay empty until visited and cached.
+**Worldgen**: Deep custom noise caves differ from vanilla caves. The Nether
+and End retain their native noise distribution; they do not receive deep-rock
+Overworld generation. Ore placements may not extend to new lower depths.
 
-## Limits
+Requires Minecraft 1.21.4, Fabric Loader, Fabric API, and Java 21.
 
-This is NOT an actually infinite-height world. The dimension builds from
--512 through +1535; the Overworld generates normal terrain from -512 through
-+319. The Nether and End retain their own noise generation spans.
-Already-generated bedrock is not removed; newly generated bedrock is replaced
-with deepslate. The mod changes built-in dimension registries and may conflict
-with other worldgen mods or unmodified servers.
-
-Requires Minecraft 1.21.4, Java 21, Fabric Loader and Fabric API. Use a
-fresh backed-up test world. CI now starts a **normal noise-generated Overworld**
-and checks for real solid blocks at Y=-80, -160, -320 and -480 before publishing
-the JAR. A passing CI build still does not prove complete client rendering
-compatibility or long-term save stability.
+## Verification
+CI builds the production-remapped JAR and starts a new **normal** Overworld.
+It tests for real rock at Y=-80, -256, -512, -768, -1200, -1600 and -1952,
+and checks for below-Y=-64 aquifer cave-air interception. CI also requires
+there to be no widespread deep lava at those sampled positions.
+A passing server test does not prove Distant Horizons client compatibility.

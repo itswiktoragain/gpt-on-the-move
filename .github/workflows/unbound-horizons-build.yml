@@ -24,7 +24,7 @@ jobs:
       - name: Build remapped Fabric mod
         working-directory: unbound-horizons
         run: gradle build --no-daemon --stacktrace
-      - name: Smoke-test actual overworld noise generation down to Y=-480
+      - name: Smoke-test deep overworld terrain and absence of broad lava oceans
         working-directory: unbound-horizons
         shell: bash
         run: |
@@ -40,35 +40,35 @@ jobs:
           spawn-protection=0
           PROPS
           set +e
-          JAVA_TOOL_OPTIONS="-Dunboundhorizons.verifyTerrain=true" timeout --signal=INT --kill-after=10s 240s gradle runServer --no-daemon --console=plain > /tmp/unboundhorizons-generation-smoke.log 2>&1
+          JAVA_TOOL_OPTIONS="-Dunboundhorizons.verifyTerrain=true -Xmx5G" timeout --signal=INT --kill-after=10s 400s gradle runServer --no-daemon --console=plain > /tmp/unboundhorizons-deep-smoke.log 2>&1
           status=$?
           set -e
           echo "Server runner exit status: $status"
-          tail -n 190 /tmp/unboundhorizons-generation-smoke.log
-          if ! grep -q 'UNBOUND_TERRAIN_CHECK_PASS' /tmp/unboundhorizons-generation-smoke.log; then
-            echo "::error::No generated rock at extended Y depths; refusing to publish JAR."
+          tail -n 180 /tmp/unboundhorizons-deep-smoke.log
+          if ! grep -q 'UNBOUND_TERRAIN_CHECK_PASS' /tmp/unboundhorizons-deep-smoke.log; then
+            echo "::error::Extended rock or deep aquifer test failed; refusing to publish JAR."
             exit 1
           fi
-          if ! grep -Eq 'Done \([0-9.,]+s\)!' /tmp/unboundhorizons-generation-smoke.log; then
+          if ! grep -Eq 'Done \([0-9.,]+s\)!' /tmp/unboundhorizons-deep-smoke.log; then
             echo "::error::Minecraft did not reach world-ready state; refusing to publish JAR."
             exit 1
           fi
-          echo "Overworld noise-generated blocks and server world startup verified."
+          echo "Deep terrain generation and aquifer tests PASSED."
       - name: Upload tested JAR
         uses: actions/upload-artifact@v4
         with:
-          name: unboundhorizons-1.21.4-v0.2.1
-          path: unbound-horizons/build/libs/unboundhorizons-0.2.1.jar
+          name: unboundhorizons-1.21.4-v0.3.0
+          path: unbound-horizons/build/libs/unboundhorizons-0.3.0.jar
           if-no-files-found: error
       - name: Publish tested JAR to branch
         run: |
           mkdir -p unbound-horizons/dist
-          cp unbound-horizons/build/libs/unboundhorizons-0.2.1.jar unbound-horizons/dist/unboundhorizons-0.2.1.jar
+          cp unbound-horizons/build/libs/unboundhorizons-0.3.0.jar unbound-horizons/dist/unboundhorizons-0.3.0.jar
           git config user.name 'GitHub Actions'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add -f unbound-horizons/dist/unboundhorizons-0.2.1.jar
+          git add -f unbound-horizons/dist/unboundhorizons-0.3.0.jar
           if ! git diff --cached --quiet; then
-            git commit -m 'Publish terrain-verified 0.2.1 JAR [skip ci]'
+            git commit -m 'Publish deep-world 0.3.0 JAR [skip ci]'
             git pull --rebase origin build/unbound-horizons-1.21.4
             git push
           fi

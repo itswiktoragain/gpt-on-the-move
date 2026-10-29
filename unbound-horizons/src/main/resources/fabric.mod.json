@@ -3,14 +3,20 @@
   "id": "unboundhorizons",
   "version": "${version}",
   "name": "Unbound Horizons",
-  "description": "Bedrock-free extended height with a real explored-terrain LOD cache for Minecraft 1.21.4.",
-  "authors": ["Wiktor", "OpenAI"],
+  "description": "Experimental deep-world generation and lava-free deep caverns. No LOD; use Distant Horizons for distant terrain.",
+  "authors": [
+    "Wiktor",
+    "OpenAI"
+  ],
   "environment": "*",
   "entrypoints": {
-    "main": ["dev.wiktor.unboundhorizons.UnboundHorizons"],
-    "client": ["dev.wiktor.unboundhorizons.client.UnboundHorizonsClient"]
+    "main": [
+      "dev.wiktor.unboundhorizons.UnboundHorizons"
+    ]
   },
-  "mixins": ["unboundhorizons.mixins.json"],
+  "mixins": [
+    "unboundhorizons.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=0.16.10",
     "minecraft": "1.21.4",
