@@ -7,7 +7,9 @@
     "ChunkSectionMixin",
     "EntityMixin",
     "LivingEntityMixin",
-    "DeepAquiferMixin"
+    "DeepAquiferMixin",
+    "SerializedChunkNbtMixin",
+    "SectionDataYAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
