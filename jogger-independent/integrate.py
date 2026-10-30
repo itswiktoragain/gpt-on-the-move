@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small, asserted integration patches applied before packaging the original source."""
+"""Asserted integration changes for the original Jogger source."""
 from pathlib import Path
 P=Path(__file__).resolve().parent
 J=P/'app/src/main/java/com/wiktor/jogger'
@@ -20,8 +20,7 @@ patch(J/'Core.java',
 patch(J/'Core.java','"lwjgl-tinyfd","lwjgl-jemalloc"','"lwjgl-tinyfd","lwjgl-jemalloc","lwjgl-freetype"')
 patch(J/'Core.java','"-Dorg.lwjgl.system.allocator=system","-Dorg.lwjgl.librarypath="',
  '"-Dorg.lwjgl.system.allocator=system","-Dorg.lwjgl.freetype.libname="+runtime+"/lib/libfreetype.so","-Dorg.lwjgl.librarypath="')
-patch(J/'TouchOverlay.java',
- 'else if(b.key>0)Native.press(b.key);',
+patch(J/'TouchOverlay.java','else if(b.key>0)Native.press(b.key);',
  'else if(b.key>0&&!b.id.equals("jump"))Native.press(b.key);')
 patch(J/'JoggerActivity.java',
  'home();if(BuildConfig.DEBUG&&getIntent().getBooleanExtra("probe",false))',
@@ -35,8 +34,7 @@ patch(J/'TouchOverlay.java',
 patch(J/'TouchOverlay.java',
  'if(status[1]!=previousScreen||status[0]!=previousGrab){reset();previousScreen=status[1];previousGrab=status[0];',
  'if(status[1]!=previousScreen||status[0]!=previousGrab||status[2]!=previousGuiWidth||status[3]!=previousGuiHeight){reset();previousScreen=status[1];previousGrab=status[0];previousGuiWidth=status[2];previousGuiHeight=status[3];')
-patch(J/'TouchOverlay.java',
- 'private int[] padKeys(float x,float y){int c=',
+patch(J/'TouchOverlay.java','private int[] padKeys(float x,float y){int c=',
  'private int[] padKeys(float x,float y){if(!inPad(x,y))return new int[0];int c=')
 patch(J/'Core.java','"-Djava.home="+runtime,',
  '"-Dorg.lwjgl.libname="+nd+"/liblwjgl.so","-Djava.home="+runtime,')
@@ -45,19 +43,32 @@ patch(J/'GameActivity.java','"-Djava.home="+runtime,',
 p=P/'native/glfw_jogger.c'
 s=p.read_text()
 if '#include "window_state.inc"' not in s:
- start=s.index('static struct GLFWwindow win=')
- end=s.index('static double now(void)')
+ start=s.index('static struct GLFWwindow win=');end=s.index('static double now(void)')
  s=s[:start]+'#include "window_state.inc"\n'+s[end:]
  s=s.replace('typedef struct {int type,a,b;double x,y;} Event;\nstatic Event queue[2048];static unsigned head,tail;\n','')
  p.write_text(s)
-# Chat turns into Leave in the same top-centre position, without Pause.
 patch(J/'TouchOverlay.java',
  'add(chat?"leavechat":"back","back",dp(10),top,chat?dp(70):bw,bh,256);add("type","keyboard",w/2-bw/2,top,bw,bh,0);',
  'add(chat?"leavechat":"back","back",chat?w/2-bw-gap/2:dp(10),top,bw,bh,256);add("type","keyboard",chat?w/2+gap/2:w/2-bw/2,top,bw,bh,0);')
-patch(J/'TouchOverlay.java',
- 'texture(c,b.r,down);icon(c,b.r,b.icon);',
+patch(J/'TouchOverlay.java','texture(c,b.r,down);icon(c,b.r,b.icon);',
  'texture(c,b.r,down);if(b.id.equals("leavechat")){paint.setColor(Color.WHITE);paint.setTextSize(dp(12));paint.setTextAlign(Paint.Align.CENTER);c.drawText("Leave",b.r.centerX(),b.r.centerY()+dp(4),paint);paint.setTextAlign(Paint.Align.LEFT);}else icon(c,b.r,b.icon);')
 patch(P/'agent/src/com/wiktor/jogger/agent/MobileAgent.java',
  'try{System.load(System.getProperty("jogger.native"));',
  'try{RendererBootstrap.initialize();System.load(System.getProperty("jogger.native"));')
+# Respect the minimum accepted simulation distance; preserve unrelated options.
+patch(J/'Core.java','p.put("simulationDistance",quality?"6":"4");',
+ 'p.put("simulationDistance",quality?"6":"5");')
+# Duplicate asset names can share one hash. Never race two writes to its .part file.
+patch(J/'Core.java',
+ 'List<String> names=new ArrayList<>();objects.keys().forEachRemaining(names::add);',
+ 'List<String> names=new ArrayList<>();Set<String> hashes=new HashSet<>();for(Iterator<String> it=objects.keys();it.hasNext();){String name=it.next();if(hashes.add(objects.getJSONObject(name).getString("hash")))names.add(name);}')
+patch(J/'Core.java','List<String> opts=new ArrayList<>(Arrays.asList(',
+ 'new File(s.root,"native-cache").mkdirs();List<String> opts=new ArrayList<>(Arrays.asList(')
+# Log screen transitions, never chat text or account credentials.
+patch(P/'agent/src/com/wiktor/jogger/agent/MobileAgent.java',
+ 'private static Instrumentation instrumentation;private static boolean nativeLoaded;',
+ 'private static Instrumentation instrumentation;private static boolean nativeLoaded;private static String reportedScreen="";')
+patch(P/'agent/src/com/wiktor/jogger/agent/MobileAgent.java',
+ 'if(nativeLoaded)nativeHud(kind,size(w,"getGuiScaledWidth",640),size(w,"getGuiScaledHeight",360),option(op,"fov",70),option(op,"sensitivity",.5));',
+ 'int width=size(w,"getGuiScaledWidth",640),height=size(w,"getGuiScaledHeight",360);String raw=sc==null?"world":sc.getClass().getName();String tag=raw+"|"+width+"|"+height;if(!tag.equals(reportedScreen)){reportedScreen=tag;String readable=raw;for(Map.Entry<String,String> e:classes.entrySet())if(e.getValue().equals(raw)){readable=e.getKey();break;}System.out.println("[Jogger] Screen="+readable+" gui="+width+"x"+height);}if(nativeLoaded)nativeHud(kind,width,height,option(op,"fov",70),option(op,"sensitivity",.5));')
 print('Original source integration checks passed')
