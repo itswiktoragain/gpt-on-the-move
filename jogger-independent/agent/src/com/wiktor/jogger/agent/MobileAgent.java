@@ -66,8 +66,9 @@ public final class MobileAgent {
        @Override protected void onMethodExit(int opcode){if(opcode!=ATHROW)hook("afterPick");}
        @Override public void visitMaxs(int maxStack,int maxLocals) {
         visitLabel(end);visitTryCatchBlock(start,end,handler,null);visitLabel(handler);
-        Object[] locals=(access&ACC_STATIC)==0?new Object[]{name,Opcodes.FLOAT}:new Object[]{Opcodes.FLOAT};
-        visitFrame(F_NEW,locals.length,locals,1,new Object[]{"java/lang/Throwable"});
+        // Obfuscated bytecode may chop even argument locals. This finally handler
+        // reads no local variables, so TOP is the safe merge for every path.
+        visitFrame(F_NEW,0,new Object[0],1,new Object[]{"java/lang/Throwable"});
         hook("afterPick");mv.visitInsn(ATHROW);super.visitMaxs(Math.max(maxStack,1),maxLocals);
        }
       };

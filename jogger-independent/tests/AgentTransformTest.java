@@ -2,7 +2,7 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.reflect.*;
 import org.objectweb.asm.*;
 
-/** Verifies the actual production transformer, with compressed stack-map frames. */
+/** Actual transformer verification, including obfuscated frames that erase arguments. */
 public final class AgentTransformTest implements Opcodes {
  private static final String GAME="net/minecraft/client/renderer/GameRenderer";
  private static final String AGENT="com/wiktor/jogger/agent/MobileAgent";
@@ -11,7 +11,7 @@ public final class AgentTransformTest implements Opcodes {
   Class<?> define(String name,byte[] bytes){return defineClass(name,bytes,0,bytes.length);}
  }
  private static byte[] fixture(){
-  ClassWriter w=new ClassWriter(ClassWriter.COMPUTE_FRAMES|ClassWriter.COMPUTE_MAXS);
+  ClassWriter w=new ClassWriter(ClassWriter.COMPUTE_MAXS);
   w.visit(V1_8,ACC_PUBLIC,GAME,null,"java/lang/Object",null);
   MethodVisitor m=w.visitMethod(ACC_PUBLIC,"<init>","()V",null,null);
   m.visitCode();m.visitVarInsn(ALOAD,0);m.visitMethodInsn(INVOKESPECIAL,"java/lang/Object","<init>","()V",false);
@@ -22,9 +22,11 @@ public final class AgentTransformTest implements Opcodes {
   m.visitVarInsn(FLOAD,1);m.visitLdcInsn(-1.0f);m.visitInsn(FCMPG);m.visitJumpInsn(IFLT,explicit);
   m.visitLdcInsn("not-a-number");m.visitMethodInsn(INVOKESTATIC,"java/lang/Integer","parseInt","(Ljava/lang/String;)I",false);
   m.visitInsn(POP);m.visitJumpInsn(GOTO,done);m.visitLabel(explicit);
+  m.visitFrame(F_FULL,2,new Object[]{GAME,Opcodes.FLOAT},0,new Object[0]);
   m.visitTypeInsn(NEW,"java/lang/IllegalStateException");m.visitInsn(DUP);
   m.visitMethodInsn(INVOKESPECIAL,"java/lang/IllegalStateException","<init>","()V",false);m.visitInsn(ATHROW);
-  m.visitLabel(done);m.visitInsn(RETURN);m.visitMaxs(0,0);m.visitEnd();w.visitEnd();return w.toByteArray();
+  m.visitLabel(done);m.visitFrame(F_FULL,0,new Object[0],0,new Object[0]);
+  m.visitInsn(RETURN);m.visitMaxs(0,0);m.visitEnd();w.visitEnd();return w.toByteArray();
  }
  private static byte[] observer(){
   ClassWriter w=new ClassWriter(ClassWriter.COMPUTE_MAXS);w.visit(V1_8,ACC_PUBLIC,AGENT,null,"java/lang/Object",null);
@@ -51,6 +53,6 @@ public final class AgentTransformTest implements Opcodes {
   }
   if(counters.getField("before").getInt(null)!=3||counters.getField("after").getInt(null)!=3)throw new AssertionError("Touch orientation was not restored exactly once on every exit");
   if(transformer.transform(loader,"unrelated/Class",null,null,fixture())!=null)throw new AssertionError("Unrelated classes must not be modified");
-  System.out.println("PASS: actual agent bytecode loads and restores after normal, explicit and indirect exceptional exits");
+  System.out.println("PASS: original transformer handles erased argument frames and restores on all normal and exceptional exits");
  }
 }
