@@ -26,15 +26,28 @@ public final class WideStorageDebugCommands {
                 .requires(source -> source.hasPermissionLevel(2))
                 .then(CommandManager.literal("info").executes(context -> {
                     context.getSource().sendFeedback(() -> Text.literal(
-                        "Unbound Horizons experimental backend: virtual Y " +
-                        "-30,000,000..+30,000,000. Regular playable world remains " +
-                        "-4096..+4095. This is NOT yet real rendered world height."
+                        "Experimental virtual Y border: -29,999,984..+29,999,984; " +
+                        "absolute hard limits: +/-30,000,000. Current playable Minecraft " +
+                        "world still spans -4096..+4095; virtual storage is not rendered."
                     ), false);
                     return 1;
                 }))
+                .then(CommandManager.literal("check")
+                    .then(CommandManager.argument("y", IntegerArgumentType.integer(-30_000_000,30_000_000))
+                        .executes(ctx -> {
+                            int y = IntegerArgumentType.getInteger(ctx, "y");
+                            boolean playable = VerticalWorldBorder.isInsidePlayableY(y);
+                            boolean hard = VerticalWorldBorder.isHardStopReached(y);
+                            ctx.getSource().sendFeedback(() -> Text.literal(
+                                "Virtual Y=" + y + ": " + (hard ? "HARD STOP" :
+                                playable ? "INSIDE WORLD BORDER" : "16-BLOCK SAFETY BUFFER") +
+                                "; player movement cannot go past +/-29,999,984"
+                            ), false);
+                            return 1;
+                        })))
                 .then(CommandManager.literal("get")
                     .then(CommandManager.argument("x", IntegerArgumentType.integer(-30_000_000,30_000_000))
-                        .then(CommandManager.argument("y", IntegerArgumentType.integer(-30_000_000,30_000_000))
+                        .then(CommandManager.argument("y", IntegerArgumentType.integer(VerticalWorldBorder.MIN_PLAYABLE_Y,VerticalWorldBorder.MAX_PLAYABLE_Y))
                             .then(CommandManager.argument("z", IntegerArgumentType.integer(-30_000_000,30_000_000))
                                 .executes(ctx -> {
                                     ServerCommandSource source = ctx.getSource();
@@ -51,7 +64,7 @@ public final class WideStorageDebugCommands {
                                 })))))
                 .then(CommandManager.literal("set")
                     .then(CommandManager.argument("x", IntegerArgumentType.integer(-30_000_000,30_000_000))
-                        .then(CommandManager.argument("y", IntegerArgumentType.integer(-30_000_000,30_000_000))
+                        .then(CommandManager.argument("y", IntegerArgumentType.integer(VerticalWorldBorder.MIN_PLAYABLE_Y,VerticalWorldBorder.MAX_PLAYABLE_Y))
                             .then(CommandManager.argument("z", IntegerArgumentType.integer(-30_000_000,30_000_000))
                                 .then(CommandManager.argument("block", StringArgumentType.word())
                                     .executes(ctx -> {
