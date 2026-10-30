@@ -1,0 +1,112 @@
+name: Build Jogger Mobile 1.5.1
+on:
+  push:
+    branches: [minecraft-jogger-mobile]
+    paths: ['minecraft-jogger/orientation-1.5.1/**', '.github/workflows/build-minecraft-jogger-1.5.1.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: jogger-mobile151-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.1'
+          cache-read-only: false
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Install build tools
+        run: sdkmanager 'platforms;android-37.0' 'platforms;android-36.1' 'build-tools;37.0.0' 'ndk;27.3.13750724' 'cmake;3.22.1'
+      - name: Reconstruct pinned engine and apply Mobile 1.4
+        run: |
+          git clone --no-checkout https://github.com/AngelAuraMC/Amethyst-Android.git jogger-source
+          git -C jogger-source checkout --detach 28d6e12d68121b7dd75f2e841058a6b7cdfe4a29
+          git -C jogger-source config submodule.androidnsbypass.url https://github.com/alexytomi/androidnsbypass.git
+          git -C jogger-source submodule update --init --recursive
+          cp -a minecraft-jogger/overlay/. jogger-source/
+          python3 minecraft-jogger/classic-integrate.py jogger-source
+          python3 minecraft-jogger/mobile/apply.py jogger-source
+          python3 minecraft-jogger/keyboard-icons/apply.py jogger-source
+          python3 minecraft-jogger/inventory-ux/apply.py jogger-source
+          python3 minecraft-jogger/mobile-1.5/apply.py jogger-source
+          python3 minecraft-jogger/orientation-1.5.1/apply.py jogger-source
+          python3 jogger-source/scripts/jogger-prepare.py
+          (cd jogger-source && bash scripts/languagelist_updater.sh)
+      - name: Test tap-only focus, inventory actions, stack charge, pixel glyphs, vault and gestures
+        working-directory: jogger-source
+        run: |
+          mkdir -p mobile-test ../out
+          gradle --no-daemon --console=plain --max-workers=3 :jogger_touch_agent:classes
+          javac --release 8 -cp jogger_touch_agent/build/classes/java/main -d mobile-test \
+            app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/KeyboardState.java \
+            app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/KeyboardViewport.java \
+            app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/PixelGlyphMetrics.java \
+            app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/StackCharge.java \
+            app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/VaultCrypto.java \
+            app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicLogic.java \
+            app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MappingCatalog.java scripts/inventory-tests/*.java scripts/mobile15-tests/*.java scripts/mobile-tests/VaultTest.java scripts/tests/ClassicLogicTest.java
+          java -cp mobile-test:jogger_touch_agent/build/classes/java/main GestureRegression | tee ../out/regression.txt
+          java -cp mobile-test:jogger_touch_agent/build/classes/java/main TextInputTapTest | tee -a ../out/regression.txt
+          java -cp mobile-test:jogger_touch_agent/build/classes/java/main com.minecraftjogger.touch.InventoryActionsTest | tee -a ../out/regression.txt
+          java -cp mobile-test:jogger_touch_agent/build/classes/java/main HitClassificationRegression | tee -a ../out/regression.txt
+          java -cp mobile-test:jogger_touch_agent/build/classes/java/main com.minecraftjogger.touch.EditableTapRegression | tee -a ../out/regression.txt
+          java -cp mobile-test:jogger_touch_agent/build/classes/java/main TouchActionRegression | tee -a ../out/regression.txt
+          java -cp mobile-test:jogger_touch_agent/build/classes/java/main VaultTest | tee -a ../out/regression.txt
+          java -cp mobile-test:jogger_touch_agent/build/classes/java/main ClassicLogicTest | tee -a ../out/regression.txt
+          javac --release 8 -d mobile-test app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/RenderSurfacePolicy.java ../minecraft-jogger/orientation-1.5.1/RenderSurfacePolicyTest.java
+          java -cp mobile-test RenderSurfacePolicyTest | tee -a ../out/regression.txt
+      - name: Prepare temporary build signing
+        run: |
+          mkdir -p "$RUNNER_TEMP/jogger-signing"
+          chmod 700 "$RUNNER_TEMP/jogger-signing"
+          export JOGGER_KEYSTORE="$RUNNER_TEMP/jogger-signing/build.p12"
+          export JOGGER_KEYSTORE_PASSWORD="$(openssl rand -base64 36)"
+          echo "::add-mask::$JOGGER_KEYSTORE_PASSWORD"
+          keytool -genkeypair -keystore "$JOGGER_KEYSTORE" -storetype PKCS12 -storepass:env JOGGER_KEYSTORE_PASSWORD -keypass:env JOGGER_KEYSTORE_PASSWORD -alias jogger -keyalg RSA -keysize 3072 -validity 10000 -dname 'CN=Jogger CI intermediate, O=Jogger, C=PL'
+          echo "JOGGER_KEYSTORE=$JOGGER_KEYSTORE" >> "$GITHUB_ENV"
+          echo "JOGGER_KEYSTORE_PASSWORD=$JOGGER_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo 'CI artifact uses a temporary key. Delivery is re-signed locally with the retained 1.2 key; private signing material is never uploaded.' > out/SIGNING.txt
+      - name: Build release and exercise packaged agent
+        working-directory: jogger-source
+        run: |
+          gradle --no-daemon --console=plain --max-workers=3 :app_pojavlauncher:assembleRelease :jogger_touch_agent:verifyTouchProtocol
+          AGENT=app_pojavlauncher/src/main/assets/components/jogger_touch_agent/jogger_touch_agent.jar
+          python3 jogger_touch_agent/tests/agent_socket_test.py "$JAVA_HOME/bin/java" "$AGENT" jogger_touch_agent/build/classes/java/test | tee -a ../out/keyboard-tests.txt
+          mkdir -p mobile-test-source
+          sed 's/org.objectweb.asm/com.minecraftjogger.internal.asm/g' scripts/tests/FovFrameRegression.java > mobile-test-source/FovFrameRegression.java
+          javac -cp "$AGENT" -d mobile-test mobile-test-source/FovFrameRegression.java
+          java -Xverify:all -cp "mobile-test:$AGENT" FovFrameRegression | tee -a ../out/keyboard-tests.txt
+      - name: Verify and package APK
+        run: |
+          cp jogger-source/app_pojavlauncher/build/outputs/apk/release/app_pojavlauncher-release.apk out/Minecraft-Jogger-1.5.1-Mobile-CI.apk
+          cp jogger-source/app_pojavlauncher/src/main/assets/components/jogger_touch_agent/jogger_touch_agent.jar out/Minecraft-Jogger-1.5.1-Touch-Agent.jar
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs out/Minecraft-Jogger-1.5.1-Mobile-CI.apk > out/signature-ci.txt
+          "$ANDROID_HOME/build-tools/37.0.0/aapt2" dump badging out/Minecraft-Jogger-1.5.1-Mobile-CI.apk > out/apk-info.txt
+          cp minecraft-jogger/mobile-1.5/mobile15.patch out/
+          cp minecraft-jogger/orientation-1.5.1/RenderSurfacePolicy.java out/
+          cp minecraft-jogger/orientation-1.5.1/apply.py out/orientation-repair-source.py
+          mkdir -p out/verification-tools
+          cp "$ANDROID_HOME/build-tools/37.0.0/lib/apksigner.jar" out/verification-tools/
+          grep -q "versionCode='15100'" out/apk-info.txt
+          cd out && sha256sum *.apk *.jar > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Minecraft-Jogger-1.5.1-Mobile-APK-CI
+          path: out/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Remove temporary signing key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/jogger-signing"
