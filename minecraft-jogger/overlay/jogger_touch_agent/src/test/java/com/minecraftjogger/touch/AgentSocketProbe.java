@@ -1,10 +1,11 @@
 package com.minecraftjogger.touch;
 
-/** Starts only from the integration test, after the JVM has loaded the packaged premain agent. */
+/** Keeps the fixture JVM alive while the real packaged premain/socket path is tested. */
 public final class AgentSocketProbe {
     public static void main(String[] args) throws Exception {
-        if (!"1.0.0".equals(System.getProperty("minecraftjogger.touch.agent"))) {
-            throw new AssertionError("The packaged premain agent did not start");
+        String version = System.getProperty("minecraftjogger.touch.agent");
+        if (!"1.1.0".equals(version)) {
+            throw new AssertionError("Expected Classic touch agent 1.1.0, found: " + version);
         }
         Thread.sleep(5000);
     }
