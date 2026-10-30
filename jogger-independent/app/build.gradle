@@ -1,0 +1,28 @@
+plugins {
+    id 'com.android.application'
+}
+android {
+    namespace 'com.wiktor.jogger'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.wiktor.jogger'
+        minSdk 29
+        targetSdk 32
+        versionCode 2
+        versionName '0.2.0-independent-preview'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    packaging {
+        resources {
+            excludes += ['META-INF/DEPENDENCIES', 'META-INF/NOTICE']
+        }
+    }
+}
