@@ -50,10 +50,12 @@ public final class SparseVerticalStore implements AutoCloseable {
     }
 
     public synchronized String get(WideBlockPos pos) throws IOException {
+        VerticalWorldBorder.requireInsidePlayableY(pos.y());
         return load(key(pos)).getOrDefault(pos.sectionBlockIndex(), AIR);
     }
 
     public synchronized void set(WideBlockPos pos, String blockId) throws IOException {
+        VerticalWorldBorder.requireInsidePlayableY(pos.y());
         requireBlockId(blockId);
         SectionKey key = key(pos);
         HashMap<Integer, String> blocks = load(key);
