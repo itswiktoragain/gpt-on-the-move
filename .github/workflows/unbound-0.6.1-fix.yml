@@ -1,0 +1,113 @@
+name: Unbound Horizons 0.6.1 Safe Deep Chunk Generation
+on:
+  push:
+    branches: [fix/unbound-0.6.1-worldgen]
+    paths:
+      - 'unbound-horizons/**'
+      - '.github/workflows/unbound-0.6.1-fix.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.12.1'
+      - name: Compile and remap Minecraft Fabric JAR
+        working-directory: unbound-horizons
+        run: gradle build --no-daemon --console=plain
+      - name: Test 3D cubic generator and persistent block edits
+        working-directory: unbound-horizons
+        shell: bash
+        run: |
+          set -eu
+          mkdir -p /tmp/unbound-cubic-test
+          javac -d /tmp/unbound-cubic-test \
+            src/main/java/dev/wiktor/unboundhorizons/vertical/WideBlockPos.java \
+            src/main/java/dev/wiktor/unboundhorizons/vertical/VerticalWorldBorder.java \
+            src/main/java/dev/wiktor/unboundhorizons/vertical/SparseVerticalStore.java \
+            src/main/java/dev/wiktor/unboundhorizons/cubic/CubicBiome.java \
+            src/main/java/dev/wiktor/unboundhorizons/cubic/CubicBlocks.java \
+            src/main/java/dev/wiktor/unboundhorizons/cubic/CubicChunk.java \
+            src/main/java/dev/wiktor/unboundhorizons/cubic/CubicTerrainGenerator.java \
+            src/main/java/dev/wiktor/unboundhorizons/cubic/CubicTerrainWorld.java \
+            src/test/java/dev/wiktor/unboundhorizons/vertical/WideStorageSelfTest.java \
+            src/test/java/dev/wiktor/unboundhorizons/cubic/CubicTerrainWorldSelfTest.java
+          java -cp /tmp/unbound-cubic-test dev.wiktor.unboundhorizons.vertical.WideStorageSelfTest
+          java -cp /tmp/unbound-cubic-test dev.wiktor.unboundhorizons.cubic.CubicTerrainWorldSelfTest
+      - name: Diagnose intermediary class in actual crash stack
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import glob,zipfile
+          paths=glob.glob('/home/runner/.gradle/caches/**/*yarn*build.8*.jar',recursive=True)
+          found=False
+          for path in paths:
+              try:
+                  with zipfile.ZipFile(path) as archive:
+                      if 'mappings/mappings.tiny' not in archive.namelist():continue
+                      for line in archive.read('mappings/mappings.tiny').decode().splitlines():
+                          if line.startswith('c\\t') and any(t in line for t in ['class_3085','class_3031','class_6796']):
+                              print('CLASS_FROM_CRASH',line)
+                              found=True
+                      if found:break
+              except Exception as error:
+                  print('Mapping scan skipped:',error)
+          if not found:print('No local class mappings available, optional diagnostic skipped')
+          PY
+      - name: Start Minecraft with bounded deep pools instead of cross-column lakes
+        working-directory: unbound-horizons
+        shell: bash
+        run: |
+          set -eu
+          mkdir -p run
+          printf 'eula=true\n' > run/eula.txt
+          cat > run/server.properties <<'PROPS'
+          max-players=1
+          view-distance=4
+          simulation-distance=4
+          level-type=minecraft:normal
+          generate-structures=false
+          online-mode=false
+          spawn-protection=0
+          PROPS
+          set +e
+          JAVA_TOOL_OPTIONS="-Dunboundhorizons.verifyCubic=true -Xmx5G" timeout --signal=INT --kill-after=10s 230s gradle runServer --no-daemon --console=plain > /tmp/unbound-cubic-server.log 2>&1
+          code=$?
+          set -e
+          echo "Server runner exit: $code"
+          tail -n 160 /tmp/unbound-cubic-server.log
+          grep -q 'UNBOUND_CUBIC_BACKEND_PASS' /tmp/unbound-cubic-server.log
+          grep -Eq 'Done \([0-9.,]+s\)!' /tmp/unbound-cubic-server.log
+          grep -q 'Registered deep native-world ores' /tmp/unbound-cubic-server.log
+          if grep -Eq 'UNBOUND_CUBIC_BACKEND_FAIL|Failed to parse|Mixin transformation failed|Fatal Exception|Requested chunk unavailable during world generation|Exception generating new chunk' /tmp/unbound-cubic-server.log; then
+            echo "::error::3D cubic or native-world registry test failed; refusing release"
+            exit 1
+          fi
+          echo "Cubic generator and chunk-safe deep features startup verified"
+      - name: Upload tested Fabric preview JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: unboundhorizons-1.21.4-v0.6.1-safe-chunk-PREVIEW
+          path: unbound-horizons/build/libs/unboundhorizons-0.6.1-preview.jar
+          if-no-files-found: error
+      - name: Publish experimental JAR on worldgen-fix branch
+        run: |
+          mkdir -p unbound-horizons/dist
+          cp unbound-horizons/build/libs/unboundhorizons-0.6.1-preview.jar unbound-horizons/dist/unboundhorizons-0.6.1-preview.jar
+          git config user.name 'GitHub Actions'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -f unbound-horizons/dist/unboundhorizons-0.6.1-preview.jar
+          if ! git diff --cached --quiet; then
+            git commit -m 'Publish cubic generation 0.6.0 preview [skip ci]'
+            git pull --rebase origin fix/unbound-0.6.1-worldgen
+            git push
+          fi
