@@ -11,7 +11,7 @@ import java.nio.ByteOrder;
  * avoids packing three coordinates into a single long.
  *
  * Coordinates are immutable and serialise as three signed 32-bit integers
- * (12 bytes). Each axis retains its full requested range.
+ * (12 bytes). Each axis retains its full technical 30M range; vertical PLAYABLE coordinates end at +/-29,999,984.
  */
 public record WideBlockPos(int x, int y, int z) {
     public static final int BORDER = 30_000_000;

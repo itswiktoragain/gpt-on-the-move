@@ -1,50 +1,51 @@
-# Unbound Horizons — World-Border Y Engine Prototype
+# Unbound Horizons 0.5.1-preview — 16-block Y border margin
 
-**Minecraft 1.21.4 / Fabric Loader / Java 21 / Fabric API**
+Minecraft 1.21.4, Fabric, Fabric API, Java 21.
 
-## What works today
+## Boundary specification
 
-- Existing Unbound Horizons v0.4.2 behavior remains: **playable Y=-4096..+4095**,
-  naturally generated lower terrain, removed bedrock, deep cave-air without
-  automatic lava, no built-in LOD. Distant Horizons remains separate.
-- Experimental 12-byte wide coordinates can represent all three axes at
-  **-30,000,000 through +30,000,000**, without collisions at the bounds.
-- New independent sparse 16x16x16 virtual storage writes block identifiers
-  only for nonempty sections (with gzip compression and atomic writes).
-- Lazy LRU storage limits loaded virtual sections to 128, independent of total
-  theoretical vertical height.
-- A Java self-test verifies 150,000 random coordinate roundtrips,
-  both extreme Y coordinates, collision-prone layer pairs, 220 cache
-  evictions, and multiple clean storage reopens.
-- Built-in experimental diagnostic commands (OP level 2):
-    `/unboundheight info`
-    `/unboundheight set <x> <y> <z> <block>`
-    `/unboundheight get <x> <y> <z>`
+- **Actual virtual Y world border:** -29,999,984 to +29,999,984
+- **Absolute coordinate hard stops:** -30,000,000 and +30,000,000
+- **Safety buffer:** 16 blocks at each end
+- Player-foot positions are clamped to the actual border and outgoing
+  vertical velocity is zeroed at the border, as a safeguard for future
+  native vertical-range integration.
+- Sparse-virtual-section **writes and reads are rejected** in the 16-block
+  safety buffer; records there cannot be placed.
+- The 12-byte coordinate type still represents the technical +/-30M
+  endpoints, but they are deliberately not playable or writable blocks.
 
-## Not yet implemented — do NOT confuse with playable world height
+## What is actually playable
 
-**This JAR does NOT make the actual Minecraft world 60 million blocks tall.**
-The new sparse storage is a separate experimental engine component. The
-diagnostic commands store independent *virtual records*, NOT visible normal
-Minecraft blocks. They cannot be mined, rendered, collided with or used by
-vanilla world generation. Do not mistake a virtual-storage test pass for
-a finished infinite-height mod.
+**Current actual Minecraft gameplay remains Y=-4096..+4095.** This preview
+DOES NOT make the native world 60 million blocks tall. The new border and
+sparse storage form an engine prototype; vanilla chunk storage,
+rendering, physics, packets and generation are not connected to the
+60-million-height virtual space yet.
 
-Minecraft's ordinary chunk columns use a section array sized by dimension
-height, which cannot be made 60 million blocks tall without replacing the
-entire native chunk/storage/network/light/heightmap architecture.
-Distant Horizons integration also needs engineering after native cubic
-chunk support exists. See `docs/world-border-y-engine.md`.
+A server-side player tick guard and general Entity.setPosition guard are
+implemented, but are not evidence that every movement path at Y=-30M is
+covered: the full native cubic height engine remains unimplemented.
 
-## Data safety
+## Developer diagnostics (operator permissions)
 
-- The existing v0.4.2 engine also changes packed BlockPos Y bits and the
-  section Y NBT type; it is **not suitable for existing vanilla worlds**.
-- Create a new throwaway Minecraft world. Existing-world corruption is
-  possible if you use the underlying 0.4.2 engine on a valued save.
-- Never install the 0.5.0 preview alongside a separate Unbound Horizons
-  JAR; both use the same mod ID.
-- Virtual test data is saved under the world folder at
-  `unboundhorizons/wide_sections/<dimension>/`.
-- This build is an **early backend prototype**, not a working complete
-  world-border-Y gameplay release.
+- `/unboundheight info` — display limits
+- `/unboundheight check -30000000` — hard stop
+- `/unboundheight check -29999985` — 16-block safety buffer
+- `/unboundheight check -29999984` — actual world border
+- `/unboundheight set 0 -29999984 0 minecraft:stone` — write a VIRTUAL record
+- `/unboundheight get 0 -29999984 0` — read a VIRTUAL record
+
+**Virtual records are NOT actual Minecraft blocks.**
+
+## Safety and compatibility
+
+Do not open valued saves with this experimental mod. It still uses the
+previous engine's 14-bit Y packed BlockPos and int-section-NBT changes
+for the playable -4096..4095 world. Make a fresh test world.
+Distant Horizons integration for extended-height worlds is still
+unverified and the built-in LOD remains removed.
+
+Tests include full-range coordinate serialization, both actual border
+positions, hard-stop write rejections, forced clamp behavior, 220 LRU
+evictions, persistence across restarts, and a Minecraft server startup.

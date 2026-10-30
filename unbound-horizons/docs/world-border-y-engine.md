@@ -47,3 +47,15 @@ of slots in each loaded column is impractical, even if most are air.
 **No false completion claims:** passing sparse-storage tests does not
 prove native gameplay works at Y=30M. The remaining work is a major
 Minecraft engine replacement, not another dimension JSON setting.
+
+## Updated border model (0.5.1-preview)
+
+The future native world uses a **16-block Y safety buffer**:
+- Native playable space will stop at Y=-29,999,984 / +29,999,984.
+- Y=-30,000,000 / +30,000,000 is a nonplayable absolute hard stop.
+- The backend still represents coordinates at the hard stop but refuses
+  block reads/writes there. Teleport and player movement must be clamped at
+  the actual border, with vertical velocity cancelled outward.
+- The current playable vanilla world is still -4096..4095. Runtime mixin
+  safeguards have no practical effect until sparse vertical gameplay is
+  implemented.

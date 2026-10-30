@@ -29,22 +29,33 @@ public final class UnboundHorizons implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        LOG.info("Unbound Horizons: tested playable Y=-4096..4095; experimental sparse vertical backend addressable to +/-30M.");
+        LOG.info("Unbound Horizons: tested playable Y=-4096..4095; experimental virtual Y world border at +/-29,999,984, absolute hard stop +/-30M.");
         WideStorageDebugCommands.register();
         if (Boolean.getBoolean("unboundhorizons.verifyWideStorage")) {
             ServerLifecycleEvents.SERVER_STARTED.register(server -> {
                 Path path = server.getSavePath(WorldSavePath.ROOT).resolve("unboundhorizons")
                     .resolve("wide_storage_ci_test");
-                WideBlockPos bottom = new WideBlockPos(30_000_000,-30_000_000,-30_000_000);
-                WideBlockPos top = new WideBlockPos(30_000_000,30_000_000,-30_000_000);
+                WideBlockPos bottom = new WideBlockPos(30_000_000,-29_999_984,-30_000_000);
+                WideBlockPos top = new WideBlockPos(30_000_000,29_999_984,-30_000_000);
                 try {
                     try(SparseVerticalStore store=new SparseVerticalStore(path)) {
                         store.set(bottom, "minecraft:deepslate");
                         store.set(top, "minecraft:stone");
                     }
                     try(SparseVerticalStore reopened=new SparseVerticalStore(path)) {
+                        boolean rejectedHardStop = false;
+                        try {
+                            reopened.set(new WideBlockPos(0, -30_000_000, 0), "minecraft:stone");
+                        } catch (IllegalArgumentException correct) {
+                            rejectedHardStop = true;
+                        }
+                        boolean marginCorrect =
+                            dev.wiktor.unboundhorizons.vertical.VerticalWorldBorder.MIN_PLAYABLE_Y == -29_999_984
+                            && dev.wiktor.unboundhorizons.vertical.VerticalWorldBorder.MAX_PLAYABLE_Y == 29_999_984
+                            && dev.wiktor.unboundhorizons.vertical.VerticalWorldBorder.clampPlayerFeetY(-30_000_000) == -29_999_984;
                         if ("minecraft:deepslate".equals(reopened.get(bottom))
-                            && "minecraft:stone".equals(reopened.get(top))) {
+                            && "minecraft:stone".equals(reopened.get(top))
+                            && rejectedHardStop && marginCorrect) {
                             LOG.info("UNBOUND_WIDE_BACKEND_PASS");
                         } else {
                             LOG.error("UNBOUND_WIDE_BACKEND_FAIL: data lost");

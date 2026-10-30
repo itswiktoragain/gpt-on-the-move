@@ -9,7 +9,8 @@
     "LivingEntityMixin",
     "DeepAquiferMixin",
     "SerializedChunkNbtMixin",
-    "SectionDataYAccessor"
+    "SectionDataYAccessor",
+    "ServerPlayerYBorderMixin"
   ],
   "injectors": {
     "defaultRequire": 1
