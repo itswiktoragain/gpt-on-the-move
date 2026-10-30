@@ -1,5 +1,8 @@
 /* Original Jogger JVM host. MIT. The game runs in the :game process. */
 #include <jni.h>
+#ifndef JNI_VERSION_1_8
+#define JNI_VERSION_1_8 0x00010008
+#endif
 #include <dlfcn.h>
 #include <dirent.h>
 #include <stdlib.h>
@@ -32,9 +35,9 @@ JNIEXPORT jstring JNICALL Java_com_wiktor_jogger_Native_boot(JNIEnv*art,jclass c
  jogger_renderer(r);snprintf(p,sizeof p,"%s/lib/server/libjvm.so",h);void*lib=dlopen(p,RTLD_NOW|RTLD_GLOBAL);
  if(!lib){const char*err=dlerror();fprintf(stderr,"JVM load failed: %s\n",err);return (*art)->NewStringUTF(art,err?err:"Could not load libjvm");}
  jint(*create)(JavaVM**,void**,void*)=dlsym(lib,"JNI_CreateJavaVM");if(!create)return (*art)->NewStringUTF(art,"OpenJDK JNI_CreateJavaVM not exported");
- int count=(*art)->GetArrayLength(art,opts);JavaVMOption*options=calloc(count,sizeof(JavaVMOption));for(int i=0;i<count;i++){jstring s=(*art)->GetObjectArrayElement(art,opts,i);options[i].optionString=str(art,s);(*art)->DeleteLocalRef(art,s);}
+ int count=(*art)->GetArrayLength(art,opts);JavaVMOption*options=calloc(count,sizeof(JavaVMOption));if(!options)return (*art)->NewStringUTF(art,"Not enough memory for JVM options");for(int i=0;i<count;i++){jstring s=(*art)->GetObjectArrayElement(art,opts,i);options[i].optionString=str(art,s);(*art)->DeleteLocalRef(art,s);}
  JavaVMInitArgs init={.version=JNI_VERSION_1_8,.nOptions=count,.options=options,.ignoreUnrecognized=JNI_FALSE};JavaVM*vm=NULL;JNIEnv*env=NULL;int rc=create(&vm,(void**)&env,&init);
- for(int i=0;i<count;i++)free(options[i].optionString);free(options);if(rc!=JNI_OK){snprintf(p,sizeof p,"OpenJDK creation returned %d. See latest-jogger.log",rc);return (*art)->NewStringUTF(art,p);}
+ for(int i=0;i<count;i++)free((void*)options[i].optionString);free(options);if(rc!=JNI_OK){snprintf(p,sizeof p,"OpenJDK creation returned %d. See latest-jogger.log",rc);return (*art)->NewStringUTF(art,p);}
  printf("OpenJDK VM created successfully\n");for(char*q=mc;*q;q++)if(*q=='.')*q='/';jclass klass=(*env)->FindClass(env,mc);
  if(!klass){(*env)->ExceptionDescribe(env);return (*art)->NewStringUTF(art,"Game main class could not load; see latest-jogger.log");}
  jmethodID entry=(*env)->GetStaticMethodID(env,klass,"main","([Ljava/lang/String;)V");if(!entry){(*env)->ExceptionDescribe(env);return (*art)->NewStringUTF(art,"Game entrypoint missing");}
