@@ -1,0 +1,910 @@
+diff --git a/app_pojavlauncher/build.gradle b/app_pojavlauncher/build.gradle
+--- a/app_pojavlauncher/build.gradle
++++ b/app_pojavlauncher/build.gradle
+@@ -103,8 +103,8 @@
+         applicationId "com.wiktor.minecraftjogger.mobile"
+         minSdkVersion 29
+         targetSdkVersion 34
+-        versionCode 13000
+-        versionName "1.3.0-mobile"
++        versionCode 14000
++        versionName "1.4.0-mobile"
+         multiDexEnabled true //important
+         ndk { abiFilters "arm64-v8a", "x86_64" }
+         resValue 'string', 'curseforge_api_key', getCFApiKey()
+diff --git a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/MainActivity.java b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/MainActivity.java
+--- a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/MainActivity.java
++++ b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/MainActivity.java
+@@ -632,6 +632,25 @@
+     }
+ 
+     @Override
++    private float keyboardTouchDownX,keyboardTouchDownY;
++    private long keyboardTouchDownTime;
++    @Override public boolean dispatchTouchEvent(android.view.MotionEvent event) {
++        int action=event.getActionMasked();
++        if(action==android.view.MotionEvent.ACTION_DOWN) {
++            keyboardTouchDownX=event.getX();keyboardTouchDownY=event.getY();keyboardTouchDownTime=event.getEventTime();
++        }
++        boolean result=super.dispatchTouchEvent(event);
++        if(action==android.view.MotionEvent.ACTION_UP && contentFrame!=null &&
++            event.getEventTime()-keyboardTouchDownTime<700L &&
++            Math.hypot(event.getX()-keyboardTouchDownX,event.getY()-keyboardTouchDownY)<18f*getResources().getDisplayMetrics().density) {
++            int[] position=new int[2];contentFrame.getLocationOnScreen(position);
++            float x=(event.getRawX()-position[0])/Math.max(1f,contentFrame.getWidth());
++            float y=(event.getRawY()-position[1])/Math.max(1f,contentFrame.getHeight());
++            contentFrame.postDelayed(()->net.kdt.pojavlaunch.jogger.mobile.MinecraftKeyboard.gameTap(x,y),120);
++        }
++        return result;
++    }
++
+     public boolean dispatchKeyEvent(KeyEvent event) {
+         if(event.getKeyCode()==KeyEvent.KEYCODE_BACK && net.kdt.pojavlaunch.jogger.mobile.MinecraftKeyboard.visible()) {
+             if(event.getAction()==KeyEvent.ACTION_UP) net.kdt.pojavlaunch.jogger.mobile.MinecraftKeyboard.hide();
+@@ -820,7 +839,7 @@
+     @Override
+     public void updateInputAreaRect(@Nullable RectF rect) {
+         inputAreaRect = rect;
+-        if(rect!=null) net.kdt.pojavlaunch.jogger.mobile.MinecraftKeyboard.show();
++        net.kdt.pojavlaunch.jogger.mobile.MinecraftKeyboard.inputArea(rect);
+         refreshImeTranslation();
+     }
+ 
+diff --git a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/JoggerTouchBridge.java b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/JoggerTouchBridge.java
+--- a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/JoggerTouchBridge.java
++++ b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/JoggerTouchBridge.java
+@@ -179,8 +179,17 @@
+     public static boolean requestTap(long request) {
+         synchronized(LOCK){Connection c=connection;return c!=null&&c.queue.offer("C "+epoch+" "+request);}
+     }
+-    public static void requestTextFocus(){
+-        synchronized(LOCK){Connection c=connection;if(c!=null&&!c.queue.offer("Q "+epoch))disconnect(c);}
++    public static void requestTextFocus(float x,float y){
++        if(!Float.isFinite(x)||!Float.isFinite(y)||x<0f||x>1f||y<0f||y>1f)return;
++        synchronized(LOCK){Connection c=connection;if(c!=null&&!c.queue.offer("Q "+epoch+" "+x+" "+y))disconnect(c);}
++    }
++    public static boolean requestInventoryBegin(long request,float x,float y){
++        if(!Float.isFinite(x)||!Float.isFinite(y)||x<0||x>1||y<0||y>1)return false;
++        synchronized(LOCK){Connection c=connection;return c!=null&&c.queue.offer("B "+epoch+" "+request+" "+x+" "+y);}
++    }
++    public static boolean requestInventoryDrop(long request,float x,float y,int count){
++        if(!Float.isFinite(x)||!Float.isFinite(y)||x<0||x>1||y<0||y>1||count<1||count>999)return false;
++        synchronized(LOCK){Connection c=connection;return c!=null&&c.queue.offer("D "+epoch+" "+request+" "+x+" "+y+" "+count);}
+     }
+     private static void dispatch(Connection current, String line) {
+         try {
+@@ -200,6 +209,22 @@
+                 if(focus<0 || screenToken<0 || !("0".equals(f[4])||"1".equals(f[4])))return;
+                 MAIN.post(()->{if(connection==current&&epoch==incomingEpoch)
+                     net.kdt.pojavlaunch.jogger.mobile.MinecraftKeyboard.report(focus,screenToken,"1".equals(f[4]));});
++                return;
++            }
++            if ("B".equals(f[0]) && f.length == 5) {
++                long req=Long.parseLong(f[2]);int count=Integer.parseInt(f[3]),creative=Integer.parseInt(f[4]);
++                if(req>0&&count>=0&&count<=999&&(creative==0||creative==1))MAIN.post(()->{
++                    if(connection==current&&epoch==incomingEpoch)
++                        net.kdt.pojavlaunch.jogger.mobile.InventoryTouch.beginReply(req,count,creative);
++                });
++                return;
++            }
++            if ("D".equals(f[0]) && f.length == 4) {
++                long req=Long.parseLong(f[2]);int status=Integer.parseInt(f[3]);
++                if(req>0&&status>=0&&status<=2)MAIN.post(()->{
++                    if(connection==current&&epoch==incomingEpoch)
++                        net.kdt.pojavlaunch.jogger.mobile.InventoryTouch.doneReply(req,status);
++                });
+                 return;
+             }
+             if ("C".equals(f[0]) && f.length == 4) {
+diff --git a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java
+--- a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java
++++ b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java
+@@ -71,7 +71,7 @@
+     private static final String[] MENU_ICON={"0000000","1111111","0000000","1111111","0000000","1111111","0000000"};
+     private static final String[] TYPE_ICON={"0000000","1111111","1010101","1101011","1010101","1100011","1111111"};
+     private static final String[] SEND_ICON={"0001000","0001100","1111110","1111111","1111110","0001100","0001000"};
+-    private static final String[] DOTS={"0000000","0000000","0000000","1101101","1101101","0000000","0000000"};
++    private static final String[] DOTS={"00000000","00000000","00000000","11011011","11011011","00000000","00000000"};
+ 
+     public ClassicOverlay(MainActivity activity, MinecraftProfile profile, Runnable appMenu) {
+         super(activity); this.activity=activity; this.appMenu=appMenu;
+@@ -185,6 +185,7 @@
+             boolean pressed=b.id==CROUCH?sneaking:pressed(b);
+             drawButton(canvas,b,pressed);
+         }
++        if(mode.equals("INVENTORY"))inventoryTouch.draw(canvas);
+         if(playing() && raySupported && gesture.active && !gesture.moved && targetEnabled()) {
+             paint.setColor(0xffeeeeee);paint.setAlpha(200);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(dp(1.5f));
+             canvas.drawCircle(gesture.startX,gesture.startY,dp(7),paint);paint.setStyle(Paint.Style.FILL);
+@@ -217,11 +218,12 @@
+         } else if(button.icon!=null) {
+             canvas.save();canvas.translate(r.centerX(),r.centerY());
+             if(button.id==LEFT)canvas.rotate(-90);else if(button.id==RIGHT)canvas.rotate(90);else if(button.id==DOWN)canvas.rotate(180);else if(button.id==UL)canvas.rotate(-45);else if(button.id==UR)canvas.rotate(45);
+-            float pixel=Math.max(1,(float)Math.floor(Math.min(r.width(),r.height())*.075f));
++            int iconCols=0;for(String line:button.icon)iconCols=Math.max(iconCols,line.length());
++            float pixel=Math.max(1,(float)Math.floor(Math.min(r.width()/(iconCols+3f),r.height()/(button.icon.length+3f))));
+             for(int pass=0;pass<2;pass++) {
+                 paint.setColor(pass==0?0xff202020:0xfff4f4f4);float offset=pass==0?pixel*.5f:0;
+                 for(int row=0;row<button.icon.length;row++)for(int col=0;col<button.icon[row].length();col++)if(button.icon[row].charAt(col)=='1') {
+-                    float px=(col-3.5f)*pixel+offset,py=(row-3.5f)*pixel+offset;canvas.drawRect(px,py,px+pixel,py+pixel,paint);
++                    float px=(col-iconCols/2f)*pixel+offset,py=(row-button.icon.length/2f)*pixel+offset;canvas.drawRect(px,py,px+pixel,py+pixel,paint);
+                 }
+             }canvas.restore();
+         }
+@@ -319,7 +321,7 @@
+         if(id==BAG&&playing()){release();pulse(inventory);mode="SCREEN";return;}
+         if(id==CHAT&&playing()) {
+             release();pulse(chat);mode="CHAT";
+-            handler.postDelayed(()->{if(!stopped&&mode.equals("CHAT")) net.kdt.pojavlaunch.jogger.mobile.MinecraftKeyboard.show();},200);return;
++            return;
+         }
+         if(id==PAUSE||id==BACK){release();pulse(256);hideKeyboard();mode="SCREEN";return;}
+         if(id==SEND){pulse(257);hideKeyboard();mode="SCREEN";return;}
+diff --git a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/InventoryTouch.java b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/InventoryTouch.java
+--- a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/InventoryTouch.java
++++ b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/InventoryTouch.java
+@@ -1,38 +1,100 @@
+ package net.kdt.pojavlaunch.jogger.mobile;
++
++import android.graphics.*;
+ import android.os.*;
+-import android.view.MotionEvent;
+-import android.view.View;
++import android.view.*;
++import android.widget.Toast;
++import net.kdt.pojavlaunch.jogger.JoggerTouchBridge;
+ import org.lwjgl.glfw.CallbackBridge;
++import java.lang.ref.WeakReference;
++import java.util.concurrent.atomic.AtomicLong;
+ 
+-/** Native Java touchscreen inventory gestures, with a two-click drag fallback for pre-touchscreen clients. */
++/** Preview-first inventory dragging; server-safe item actions are handled by the game adapter.
++ * If the adapter does not support a version, fall back to the original touchscreen clicks.
++ */
+ public final class InventoryTouch {
++    private static WeakReference<InventoryTouch> live=new WeakReference<>(null);
++    private static final AtomicLong IDS=new AtomicLong();
+     private final View view;private final Handler handler=new Handler(Looper.getMainLooper());
+-    private int pointer=-1,generation;private float sx,sy,x,y;private boolean nativeTouch,down,drag,picked,ended;
+-    public InventoryTouch(View view){this.view=view;}
++    private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
++    private int pointer=-1,generation,count,creative,selected;
++    private long start,request,dragHeldMs;private float sx,sy,x,y,scale,charge;
++    private boolean down,drag,full,waiting,ended,canQuery;
++    public InventoryTouch(View v){view=v;scale=v.getResources().getDisplayMetrics().density;live=new WeakReference<>(this);}
+     public boolean active(){return pointer>=0;}
+-    private float gx(float x){return x*Math.max(1,CallbackBridge.windowWidth)/Math.max(1,view.getWidth());}
+-    private float gy(float y){return y*Math.max(1,CallbackBridge.windowHeight)/Math.max(1,view.getHeight());}
+-    private void move(float x,float y){CallbackBridge.sendCursorPos(gx(x),gy(y));}
+-    private void button(boolean b,float x,float y){CallbackBridge.putMouseEventWithCoords(0,b,gx(x),gy(y));down=b;}
++    private float gx(float px){return px*Math.max(1,CallbackBridge.windowWidth)/Math.max(1,view.getWidth());}
++    private float gy(float py){return py*Math.max(1,CallbackBridge.windowHeight)/Math.max(1,view.getHeight());}
++    private float nx(float px){return Math.min(1f,Math.max(0f,px/Math.max(1f,view.getWidth())));}
++    private float ny(float py){return Math.min(1f,Math.max(0f,py/Math.max(1f,view.getHeight())));}
++    private void cursor(float px,float py){CallbackBridge.sendCursorPos(gx(px),gy(py));}
++    private void mouse(boolean press,float px,float py){CallbackBridge.putMouseEventWithCoords(0,press,gx(px),gy(py));down=press;}
++    private final Runnable redraw=new Runnable(){@Override public void run(){if(pointer>=0&&!drag&&SystemClock.uptimeMillis()-start>=StackCharge.GRACE_MS){view.invalidate();handler.postDelayed(this,50);}}};
++    public static void beginReply(long id,int items,int isCreative){InventoryTouch i=live.get();if(i!=null)i.handler.post(()->i.onBegin(id,items,isCreative));}
++    private void onBegin(long id,int items,int isCreative){if(id!=request||items<0)return;count=items;creative=isCreative;canQuery=items>0;
++        if(drag){selected=StackCharge.selected(count,dragHeldMs);charge=StackCharge.fraction(dragHeldMs);}
++        if(waiting&&drag){waiting=false;if(canQuery)sendDrop();else legacyDrag();}
++    }
++    public static void doneReply(long id,int status){InventoryTouch i=live.get();if(i!=null)i.handler.post(()->{
++        if(i.request!=id)return;
++        if(status==0)Toast.makeText(i.view.getContext(),"This inventory cannot accept that drag",Toast.LENGTH_SHORT).show();
++        i.request=-1;
++    });}
+     public boolean event(MotionEvent e,boolean nativeAvailable){
+         int action=e.getActionMasked(),index=e.getActionIndex();
+-        if(action==MotionEvent.ACTION_DOWN){cancel();generation++;pointer=e.getPointerId(index);sx=x=e.getX(index);sy=y=e.getY(index);nativeTouch=nativeAvailable;drag=picked=ended=false;move(x,y);if(nativeTouch)button(true,x,y);return true;}
++        if(action==MotionEvent.ACTION_DOWN){cancel();generation++;pointer=e.getPointerId(index);sx=x=e.getX(index);sy=y=e.getY(index);start=e.getEventTime();
++            drag=full=waiting=ended=down=false;count=0;creative=0;canQuery=false;request=IDS.incrementAndGet();cursor(x,y);
++            JoggerTouchBridge.requestInventoryBegin(request,nx(x),ny(y));handler.postDelayed(redraw,StackCharge.GRACE_MS);return true;}
+         if(pointer<0)return true;
+-        int at=e.findPointerIndex(pointer);
+         if(action==MotionEvent.ACTION_CANCEL){cancel();return true;}
+-        if(at<0){cancel();return true;}
+-        x=e.getX(at);y=e.getY(at);
++        int pos=e.findPointerIndex(pointer);if(pos<0){cancel();return true;}
++        x=e.getX(pos);y=e.getY(pos);
+         if(action==MotionEvent.ACTION_MOVE){
+-            if(nativeTouch){move(x,y);return true;}
+-            float slop=8*view.getResources().getDisplayMetrics().density;
+-            if(!drag&&(x-sx)*(x-sx)+(y-sy)*(y-sy)>slop*slop){drag=true;int g=generation;button(true,sx,sy);handler.postDelayed(()->{if(g!=generation)return;button(false,sx,sy);picked=true;move(x,y);if(ended)drop(g);},55);}
+-            else if(picked)move(x,y);return true;
++            if(!drag&&Math.hypot(x-sx,y-sy)>8*scale){drag=true;handler.removeCallbacks(redraw);
++                long ms=Math.max(0,e.getEventTime()-start);
++                dragHeldMs=ms;charge=StackCharge.fraction(ms);selected=StackCharge.selected(count,ms);
++                if(!canQuery){full=true;mouse(true,sx,sy);}
++            }
++            if(full)cursor(x,y);view.invalidate();return true;
+         }
+-        if((action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_POINTER_UP)&&e.getPointerId(index)==pointer){pointer=-1;ended=true;
+-            if(nativeTouch){button(false,x,y);return true;}
+-            int g=generation;if(drag){if(picked)drop(g);}else{button(true,x,y);handler.postDelayed(()->{if(g==generation)button(false,x,y);},45);}return true;
++        if((action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_POINTER_UP)&&e.getPointerId(index)==pointer){
++            handler.removeCallbacks(redraw);pointer=-1;ended=true;
++            if(drag){
++                if(full){mouse(false,x,y);}else if(canQuery){sendDrop();}
++                else{waiting=true;int g=generation;handler.postDelayed(()->{if(waiting&&generation==g){waiting=false;legacyDrag();}},180);}
++            }else{ // Short tap: preserve vanilla pickup, placement and creative palette behaviour.
++                mouse(true,x,y);int g=generation;handler.postDelayed(()->{if(g==generation)mouse(false,x,y);},45);
++            }
++            view.invalidate();return true;
+         }return true;
+     }
+-    private void drop(int g){handler.postDelayed(()->{if(g!=generation)return;button(true,x,y);handler.postDelayed(()->{if(g==generation){button(false,x,y);picked=false;}},45);},40);}
+-    public void cancel(){generation++;handler.removeCallbacksAndMessages(null);if(down)button(false,x,y);pointer=-1;drag=picked=ended=false;}
++    private void sendDrop(){
++        if(!canQuery||request<1)return;
++        int amount=selected>0?selected:count;
++        if(!JoggerTouchBridge.requestInventoryDrop(request,nx(x),ny(y),amount))legacyDrag();
++        view.invalidate();
++    }
++    private void legacyDrag(){
++        int g=generation;mouse(true,sx,sy);cursor(x,y);
++        handler.postDelayed(()->{if(g==generation)mouse(false,x,y);},65);
++    }
++    public void draw(Canvas canvas){
++        if(pointer<0)return;
++        long held=Math.max(0,SystemClock.uptimeMillis()-start);
++        if(held<StackCharge.GRACE_MS||full)return;
++        float fraction=drag?charge:StackCharge.fraction(held);
++        int amount=StackCharge.selected(count,held);
++        if(drag)amount=selected;
++        float barWidth=84*scale,barHeight=7*scale;
++        float px=Math.max(barWidth*.5f+4*scale,Math.min(view.getWidth()-barWidth*.5f-4*scale,drag?x:sx));
++        float py=Math.max(12*scale,(drag?y:sy)-32*scale);
++        RectF back=new RectF(px-barWidth*.5f,py,px+barWidth*.5f,py+barHeight);
++        paint.setColor(0xff151515);canvas.drawRect(back.left-2*scale,back.top-2*scale,back.right+2*scale,back.bottom+2*scale,paint);
++        paint.setColor(0xff525252);canvas.drawRect(back,paint);
++        paint.setColor(0xff63d24e);canvas.drawRect(back.left,back.top,back.left+barWidth*fraction,back.bottom,paint);
++        paint.setColor(Color.WHITE);paint.setTypeface(Typeface.create("monospace",Typeface.BOLD));paint.setTextSize(11*scale);paint.setTextAlign(Paint.Align.CENTER);
++        String label=canQuery?amount+" / "+count:(int)Math.round(fraction*100)+"%";
++        canvas.drawText(label,px,py-4*scale,paint);
++
++    }
++    public void cancel(){generation++;handler.removeCallbacksAndMessages(null);if(down)mouse(false,x,y);pointer=-1;waiting=drag=full=false;request=-1;view.invalidate();}
+ }
+diff --git a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/KeyboardViewport.java b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/KeyboardViewport.java
+new file mode 100644
+--- /dev/null
++++ b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/KeyboardViewport.java
+@@ -0,0 +1,9 @@
++package net.kdt.pojavlaunch.jogger.mobile;
++
++/** Input above the keyboard stays in the unmodified game viewport, otherwise pan/resize. */
++public final class KeyboardViewport {
++    private KeyboardViewport(){}
++    public static boolean moveGame(int height,int keyboardHeight,int inputBottom){
++        return height>0 && keyboardHeight>0 && inputBottom>height-keyboardHeight-16;
++    }
++}
+diff --git a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MappingCatalog.java b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MappingCatalog.java
+--- a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MappingCatalog.java
++++ b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MappingCatalog.java
+@@ -19,6 +19,11 @@
+         CLASSES.put("net.minecraft.world.phys.EntityHitResult","entityHit");CLASSES.put("net.minecraft.world.phys.HitResult","hit");
+     }
+     static {
++        CLASSES.put("net.minecraft.world.inventory.Slot","slot");
++        CLASSES.put("net.minecraft.world.item.ItemStack","itemStack");
++        CLASSES.put("net.minecraft.world.inventory.ClickType","clickType");
++        CLASSES.put("net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen","creativeInventory");
++        CLASSES.put("net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen$SlotWrapper","creativeSlotWrapper");
+         CLASSES.put("net.minecraft.client.gui.components.EditBox","edit");
+         CLASSES.put("net.minecraft.client.gui.components.MultiLineEditBox","multiline");
+         CLASSES.put("net.minecraft.client.gui.components.AbstractWidget","widget");
+@@ -49,6 +54,12 @@
+         }return p;
+     }
+     private static String methodKey(String s,String n,String a){
++        if(s.equals("inventory")){
++            if(n.equals("getHoveredSlot")&&a.equals("double,double"))return "inventory.hover";
++            if(n.equals("slotClicked")&&a.endsWith("net.minecraft.world.inventory.ClickType"))return "inventory.click";
++        }
++        if(s.equals("slot")&&n.equals("getItem")&&a.isEmpty())return "slot.item";
++        if(s.equals("itemStack")&&n.equals("getCount")&&a.isEmpty())return "stack.count";
+         if(s.equals("container")&&n.equals("getFocused")&&a.isEmpty())return "gui.focused";
+         if(s.equals("widget")&&n.equals("isFocused")&&a.isEmpty())return "widget.focused";
+         if(s.equals("edit")&&n.equals("isEditable")&&a.isEmpty())return "edit.editable";
+@@ -67,6 +78,15 @@
+         return null;
+     }
+     private static String fieldKey(String s,String n){
++        if(s.equals("screen")&&(n.equals("width")||n.equals("height")))return "screen."+n;
++        if(s.equals("widget")&&(n.equals("x")||n.equals("y")||n.equals("width")||n.equals("height")))return "widget."+n;
++        if(s.equals("inventory")){
++            if(n.equals("hoveredSlot"))return "inventory.hovered";
++            if(n.equals("menu"))return "inventory.menu";
++            if(n.equals("leftPos")||n.equals("topPos")||n.equals("imageWidth")||n.equals("imageHeight"))return "inventory."+n;
++        }
++        if(s.equals("creativeInventory")&&n.equals("selectedTab"))return "creative.selectedTab";
++        if(s.equals("slot")&&n.equals("slot"))return "slot.id";
+         if(s.equals("mc")){if(n.equals("screen"))return "screen";if(n.equals("level"))return "level";if(n.equals("player"))return "player";if(n.equals("hitResult"))return "hitResult";if(n.equals("gameRenderer"))return "renderer";if(n.equals("options"))return "options";}
+         if(s.equals("vec")&&(n.equals("x")||n.equals("y")||n.equals("z")))return n;
+         if(s.equals("options")&&n.equals("touchscreen"))return "touchscreen";
+diff --git a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MinecraftKeyboard.java b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MinecraftKeyboard.java
+--- a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MinecraftKeyboard.java
++++ b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MinecraftKeyboard.java
+@@ -22,7 +22,7 @@
+     private final MainActivity owner;private final Handler ui=new Handler(Looper.getMainLooper());
+     private final KeyboardState state=new KeyboardState();private final FrameLayout parent;
+     private final Runnable resized;private final ArrayList<Key> keys=new ArrayList<>();
+-    private Bitmap[] skin;private Bitmap font;
++    private Bitmap[] skin;private Bitmap font;private int[] glyphWidths;private final RectF inputBounds=new RectF();private boolean inputBoundsKnown;private boolean resizedGame;
+     private boolean shift,caps,control,sentShift,sentControl;private int page;private long shiftTime,latestFocus=-1,manualUntil;
+     private int occupiedHeight;private String gameState="SCREEN";
+     private MinecraftKeyboard(MainActivity owner,FrameLayout parent,MinecraftProfile p,Runnable resized) {
+@@ -31,7 +31,12 @@
+         rebuild();
+         InstanceIcons.execute(()->{Bitmap[] buttons=GameAssets.textures(Tools.getGameDirPath(p));Bitmap letters=null;File jar=InstanceIcons.versionJar(p);
+             if(jar!=null)try(ZipFile z=new ZipFile(jar)){letters=InstanceIcons.decodeEntry(z,"assets/minecraft/textures/font/ascii.png");if(letters==null)letters=InstanceIcons.decodeEntry(z,"font/default.png");}catch(IOException ignored){}
+-            Bitmap loaded=letters;ui.post(()->{skin=buttons;font=loaded;for(Key key:keys)key.invalidate();});
++            Bitmap loaded=letters;int[] metrics=null;
++            if(loaded!=null&&loaded.getWidth()%16==0&&loaded.getHeight()%16==0&&loaded.getWidth()<=2048&&loaded.getHeight()<=2048){
++                try{int[] colors=new int[loaded.getWidth()*loaded.getHeight()];loaded.getPixels(colors,0,loaded.getWidth(),0,0,loaded.getWidth(),loaded.getHeight());metrics=PixelGlyphMetrics.widths(colors,loaded.getWidth(),loaded.getHeight());}catch(RuntimeException ignored){}
++            }
++            final int[] widths=metrics;
++            ui.post(()->{skin=buttons;font=loaded;glyphWidths=widths;for(Key key:keys)key.invalidate();});
+         });
+         parent.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{if(state.visible()&&((r-l)!=(or-ol)||(b-t)!=(ob-ot)))resize(true);});
+     }
+@@ -47,7 +52,18 @@
+         if(c!=k.owner)return false;
+         k.ui.post(()->{if(show){k.state.show();k.manualUntil=SystemClock.uptimeMillis()+600;}else k.state.hide();k.apply();});return true;
+     }
+-    public static void gameTap(){MinecraftKeyboard k=current();if(k!=null)k.state.rearm();net.kdt.pojavlaunch.jogger.JoggerTouchBridge.requestTextFocus();}
++    public static void gameTap(float x,float y){
++        MinecraftKeyboard k=current();if(k==null||k.getVisibility()==VISIBLE)return;
++        if(k.gameState.equals("PLAY")||k.gameState.equals("INVENTORY"))return;
++        k.state.rearm();
++        net.kdt.pojavlaunch.jogger.JoggerTouchBridge.requestTextFocus(x,y);
++    }
++    public static void inputArea(RectF rect){
++        MinecraftKeyboard k=current();if(k==null)return;
++        if(rect==null)k.inputBoundsKnown=false;
++        else {k.inputBounds.set(rect);k.inputBoundsKnown=true;}
++        if(k.state.visible())k.resize(true);
++    }
+     public static void show(){MinecraftKeyboard k=current();if(k!=null)request(k.owner,true);}
+     public static void hide(){MinecraftKeyboard k=current();if(k!=null){k.state.hide();k.apply();}}
+     public static boolean visible(){MinecraftKeyboard k=current();return k!=null&&k.getVisibility()==VISIBLE;}
+@@ -72,12 +88,14 @@
+         int h=show?Math.min(dp(242),Math.max(dp(145),(int)(total*.44f))):0;
+         h=Math.min(h,total/2);WindowInsets insets=getRootWindowInsets();int bottom=insets==null?0:insets.getStableInsetBottom();
+         if(show){setPadding(dp(5),dp(4),dp(5),Math.min(bottom,dp(16))+dp(4));}
+-        if(occupiedHeight==h)return;occupiedHeight=h;
++        boolean move=show && (!inputBoundsKnown||KeyboardViewport.moveGame(total,h,(int)inputBounds.bottom));
++        if(occupiedHeight==h && resizedGame==move)return;
++        occupiedHeight=h;resizedGame=move;
+         FrameLayout.LayoutParams lp=(FrameLayout.LayoutParams)getLayoutParams();lp.height=Math.max(1,h);setLayoutParams(lp);
+         // Resize only the game area, not the root. Input coordinates remain local and aligned.
+         for(int i=0;i<parent.getChildCount();i++) {
+             View child=parent.getChildAt(i);if(child==this||child.getId()==R.id.mainLoggerView)continue;
+-            ViewGroup.LayoutParams params=child.getLayoutParams();if(params instanceof FrameLayout.LayoutParams){FrameLayout.LayoutParams frame=(FrameLayout.LayoutParams)params;frame.bottomMargin=h;child.setLayoutParams(frame);}
++            ViewGroup.LayoutParams params=child.getLayoutParams();if(params instanceof FrameLayout.LayoutParams){FrameLayout.LayoutParams frame=(FrameLayout.LayoutParams)params;frame.bottomMargin=move?h:0;child.setLayoutParams(frame);}
+         }
+         parent.setTranslationY(0);parent.post(resized);
+     }
+@@ -144,12 +162,30 @@
+                 src.set(x==0?0:x==1?b:sw-b,y==0?0:y==1?b:sh-b,x==0?b:x==1?sw-b:sw,y==0?b:y==1?sh-b:sh);
+                 dst.set(x==0?0:x==1?edge:w-edge,y==0?0:y==1?edge:h-edge,x==0?edge:x==1?w-edge:w,y==0?edge:y==1?h-edge:h);c.drawBitmap(image,src,dst,p);
+             }}else{p.setColor(on?0xff444444:0xff777777);c.drawRect(0,0,w,h,p);p.setColor(0xffc4c4c4);c.drawRect(0,0,w,2,p);c.drawRect(0,0,2,h,p);p.setColor(0xff222222);c.drawRect(0,h-2,w,h,p);c.drawRect(w-2,0,w,h,p);}
+-            String text=label(value);boolean bitmapFont=font!=null;for(int i=0;i<text.length();i++)bitmapFont&=text.charAt(i)>=32&&text.charAt(i)<127;
+-            if(bitmapFont){float scale=Math.max(1,Math.min(h/13f,(w-dp(6))/(text.length()*7f)));float x=(w-text.length()*6*scale)/2,y=(h-8*scale)/2;int cell=font.getWidth()/16;
+-                for(int pass=0;pass<2;pass++){p.setColorFilter(pass==0?new PorterDuffColorFilter(0xff303030,PorterDuff.Mode.SRC_IN):null);float off=pass==0?scale:0;
+-                    for(int i=0;i<text.length();i++){int v=text.charAt(i);src.set((v%16)*cell,(v/16)*cell,(v%16+1)*cell,(v/16+1)*cell);dst.set(x+i*6*scale+off,y+off,x+i*6*scale+8*scale+off,y+8*scale+off);c.drawBitmap(font,src,dst,p);}}
+-                p.setColorFilter(null);
+-            }else{p.setTypeface(Typeface.MONOSPACE);p.setTextAlign(Paint.Align.CENTER);p.setAntiAlias(true);p.setTextSize(Math.min(dp(16),Math.min(h*.43f,(w-dp(4))/Math.max(1,text.length())*1.6f)));float y=(h-p.ascent()-p.descent())/2;p.setColor(0xff222222);c.drawText(text,w/2+1,y+1,p);p.setColor(Color.WHITE);c.drawText(text,w/2,y,p);p.setAntiAlias(false);}
++            String text=label(value);boolean bitmapFont=font!=null&&glyphWidths!=null;
++            for(int i=0;i<text.length();i++)bitmapFont&=text.charAt(i)>=32&&text.charAt(i)<127;
++            if(bitmapFont){
++                int logical=PixelGlyphMetrics.total(text,glyphWidths),cell=font.getWidth()/16,cellHeight=font.getHeight()/16;
++                float exact=Math.min(h/(cellHeight+3f),(w-dp(6))/Math.max(1,logical));
++                int scale=(int)Math.floor(exact);
++                if(scale>=1){
++                    int[] offsets=PixelGlyphMetrics.positions(text,glyphWidths);
++                    float startX=Math.round((w-logical*scale)/2f),startY=Math.round((h-cellHeight*scale)/2f);
++                    // Integer-scaled glyph bounds prevent atlas-bleed lines and overlapping characters.
++                    for(int pass=0;pass<2;pass++){
++                        p.setColorFilter(pass==0?new PorterDuffColorFilter(0xff303030,PorterDuff.Mode.SRC_IN):null);
++                        int off=pass==0?scale:0;
++                        for(int i=0;i<text.length();i++){
++                            int v=text.charAt(i),gw=glyphWidths[v];if(v==32)continue;
++                            src.set((v%16)*cell,(v/16)*cell,(v%16)*cell+gw,(v/16+1)*cellHeight);
++                            int left=(int)startX+offsets[i]*scale+off,top=(int)startY+off;
++                            dst.set(left,top,left+gw*scale,top+cellHeight*scale);c.drawBitmap(font,src,dst,p);
++                        }
++                    }
++                    p.setColorFilter(null);
++                }else bitmapFont=false;
++            }
++            if(!bitmapFont){p.setTypeface(Typeface.MONOSPACE);p.setTextAlign(Paint.Align.CENTER);p.setAntiAlias(true);p.setTextSize(Math.min(dp(16),Math.min(h*.43f,(w-dp(4))/Math.max(1,text.length())*1.6f)));float y=(h-p.ascent()-p.descent())/2;p.setColor(0xff222222);c.drawText(text,w/2+1,y+1,p);p.setColor(Color.WHITE);c.drawText(text,w/2,y,p);p.setAntiAlias(false);}
+         }
+     }
+ }
+diff --git a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/PixelGlyphMetrics.java b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/PixelGlyphMetrics.java
+new file mode 100644
+--- /dev/null
++++ b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/PixelGlyphMetrics.java
+@@ -0,0 +1,34 @@
++package net.kdt.pojavlaunch.jogger.mobile;
++
++/** Glyph widths measured from Minecraft's 16-by-16 ASCII atlas; no proportional-font guesses. */
++public final class PixelGlyphMetrics {
++    private PixelGlyphMetrics(){}
++    public static int[] widths(int[] pixels,int atlasWidth,int atlasHeight){
++        if(atlasWidth<=0||atlasHeight<=0||atlasWidth%16!=0||atlasHeight%16!=0||pixels.length<atlasWidth*atlasHeight)
++            throw new IllegalArgumentException("Invalid ASCII glyph atlas");
++        int[] result=new int[256];int cell=atlasWidth/16, rows=atlasHeight/16;
++        for(int c=0;c<256;c++){
++            int left=(c%16)*cell,top=(c/16)*rows,right=-1;
++            for(int y=0;y<rows;y++)for(int x=0;x<cell;x++)
++                if((pixels[(top+y)*atlasWidth+left+x]>>>24)!=0&&x>right)right=x;
++            // A blank space is narrower than a capital M, and always advances.
++            result[c]=c==32?Math.max(2,cell/2):Math.min(cell,Math.max(1,right+1));
++        }
++        return result;
++    }
++    public static int total(String text,int[] widths){
++        int total=0;
++        for(int i=0;i<text.length();i++){
++            int code=text.charAt(i);if(code>=widths.length)throw new IllegalArgumentException("Character missing from ASCII atlas");
++            total+=widths[code];if(i+1<text.length())total++;
++        }
++        return total;
++    }
++    public static int[] positions(String text,int[] widths){
++        int[] result=new int[text.length()];int advance=0;
++        for(int i=0;i<text.length();i++){
++            result[i]=advance;advance+=widths[text.charAt(i)]+1;
++        }
++        return result;
++    }
++}
+diff --git a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/StackCharge.java b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/StackCharge.java
+new file mode 100644
+--- /dev/null
++++ b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/StackCharge.java
+@@ -0,0 +1,14 @@
++package net.kdt.pojavlaunch.jogger.mobile;
++
++/** The first second is a gesture grace period, followed by five seconds of charge. */
++public final class StackCharge {
++    public static final long GRACE_MS=1000, FULL_MS=5000;
++    private StackCharge(){}
++    public static boolean charged(long heldMs){return heldMs>=GRACE_MS;}
++    public static float fraction(long heldMs){return Math.max(0f,Math.min(1f,(heldMs-GRACE_MS)/(float)FULL_MS));}
++    public static int selected(int original,long heldMs){
++        if(original<=0)return 0;
++        if(!charged(heldMs))return original;
++        return Math.min(original,Math.max(1,(int)Math.ceil(original*fraction(heldMs))));
++    }
++}
+diff --git a/jogger_touch_agent/build.gradle b/jogger_touch_agent/build.gradle
+--- a/jogger_touch_agent/build.gradle
++++ b/jogger_touch_agent/build.gradle
+@@ -8,7 +8,7 @@
+     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+     exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA', 'module-info.class'
+-    manifest { attributes('Manifest-Version':'1.0', 'Premain-Class':'com.minecraftjogger.touch.JoggerTouchAgent', 'Can-Redefine-Classes':'false', 'Can-Retransform-Classes':'false', 'Implementation-Title':'Minecraft Jogger Classic Touch Agent', 'Implementation-Version':'1.3.0') }
++    manifest { attributes('Manifest-Version':'1.0', 'Premain-Class':'com.minecraftjogger.touch.JoggerTouchAgent', 'Can-Redefine-Classes':'false', 'Can-Retransform-Classes':'false', 'Implementation-Title':'Minecraft Jogger Classic Touch Agent', 'Implementation-Version':'1.4.0') }
+ }
+ tasks.register('verifyTouchProtocol', JavaExec) { dependsOn testClasses; classpath=sourceSets.test.runtimeClasspath; mainClass='com.minecraftjogger.touch.InputStateTest' }
+ 
+diff --git a/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/ClassicGameHooks.java b/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/ClassicGameHooks.java
+--- a/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/ClassicGameHooks.java
++++ b/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/ClassicGameHooks.java
+@@ -41,14 +41,16 @@
+         try {
+             if(words.length<2)return false;
+             long incoming=Long.parseLong(words[1]);
+-            if(incoming<epoch)return words[0].equals("T")||words[0].equals("C")||words[0].equals("Q");
++            if(incoming<epoch)return words[0].equals("T")||words[0].equals("C")||words[0].equals("Q")||words[0].equals("B")||words[0].equals("D");
+             if(incoming>epoch){epoch=incoming;MobileHooks.reset(epoch);}
+             if(words[0].equals("R")){TouchRay.clear();MobileHooks.reset(epoch);}
+             if(words[0].equals("T")){
+                 if(words.length==6)TouchRay.target(Double.parseDouble(words[2]),Double.parseDouble(words[3]),Double.parseDouble(words[4]),words[5].equals("1"));
+                 return true;
+             }
+-            if(words[0].equals("Q")&&words.length==2){TextInputProbe.request();return true;}
++            if(words[0].equals("Q")&&words.length==4){TextInputProbe.request(Float.parseFloat(words[2]),Float.parseFloat(words[3]));return true;}
++            if(words[0].equals("B")&&words.length==5){InventoryActions.begin(epoch,Long.parseLong(words[2]),Float.parseFloat(words[3]),Float.parseFloat(words[4]));return true;}
++            if(words[0].equals("D")&&words.length==6){InventoryActions.transfer(epoch,Long.parseLong(words[2]),Float.parseFloat(words[3]),Float.parseFloat(words[4]),Integer.parseInt(words[5]));return true;}
+             if(words[0].equals("C")){
+                 if(words.length==3)MobileHooks.choose(epoch,Long.parseLong(words[2]));
+                 return true;
+diff --git a/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/InventoryActions.java b/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/InventoryActions.java
+new file mode 100644
+--- /dev/null
++++ b/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/InventoryActions.java
+@@ -0,0 +1,161 @@
++package com.minecraftjogger.touch;
++
++import java.io.BufferedWriter;
++import java.io.IOException;
++import java.lang.reflect.*;
++import java.util.*;
++import java.util.concurrent.*;
++
++/** Server-synchronised inventory operations through the game's own click handling.
++ * Unsupported game versions receive a negative response; no direct inventory mutation.
++ */
++public final class InventoryActions {
++    private InventoryActions() {}
++    private static final class Pickup {
++        final Object screen,slot;final int count,slotId;final boolean creative;
++        Pickup(Object s,Object t,int n,int id,boolean c){screen=s;slot=t;count=n;slotId=id;creative=c;}
++    }
++    private static final Map<Long,Pickup> pending=new ConcurrentHashMap<>();
++    private static volatile long epoch;
++    private static Object prop(Object obj,String key,String... known) {
++        if(obj==null)return null;
++        Properties props=MobileHooks.names;if(props==null)return null;
++        String mapped=props.getProperty("field."+key);
++        for(Class<?> type=obj.getClass();type!=null;type=type.getSuperclass())for(Field f:type.getDeclaredFields()) {
++            if(Modifier.isStatic(f.getModifiers()))continue;
++            boolean match=f.getName().equals(mapped);for(String alias:known)match|=f.getName().equals(alias);
++            if(match)try{f.setAccessible(true);return f.get(obj);}catch(IllegalAccessException|RuntimeException ignored){}
++        }
++        return null;
++    }
++    private static Integer number(Object obj,String key,String... known){Object v=prop(obj,key,known);return v instanceof Integer?(Integer)v:null;}
++    private static boolean isCreative(Object screen){
++        if(screen==null)return false;String mapped=MobileHooks.names.getProperty("class.creativeInventory");
++        for(Class<?> c=screen.getClass();c!=null;c=c.getSuperclass())if(c.getName().equals(mapped)||c.getName().endsWith("CreativeModeInventoryScreen"))return true;
++        return false;
++    }
++    private static Method find(Object instance,String key,Class<?> ret,Class<?>... args) {
++        if(instance==null)return null;
++        String mapped=MobileHooks.names.getProperty("method."+key);
++        for(Class<?> c=instance.getClass();c!=null;c=c.getSuperclass())for(Method method:c.getDeclaredMethods()) {
++            if(!method.getName().equals(mapped))continue;
++            if(method.getReturnType()!=ret||!Arrays.equals(method.getParameterTypes(),args))continue;
++            try{method.setAccessible(true);return method;}catch(RuntimeException ignored){}
++        }
++        return null;
++    }
++    private static Object slot(Object screen,float nx,float ny)throws Exception {
++        Integer width=number(screen,"screen.width","width"),height=number(screen,"screen.height","height");
++        if(width==null||height==null||width<=0||height<=0)return null;
++        Method getter=null;
++        // The mapped return type is Slot, not Object; match the signature without importing game classes.
++        if(getter==null){String mapped=MobileHooks.names.getProperty("method.inventory.hover","getHoveredSlot");
++            for(Class<?> c=screen.getClass();c!=null;c=c.getSuperclass())for(Method m:c.getDeclaredMethods())
++                if((m.getName().equals(mapped)||m.getName().equals("getHoveredSlot")) &&
++                   Arrays.equals(m.getParameterTypes(),new Class[]{double.class,double.class}) && !m.getReturnType().isPrimitive()){
++                    m.setAccessible(true);getter=m;break;
++                }
++        }
++        if(getter!=null)return getter.invoke(screen,nx*width,ny*height);
++        return null;
++    }
++    private static int count(Object slot)throws Exception {
++        if(slot==null)return 0;
++        Object stack=null;String mapped=MobileHooks.names.getProperty("method.slot.item","getItem");
++        for(Class<?> c=slot.getClass();c!=null&&stack==null;c=c.getSuperclass())for(Method m:c.getDeclaredMethods())
++            if((m.getName().equals(mapped)||m.getName().equals("getItem")) && m.getParameterCount()==0 && !m.getReturnType().isPrimitive()){
++                m.setAccessible(true);stack=m.invoke(slot);break;
++            }
++        if(stack==null)return 0;
++        String get=MobileHooks.names.getProperty("method.stack.count","getCount");
++        for(Class<?> c=stack.getClass();c!=null;c=c.getSuperclass())for(Method m:c.getDeclaredMethods())
++            if((m.getName().equals(get)||m.getName().equals("getCount")) && m.getParameterCount()==0 && m.getReturnType()==int.class){m.setAccessible(true);Object v=m.invoke(stack);return Math.max(0,Math.min(999,v instanceof Integer?(Integer)v:0));}
++        return 0;
++    }
++    private static int slotId(Object slot){Integer n=number(slot,"slot.id","slot");return n==null?-1:n;}
++    private static Method clickMethod(Object screen,Object slot) {
++        String mapped=MobileHooks.names.getProperty("method.inventory.click","slotClicked");
++        for(Class<?> c=screen.getClass();c!=null;c=c.getSuperclass())for(Method m:c.getDeclaredMethods()){
++            Class<?>[] t=m.getParameterTypes();if(m.getReturnType()!=void.class||t.length!=4||t[1]!=int.class||t[2]!=int.class||!t[3].isEnum()||!t[0].isAssignableFrom(slot.getClass()))continue;
++            if(!m.getName().equals(mapped)&&!m.getName().equals("slotClicked"))continue;
++            try{m.setAccessible(true);return m;}catch(RuntimeException ignored){}
++        }return null;
++    }
++    @SuppressWarnings({"unchecked","rawtypes"})
++    private static void click(Method method,Object screen,Object slot,int id,int button,String kind)throws Exception {
++        Object mode=Enum.valueOf((Class<Enum>)method.getParameterTypes()[3],kind);
++        method.invoke(screen,slot,id,button,mode);
++    }
++    private static boolean creativeGrid(Pickup begin,float nx,float ny) {
++        if(!begin.creative)return false;
++        Integer width=number(begin.screen,"screen.width","width"),height=number(begin.screen,"screen.height","height");
++        Integer left=number(begin.screen,"inventory.leftPos","leftPos"),top=number(begin.screen,"inventory.topPos","topPos");
++        if(width==null||height==null||left==null||top==null)return false;
++        float dx=nx*width-left,dy=ny*height-top;
++        return dx>=9&&dx<=169&&dy>=18&&dy<=110;
++    }
++    private static void queue(Runnable action){
++        Object mc=MobileHooks.client;
++        if(mc instanceof Executor)((Executor)mc).execute(action);
++        else MobileHooks.enqueue(action);
++    }
++    private static void answer(String code,long e,long request,String result){
++        BufferedWriter w=MobileHooks.writer;
++        if(w!=null)try{synchronized(w){w.write(code+" "+e+" "+request+" "+result+"\n");w.flush();}}catch(IOException ignored){}
++    }
++    public static void begin(long e,long request,float x,float y){
++        if(e<epoch||!Float.isFinite(x)||!Float.isFinite(y)||x<0||x>1||y<0||y>1)return;
++        if(e>epoch){epoch=e;pending.clear();}
++        queue(()->{
++            int n=0,creative=0;
++            try{Object mc=MobileHooks.client,screen=MobileHooks.value(mc,"screen","screen","currentScreen","field_1755");
++                if("INVENTORY".equals(MobileHooks.screenState)&&screen!=null){
++                    Object source=slot(screen,x,y);int id=slotId(source);int quantity=count(source);
++                    if(source!=null&&id>=0&&quantity>0&&quantity<=999&&clickMethod(screen,source)!=null){
++                        boolean isCreative=isCreative(screen);
++                        // A creative palette tile is a template, not a player's inventory stack.
++                        String realSlot=MobileHooks.names.getProperty("class.creativeSlotWrapper","");
++                        if(!isCreative||source.getClass().getName().equals(realSlot)||source.getClass().getSimpleName().equals("SlotWrapper")){
++                            pending.put(request,new Pickup(screen,source,quantity,id,isCreative));n=quantity;creative=isCreative?1:0;
++                        }
++                    }
++                }
++            }catch(Throwable ignored){}
++            answer("B",e,request,n+" "+creative);
++        });
++    }
++    public static void transfer(long e,long request,float nx,float ny,int quantity){
++        if(e!=epoch||quantity<1||quantity>999)return;
++        queue(()->{
++            int status=0;
++            Pickup origin=pending.remove(request);
++            try {
++                Object mc=MobileHooks.client;
++                if(origin!=null&&origin.screen==MobileHooks.value(mc,"screen","screen","currentScreen","field_1755") &&
++                   "INVENTORY".equals(MobileHooks.screenState)&&count(origin.slot)==origin.count&&quantity<=origin.count){
++                    Method click=clickMethod(origin.screen,origin.slot);
++                    if(click!=null){
++                        if(creativeGrid(origin,nx,ny)){
++                            // The creative item palette is read-only. Treat a drag into it as
++                            // an explicit trash gesture by asking vanilla to THROW the source.
++                            // The creative screen handles server-side creative slot synchronisation.
++                            if(quantity==origin.count)click(click,origin.screen,origin.slot,origin.slotId,1,"THROW");
++                            else for(int i=0;i<quantity;i++)click(click,origin.screen,origin.slot,origin.slotId,0,"THROW");
++                            status=2;
++                        }else{
++                            Object dest=slot(origin.screen,nx,ny);int id=slotId(dest);
++                            if(dest!=null&&id>=0&&dest!=origin.slot){
++                                click(click,origin.screen,origin.slot,origin.slotId,0,"PICKUP");
++                                for(int i=0;i<origin.count-quantity;i++)click(click,origin.screen,origin.slot,origin.slotId,1,"PICKUP");
++                                click(click,origin.screen,dest,id,0,"PICKUP");
++                                status=1;
++                            }
++                        }
++                    }
++                }
++            }catch(Throwable ex){System.out.println("[Jogger] Inventory drag operation unavailable: "+ex.getClass().getSimpleName());}
++            answer("D",e,request,Integer.toString(status));
++        });
++    }
++    public static void reset(long e){if(e>=epoch){epoch=e;pending.clear();}}
++}
+diff --git a/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/MobileHooks.java b/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/MobileHooks.java
+--- a/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/MobileHooks.java
++++ b/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/MobileHooks.java
+@@ -42,7 +42,8 @@
+     }
+     static void attach(BufferedWriter w){writer=w;}
+     static void detach(BufferedWriter w){if(writer==w)writer=null;work.clear();}
+-    static void reset(long e){if(e>=epoch){epoch=e;work.clear();}}
++    static void reset(long e){if(e>=epoch){epoch=e;work.clear();InventoryActions.reset(e);}}
++    static void enqueue(Runnable task){if(work.size()<32)work.offer(task);}
+     static void choose(long e,long request){if(e!=epoch||work.size()>16)return;long start=System.nanoTime();Runnable action=()->{
+         if(e!=epoch||System.nanoTime()-start>500000000L)return;
+         int button=1;
+diff --git a/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/TextInputProbe.java b/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/TextInputProbe.java
+--- a/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/TextInputProbe.java
++++ b/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/TextInputProbe.java
+@@ -9,8 +9,13 @@
+         public final long token,screen; public final boolean active;
+         State(long token,long screen, boolean active) { this.token=token; this.screen=screen; this.active=active; }
+     }
+-    private static final java.util.concurrent.atomic.AtomicBoolean refresh=new java.util.concurrent.atomic.AtomicBoolean();
+-    public static void request(){refresh.set(true);}
++    private static final java.util.concurrent.atomic.AtomicReference<Tap> requested=new java.util.concurrent.atomic.AtomicReference<>();
++    private static final class Tap {final float x,y;Tap(float x,float y){this.x=x;this.y=y;}}
++    public static void request(){request(.5f,.9f);}
++    public static void request(float x,float y) {
++        if(Float.isFinite(x)&&Float.isFinite(y)&&x>=0&&x<=1&&y>=0&&y<=1)requested.set(new Tap(x,y));
++    }
++    private static boolean tapped;
+     private static volatile State state=new State(0,0,false);
+     private static Object lastScreen,lastTarget;
+     private static final Map<Class<?>,Field[]> fieldCache=new HashMap<>();
+@@ -70,6 +75,31 @@
+             }
+         cached=result.toArray(new Field[0]);fieldCache.put(cls,cached);return cached;
+     }
++    private static Integer coordinate(Object object,Properties p,String key,String... fieldAliases) {
++        if(object==null)return null;
++        String expected=p.getProperty("field."+key);
++        for(Class<?> c=object.getClass();c!=null;c=c.getSuperclass())for(Field f:c.getDeclaredFields()) {
++            if(f.getType()!=int.class||Modifier.isStatic(f.getModifiers()))continue;
++            boolean matches=f.getName().equals(expected);
++            for(String name:fieldAliases)matches|=f.getName().equals(name);
++            if(matches)try{f.setAccessible(true);return f.getInt(object);}catch(ReflectiveOperationException|RuntimeException ignored){}
++        }
++        return null;
++    }
++    static boolean hit(Object screen,Object focused,String mode,Properties p,float nx,float ny){
++        if(screen==null||focused==null||nx<0||nx>1||ny<0||ny>1)return false;
++        // Editing signs and books uses text helpers, not a focused rectangular widget.
++        if(type(screen,p,"signEdit","AbstractSignEditScreen","SignEditScreen","EditSignScreen","GuiEditSign"))return nx>.18f&&nx<.82f&&ny>.14f&&ny<.84f;
++        if(type(screen,p,"bookEdit","BookEditScreen"))return nx>.2f&&nx<.82f&&ny>.12f&&ny<.87f;
++        if("CHAT".equals(mode)||type(screen,p,"chat","ChatScreen","GuiChat"))return ny>.74f;
++        Integer sw=coordinate(screen,p,"screen.width","width"),sh=coordinate(screen,p,"screen.height","height");
++        if(sw==null||sh==null||sw<=0||sh<=0)return false;
++        Integer x=coordinate(focused,p,"widget.x","x"),y=coordinate(focused,p,"widget.y","y");
++        Integer w=coordinate(focused,p,"widget.width","width"),h=coordinate(focused,p,"widget.height","height");
++        if(x==null||y==null||w==null||h==null||w<=0||h<=0)return false;
++        float px=nx*sw,py=ny*sh;
++        return px>=x-3&&px<=x+w+3&&py>=y-3&&py<=y+h+3;
++    }
+     public static void observe(Object screen,String mode,Properties p) {
+         Object target=null;
+         try {
+@@ -101,8 +131,13 @@
+             }
+         } catch(RuntimeException ignored) { target=null; }
+         State old=state;
+-        if(refresh.getAndSet(false)||screen!=lastScreen||target!=lastTarget||old.active!=(target!=null)) {
+-            long screenToken=old.screen+(screen!=lastScreen?1:0);lastScreen=screen;lastTarget=target;state=new State(old.token+1,screenToken,target!=null);
++        Tap request=requested.getAndSet(null);
++        if(screen!=lastScreen||target!=lastTarget)tapped=false;
++        if(request!=null)tapped=hit(screen,target,mode,p,request.x,request.y);
++        boolean active=target!=null&&tapped;
++        if(request!=null||screen!=lastScreen||target!=lastTarget||old.active!=active) {
++            long screenToken=old.screen+(screen!=lastScreen?1:0);lastScreen=screen;lastTarget=target;
++            state=new State(old.token+1,screenToken,active);
+         }
+     }
+ }
+diff --git a/scripts/inventory-tests/GestureRegression.java b/scripts/inventory-tests/GestureRegression.java
+new file mode 100644
+--- /dev/null
++++ b/scripts/inventory-tests/GestureRegression.java
+@@ -0,0 +1,40 @@
++import net.kdt.pojavlaunch.jogger.mobile.*;
++import java.io.*;
++import java.awt.image.*;
++import javax.imageio.ImageIO;
++public class GestureRegression {
++    private static int checks;
++    private static void yes(boolean value,String msg){checks++;if(!value)throw new AssertionError(msg);}
++    public static void main(String[] args)throws Exception {
++        yes(StackCharge.selected(64,0)==64,"short drag takes all");
++        yes(StackCharge.selected(64,999)==64,"999ms still takes all");
++        yes(StackCharge.fraction(1000)==0,"starts at 0 at 1000ms");
++        yes(StackCharge.selected(64,1500)==7,"10% of 64 = 7");
++        yes(StackCharge.selected(64,3500)==32,"50% of 64");
++        yes(StackCharge.selected(64,6000)==64,"100% after 1s+5s");
++        yes(StackCharge.selected(1,2000)==1,"never takes 0 from 1");
++        yes(StackCharge.selected(64,14000)==64,"caps at 100%");
++        yes(StackCharge.selected(0,7000)==0,"empty source stays empty");
++        yes(!KeyboardViewport.moveGame(1000,250,500),"top field may be covered");
++        yes(KeyboardViewport.moveGame(1000,250,900),"bottom field moves game viewport");
++        yes(!KeyboardViewport.moveGame(1000,0,900),"hidden keyboard has no pan");
++        BufferedImage image;
++        if(args.length>0)image=ImageIO.read(new File(args[0]));
++        else {
++            image=new BufferedImage(128,128,BufferedImage.TYPE_INT_ARGB);
++            for(int code:new int[]{'M','W','i','l'}){
++                int width=(code=='i'||code=='l')?2:6;
++                for(int y=0;y<7;y++)for(int x=0;x<width;x++)image.setRGB((code%16)*8+x,(code/16)*8+y,0xffffffff);
++            }
++        }
++        int[] pixels=image.getRGB(0,0,image.getWidth(),image.getHeight(),null,0,image.getWidth());
++        int[] widths=PixelGlyphMetrics.widths(pixels,image.getWidth(),image.getHeight());
++        yes(widths['i']<widths['M'],"i is narrower than M");
++        yes(widths['l']<widths['W'],"l is narrower than W");
++        yes(widths[' ']>0&&widths[' ']<widths['W'],"space is a narrow advance");
++        int[] offsets=PixelGlyphMetrics.positions("IllM",widths);String name="IllM";
++        for(int i=0;i<offsets.length-1;i++)yes(offsets[i]+widths[name.charAt(i)]<offsets[i+1],"glyphs never overlap");
++        yes(PixelGlyphMetrics.total("iii",widths)<PixelGlyphMetrics.total("WWW",widths),"proportional spacing");
++        System.out.println("Gesture/stack/pixel-font/viewport checks passed: "+checks);
++    }
++}
+diff --git a/scripts/inventory-tests/InventoryActionsTest.java b/scripts/inventory-tests/InventoryActionsTest.java
+new file mode 100644
+--- /dev/null
++++ b/scripts/inventory-tests/InventoryActionsTest.java
+@@ -0,0 +1,52 @@
++package com.minecraftjogger.touch;
++import java.io.*;import java.util.*;import java.util.concurrent.Executor;
++public final class InventoryActionsTest {
++    enum ClickType {PICKUP,THROW}
++    static class ItemStack {int count;ItemStack(int n){count=n;}public int getCount(){return count;}}
++    static class Slot {public int slot;ItemStack stack;Slot(int id,int c){slot=id;stack=new ItemStack(c);}public ItemStack getItem(){return stack;}}
++    static class Screen {
++        public int width=400,height=200,leftPos=10,topPos=10;Slot left=new Slot(2,20),right=new Slot(3,0),last;
++        protected Slot getHoveredSlot(double x,double y){return x<60?left:x>240?right:null;}
++        protected void slotClicked(Slot slot,int id,int button,ClickType type){
++            if(type==ClickType.THROW){int take=button==1?slot.stack.count:1;slot.stack.count-=Math.min(take,slot.stack.count);return;}
++            if(type!=ClickType.PICKUP)throw new AssertionError();
++            if(button==0){if(last==null){last=new Slot(-999,slot.stack.count);slot.stack.count=0;}else{slot.stack.count+=last.stack.count;last=null;}}
++            else {if(last!=null&&last.stack.count>0){slot.stack.count++;last.stack.count--;}}
++        }
++    }
++    static class CreativeModeInventoryScreen extends Screen{}
++    static class SlotWrapper extends Slot{SlotWrapper(int id,int c){super(id,c);}}
++    static class Minecraft implements Executor {Screen screen;Minecraft(Screen s){screen=s;}public void execute(Runnable job){job.run();}}
++    private static void ok(boolean b,String text){if(!b)throw new AssertionError(text);}
++    private static BufferedWriter writer;
++    private static void prepare(Screen s){
++        Properties p=new Properties();
++        p.setProperty("class.creativeInventory",CreativeModeInventoryScreen.class.getName());
++        p.setProperty("class.creativeSlotWrapper",SlotWrapper.class.getName());
++        p.setProperty("method.inventory.hover","getHoveredSlot");p.setProperty("method.inventory.click","slotClicked");
++        p.setProperty("method.slot.item","getItem");p.setProperty("method.stack.count","getCount");
++        MobileHooks.names=p;MobileHooks.client=new Minecraft(s);MobileHooks.screenState="INVENTORY";
++        writer=new BufferedWriter(new StringWriter());MobileHooks.attach(writer);
++    }
++    public static void main(String[] args){
++        Screen s=new Screen();prepare(s);
++        InventoryActions.begin(5,10,.05f,.8f);
++        InventoryActions.transfer(5,10,.8f,.8f,7);
++        ok(s.left.stack.count==13&&s.right.stack.count==7,"partial seven into other slot");
++        s=new Screen();prepare(s);InventoryActions.begin(6,11,.05f,.8f);
++        InventoryActions.transfer(6,11,.8f,.8f,20);
++        ok(s.left.stack.count==0&&s.right.stack.count==20,"whole stack into other slot");
++        s=new Screen();prepare(s);InventoryActions.begin(7,12,.05f,.8f);
++        InventoryActions.transfer(7,12,.05f,.8f,5);
++        ok(s.left.stack.count==20,"same source ignored");
++        CreativeModeInventoryScreen c=new CreativeModeInventoryScreen();c.left=new SlotWrapper(4,20);prepare(c);
++        InventoryActions.begin(8,13,.05f,.8f);
++        InventoryActions.transfer(8,13,.25f,.3f,4);
++        ok(c.left.stack.count==16,"creative-grid drop throws exactly four");
++        c=new CreativeModeInventoryScreen();c.left=new SlotWrapper(4,20);prepare(c);
++        InventoryActions.begin(9,14,.05f,.8f);
++        InventoryActions.transfer(9,14,.25f,.3f,20);
++        ok(c.left.stack.count==0,"creative-grid drop throws whole stack");
++        System.out.println("Inventory adapter: partial/full/invalid/creative disposal checks passed");
++    }
++}
+diff --git a/scripts/inventory-tests/TextInputTapTest.java b/scripts/inventory-tests/TextInputTapTest.java
+new file mode 100644
+--- /dev/null
++++ b/scripts/inventory-tests/TextInputTapTest.java
+@@ -0,0 +1,39 @@
++import com.minecraftjogger.touch.TextInputProbe;
++import java.util.Properties;
++public class TextInputTapTest {
++    public static class Screen {
++        public int width=400,height=200;
++        public EditBox focused=new EditBox(100,80,180,22);
++        public EditBox getFocused(){return focused;}
++    }
++    public static class EditBox {
++        public int x,y,width,height;
++        EditBox(int xx,int yy,int w,int h){x=xx;y=yy;width=w;height=h;}
++        public boolean isFocused(){return true;}
++    }
++    public static class ChatScreen extends Screen{}
++    private static int checks;
++    private static void check(boolean condition,String message){checks++;if(!condition)throw new AssertionError(message);}
++    public static void main(String[] args){
++        Properties props=new Properties();Screen screen=new Screen();
++        TextInputProbe.observe(screen,"SCREEN",props);
++        check(!TextInputProbe.state().active,"focused field alone does NOT open keyboard");
++        TextInputProbe.request(.06f,.06f);TextInputProbe.observe(screen,"SCREEN",props);
++        check(!TextInputProbe.state().active,"tapping outside field keeps it hidden");
++        TextInputProbe.request(.5f,.45f);TextInputProbe.observe(screen,"SCREEN",props);
++        check(TextInputProbe.state().active,"tapping inside field opens it");
++        screen.focused=new EditBox(30,25,100,20);TextInputProbe.observe(screen,"SCREEN",props);
++        check(!TextInputProbe.state().active,"changing focus closes keyboard");
++        TextInputProbe.request(.2f,.16f);TextInputProbe.observe(screen,"SCREEN",props);
++        check(TextInputProbe.state().active,"new field tap reopens keyboard");
++        ChatScreen chat=new ChatScreen();TextInputProbe.observe(chat,"CHAT",props);
++        check(!TextInputProbe.state().active,"entering chat never auto opens");
++        TextInputProbe.request(.5f,.2f);TextInputProbe.observe(chat,"CHAT",props);
++        check(!TextInputProbe.state().active,"tapping chat panel above input does not open");
++        TextInputProbe.request(.5f,.98f);TextInputProbe.observe(chat,"CHAT",props);
++        check(TextInputProbe.state().active,"tapping chat input opens");
++        TextInputProbe.observe(null,"PLAY",props);
++        check(!TextInputProbe.state().active,"gameplay closes keyboard");
++        System.out.println("Tap-only keyboard checks: "+checks);
++    }
++}
