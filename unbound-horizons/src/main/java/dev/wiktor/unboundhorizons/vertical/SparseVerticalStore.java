@@ -32,7 +32,7 @@ public final class SparseVerticalStore implements AutoCloseable {
     public static final int MAX_CACHED_SECTIONS = 128;
     public static final String AIR = "minecraft:air";
     private static final int MAGIC = 0x55485753;
-    private static final int FORMAT_VERSION = 1;
+    private static final int FORMAT_VERSION = 2;
     private static final int MAX_BLOCKS_PER_SECTION = 4096;
     private static final Pattern BLOCK_ID = Pattern.compile(
         "[a-z0-9_.-]+:[a-z0-9_./-]+"
@@ -76,6 +76,50 @@ public final class SparseVerticalStore implements AutoCloseable {
         }
     }
 
+    /**
+     * Return an explicit player edit, or null when no override exists.
+     * Unlike get(), an explicit air override is distinct from absence;
+     * this is essential when a naturally generated block is mined.
+     */
+    public synchronized String getOverride(WideBlockPos pos) throws IOException {
+        VerticalWorldBorder.requireInsidePlayableY(pos.y());
+        return load(key(pos)).get(pos.sectionBlockIndex());
+    }
+
+    /** Store any valid block identifier, including explicitly mined AIR. */
+    public synchronized void setOverride(WideBlockPos pos, String blockId) throws IOException {
+        VerticalWorldBorder.requireInsidePlayableY(pos.y());
+        requireBlockId(blockId);
+        SectionKey key = key(pos);
+        HashMap<Integer, String> edits = load(key);
+        int idx = pos.sectionBlockIndex();
+        String prior = edits.put(idx, blockId);
+        if (blockId.equals(prior)) return;
+        try {
+            persist(key, edits);
+        } catch (IOException error) {
+            if (prior == null) edits.remove(idx);
+            else edits.put(idx, prior);
+            throw error;
+        }
+    }
+
+    /** Remove the edit so the deterministic natural block is visible again. */
+    public synchronized void removeOverride(WideBlockPos pos) throws IOException {
+        VerticalWorldBorder.requireInsidePlayableY(pos.y());
+        SectionKey key = key(pos);
+        HashMap<Integer, String> edits = load(key);
+        int idx = pos.sectionBlockIndex();
+        String prior = edits.remove(idx);
+        if (prior == null) return;
+        try {
+            persist(key, edits);
+        } catch (IOException error) {
+            edits.put(idx, prior);
+            throw error;
+        }
+    }
+
     public synchronized int cachedSectionCount() {
         return sections.size();
     }
@@ -111,7 +155,7 @@ public final class SparseVerticalStore implements AutoCloseable {
                 int z = input.readInt();
                 int count = input.readInt();
 
-                if (magic != MAGIC || version != FORMAT_VERSION
+                if (magic != MAGIC || (version != 1 && version != FORMAT_VERSION)
                         || x != key.sx() || y != key.sy() || z != key.sz()
                         || count < 0 || count > MAX_BLOCKS_PER_SECTION) {
                     throw new IOException("Invalid sparse section header: " + file);
@@ -127,7 +171,7 @@ public final class SparseVerticalStore implements AutoCloseable {
                     } catch (IllegalArgumentException badBlock) {
                         throw new IOException("Invalid stored block id", badBlock);
                     }
-                    if (AIR.equals(id) || blocks.putIfAbsent(blockIndex, id) != null) {
+                    if ((version == 1 && AIR.equals(id)) || blocks.putIfAbsent(blockIndex, id) != null) {
                         throw new IOException("Duplicate or empty sparse entry in " + file);
                     }
                 }
