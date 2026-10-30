@@ -12,6 +12,7 @@ def jar(group,name,version):
  with urllib.request.urlopen(base+'.sha1',timeout=30) as r:h=r.read().decode().strip().split()[0]
  if hashlib.sha1(p.read_bytes()).hexdigest()!=h:raise RuntimeError('Maven hash mismatch: '+p.name)
  return p
+run(sys.executable,P/'integrate.py')
 for abi in ('arm64-v8a','x86_64'):
  dest=JN/abi;dest.mkdir(exist_ok=True)
  for name in ('liblwjgl.so','liblwjgl_opengl.so','liblwjgl_stb.so','liblwjgl_tinyfd.so','libopenal.so','libmobileglues.so','libc++_shared.so'):
@@ -35,6 +36,7 @@ OpenAL Soft 1.23.1: kcat/openal-soft, LGPL.
 MobileGlues 2.0.0: MobileGL-Dev/MobileGlues, LGPL-2.1. Only libmobileglues.so is extracted, not its plugin application.
 GLFW 3.3.8 public API header: glfw/glfw, zlib license. Its desktop window implementation is not used.
 ASM 9.7.1: OW2 ASM, BSD-3-Clause.
+FreeType: the separately licensed FreeType library included in the OpenJDK runtime; its notices are retained there.
 Android NDK C++ runtime: Android LLVM libc++, LLVM exceptions license.
 
 Full dependency source locations/hashes: packaged DEPENDENCIES.json and repository build scripts. Source: https://github.com/itswiktoragain/gpt-on-the-move/tree/jogger-independent/jogger-independent
@@ -45,8 +47,6 @@ Microsoft sign-in requires a public-client application registration configured i
 
 Not an official Minecraft product. Not associated with Mojang or Microsoft.
 ''')
-# Generate explicit error-returning definitions for unused desktop-only GLFW APIs.
-# All game/window/input operations are implemented in native/glfw_jogger.c.
 header=(O/'glfw3.h').read_text();source=(P/'native/glfw_jogger.c').read_text()
 prototypes=re.findall(r'GLFWAPI\s+([^;]+\b(glfw\w+)\s*\([^;]*\));',header,re.S)
 missing=['#define GLFW_INCLUDE_NONE\n#include "glfw3.h"\n#include <stddef.h>\nextern void jogger_error(const char*);\n']
@@ -54,7 +54,6 @@ for signature,name in prototypes:
  if re.search(r'\b'+re.escape(name)+r'\s*\(',source) or re.search(r'CB\('+re.escape(name)+r',',source):continue
  if 'Vk' in signature:continue
  signature=' '.join(signature.split());ret=signature[:signature.index(name)].strip()
- # Required-extension query is how Vulkan unavailability is reported, not an error.
  if name=='glfwGetRequiredInstanceExtensions':body='if(count)*count=0;return NULL;'
  else:body='jogger_error("Unsupported Android desktop API: '+name+'");'+('return;' if ret=='void' else 'return 0;')
  missing.append(signature+' {'+body+'}\n')
@@ -66,7 +65,6 @@ for abi,tr in [('arm64-v8a','aarch64-linux-android'),('x86_64','x86_64-linux-and
  run(cc,*common,P/'native/glfw_jogger.c',P/'native/desktop_unsupported.c','-Wl,-soname,libglfw_jogger.so','-o',out/'libglfw_jogger.so','-landroid','-llog','-ldl','-lm','-latomic')
  run(cc,*common,P/'native/runtime.c','-Wl,-soname,libjogger.so','-o',out/'libjogger.so','-L'+str(out),'-lglfw_jogger','-landroid','-llog','-ldl','-lm')
  run(T/'llvm-readelf','-d',out/'libjogger.so')
-# Compile actual Java agent and real graphics probe (no mock JVM).
 asm=[jar('org.ow2.asm',m,'9.7.1') for m in ('asm','asm-commons','asm-tree')]
 lwjgl=[jar('org.lwjgl',m,'3.3.3') for m in ('lwjgl','lwjgl-glfw','lwjgl-opengl')]
 classes=B/'classes';classes.mkdir(exist_ok=True)
@@ -80,16 +78,14 @@ with zipfile.ZipFile(AS/'jogger-agent.jar','w',zipfile.ZIP_DEFLATED) as z:
  for a in asm:
   with zipfile.ZipFile(a) as src:
    for name in src.namelist():
+    if 'license' in name.lower() or 'notice' in name.lower():
+     dest=AS/'licenses'/a.stem/pathlib.Path(name).name;dest.parent.mkdir(parents=True,exist_ok=True)
+     if not name.endswith('/'):dest.write_bytes(src.read(name))
     if not name.startswith('org/objectweb/asm/') or name in seen:continue
     z.writestr(name,src.read(name));seen.add(name)
 (AS/'probe-libs').mkdir(exist_ok=True)
 for f in lwjgl:shutil.copy(f,AS/'probe-libs'/f.name)
-# The test class only invokes pure gesture/projection code; no native context is fabricated.
 tests=B/'tests';tests.mkdir(exist_ok=True)
 run('javac','--release','8','-cp',str(AS/'jogger-agent.jar'),'-d',tests,P/'app/src/main/java/com/wiktor/jogger/TouchGesture.java',P/'tests/JoggerTests.java')
 run('java','-cp',os.pathsep.join([str(tests),str(AS/'jogger-agent.jar')]),'JoggerTests')
-# Patch small integration fixes without changing unrelated files.
-f=P/'app/src/main/java/com/wiktor/jogger/TouchOverlay.java';s=f.read_text();s=s.replace('else if(b.key>0)Native.press(b.key);','else if(b.key>0&&!b.id.equals("jump"))Native.press(b.key);');f.write_text(s)
-# Debug builds alone can run an unmodified official demo for CI testing.
-f=P/'app/src/main/java/com/wiktor/jogger/JoggerActivity.java';s=f.read_text();needle='home();if(BuildConfig.DEBUG&&getIntent().getBooleanExtra("probe",false))';s=s.replace(needle,'home();if(BuildConfig.DEBUG&&getIntent().getBooleanExtra("smokeDemo",false)){play(true);return;}if(BuildConfig.DEBUG&&getIntent().getBooleanExtra("probe",false))');f.write_text(s)
 print('Original native engine and agent packaged successfully')
