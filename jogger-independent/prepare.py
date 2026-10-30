@@ -65,6 +65,12 @@ for abi,tr in [('arm64-v8a','aarch64-linux-android'),('x86_64','x86_64-linux-and
  run(cc,*common,P/'native/glfw_jogger.c',P/'native/desktop_unsupported.c','-Wl,-soname,libglfw_jogger.so','-o',out/'libglfw_jogger.so','-landroid','-llog','-ldl','-lm','-latomic')
  run(cc,*common,P/'native/runtime.c','-Wl,-soname,libjogger.so','-o',out/'libjogger.so','-L'+str(out),'-lglfw_jogger','-landroid','-llog','-ldl','-lm')
  run(T/'llvm-readelf','-d',out/'libjogger.so')
+ bindings=(P/'dependencies/lwjgl/modules/lwjgl/glfw/src/generated/java/org/lwjgl/glfw/GLFW.java').read_text()
+ required=set(re.findall(r'apiGetFunctionAddress\(GLFW,\s*"(glfw\w+)"',bindings))
+ exported=subprocess.check_output([str(T/'llvm-nm'),'-D','--defined-only',str(out/'libglfw_jogger.so')],text=True)
+ symbols={line.split()[-1] for line in exported.splitlines() if line.strip()}
+ if required-symbols:raise RuntimeError('Missing GLFW ABI exports: '+', '.join(sorted(required-symbols)))
+ print('PASS:',abi,len(required),'required GLFW ABI exports')
 asm=[jar('org.ow2.asm',m,'9.7.1') for m in ('asm','asm-commons','asm-tree')]
 lwjgl=[jar('org.lwjgl',m,'3.3.3') for m in ('lwjgl','lwjgl-glfw','lwjgl-opengl')]
 classes=B/'classes';classes.mkdir(exist_ok=True)
@@ -86,6 +92,7 @@ with zipfile.ZipFile(AS/'jogger-agent.jar','w',zipfile.ZIP_DEFLATED) as z:
 (AS/'probe-libs').mkdir(exist_ok=True)
 for f in lwjgl:shutil.copy(f,AS/'probe-libs'/f.name)
 tests=B/'tests';tests.mkdir(exist_ok=True)
-run('javac','--release','8','-cp',str(AS/'jogger-agent.jar'),'-d',tests,P/'app/src/main/java/com/wiktor/jogger/TouchGesture.java',P/'tests/JoggerTests.java')
+run('javac','--release','8','-cp',str(AS/'jogger-agent.jar'),'-d',tests,P/'app/src/main/java/com/wiktor/jogger/TouchGesture.java',P/'tests/JoggerTests.java',P/'tests/AgentTransformTest.java')
 run('java','-cp',os.pathsep.join([str(tests),str(AS/'jogger-agent.jar')]),'JoggerTests')
+run('java','-Xverify:all','-cp',os.pathsep.join([str(tests),str(AS/'jogger-agent.jar')]),'AgentTransformTest')
 print('Original native engine and agent packaged successfully')

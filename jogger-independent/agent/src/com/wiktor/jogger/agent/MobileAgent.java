@@ -33,7 +33,6 @@ public final class MobileAgent {
   Thread t=new Thread(MobileAgent::watch,"Jogger screen observer");t.setDaemon(true);t.start();
  }
  private static void loadMappings(Path p)throws Exception{if(!Files.isRegularFile(p))return;String owner="";for(String line:Files.readAllLines(p,StandardCharsets.UTF_8)){if(line.startsWith("#")||line.trim().isEmpty())continue;if(!Character.isWhitespace(line.charAt(0))&&line.endsWith(":")){String[]a=line.substring(0,line.length()-1).split(" -> ");if(a.length==2){owner=a[0];classes.put(a[0],a[1]);}}else{String s=line.trim().replaceFirst("^\\d+:\\d+:","");int arrow=s.lastIndexOf(" -> ");if(arrow<0)continue;String left=s.substring(0,arrow),right=s.substring(arrow+4);int space=left.indexOf(' ');if(space<0)continue;String member=left.substring(space+1);if(member.contains("(")){int end=member.indexOf(')');if(end>0)methods.put(owner+"|"+member.substring(0,end+1),right);}else fields.put(owner+"|"+member,right);}}
-  // Fabric intermediary names are added by the installer when available.
   Path extra=Paths.get(System.getProperty("jogger.dir","."),"jogger-intermediary.properties");if(Files.isRegularFile(extra)){Properties q=new Properties();try(InputStream in=Files.newInputStream(extra)){q.load(in);}for(String k:q.stringPropertyNames()){String val=q.getProperty(k);if(k.startsWith("C:"))classes.put(k.substring(2),val);else if(k.startsWith("F:"))fields.put(k.substring(2),val);else if(k.startsWith("M:"))methods.put(k.substring(2),val);}}
  }
  private static String cn(String name){return classes.getOrDefault(name,name);}
@@ -49,6 +48,35 @@ public final class MobileAgent {
  /** Pure projection math, separately tested. Minecraft yaw 0 points along +Z. */
  public static double[] rayAngles(double yaw,double pitch,double nx,double ny,double fov,double aspect){double y=Math.toRadians(yaw),p=Math.toRadians(pitch);double t=Math.tan(Math.toRadians(Math.max(30,Math.min(120,fov)))/2),rx=(2*nx-1)*aspect*t,ry=(1-2*ny)*t;double x=-Math.sin(y)*Math.cos(p)-rx*Math.cos(y)-ry*Math.sin(y)*Math.sin(p),v=-Math.sin(p)+ry*Math.cos(p),z=Math.cos(y)*Math.cos(p)-rx*Math.sin(y)+ry*Math.cos(y)*Math.sin(p);double targetYaw=Math.toDegrees(Math.atan2(-x,z));while(targetYaw-yaw>180)targetYaw-=360;while(targetYaw-yaw< -180)targetYaw+=360;return new double[]{targetYaw,Math.toDegrees(Math.atan2(-v,Math.hypot(x,z)))};}
  private static final class PickTransformer implements ClassFileTransformer {
-  @Override public byte[] transform(ClassLoader loader,String name,Class<?> redefined,ProtectionDomain domain,byte[] bytes){if(!name.equals(cn(GR).replace('.','/'))&&!name.equals(GR.replace('.','/')))return null;try{String target=methods.getOrDefault(GR+"|pick(float)","pick");final boolean[]found={false};ClassReader r=new ClassReader(bytes);ClassWriter w=new ClassWriter(r,ClassWriter.COMPUTE_MAXS);r.accept(new ClassVisitor(Opcodes.ASM9,w){@Override public MethodVisitor visitMethod(int access,String method,String desc,String sig,String[]ex){MethodVisitor mv=super.visitMethod(access,method,desc,sig,ex);if(!method.equals(target)||!desc.equals("(F)V"))return mv;found[0]=true;return new AdviceAdapter(Opcodes.ASM9,mv,access,method,desc){@Override protected void onMethodEnter(){visitMethodInsn(INVOKESTATIC,"com/wiktor/jogger/agent/MobileAgent","beforePick","()V",false);}@Override protected void onMethodExit(int op){visitMethodInsn(INVOKESTATIC,"com/wiktor/jogger/agent/MobileAgent","afterPick","()V",false);}};}},0);if(found[0]){System.out.println("[Jogger] Touch ray hook installed");return w.toByteArray();}System.err.println("[Jogger] No matching pick(float) method; controls fall back to centre targeting");}catch(Throwable t){System.err.println("[Jogger] Pick transformer failed: "+t);}return null;}
+  @Override public byte[] transform(ClassLoader loader,String name,Class<?> redefined,ProtectionDomain domain,byte[] bytes) {
+   if (!name.equals(cn(GR).replace('.', '/')) && !name.equals(GR.replace('.', '/'))) return null;
+   try {
+    String target=methods.getOrDefault(GR+"|pick(float)","pick");
+    final boolean[] found={false};ClassReader reader=new ClassReader(bytes);
+    ClassWriter writer=new ClassWriter(reader,ClassWriter.COMPUTE_MAXS);
+    reader.accept(new ClassVisitor(Opcodes.ASM9,writer) {
+     @Override public MethodVisitor visitMethod(int access,String method,String desc,String signature,String[] exceptions) {
+      MethodVisitor next=super.visitMethod(access,method,desc,signature,exceptions);
+      if (!method.equals(target)||!desc.equals("(F)V"))return next;
+      found[0]=true;
+      return new AdviceAdapter(Opcodes.ASM9,next,access,method,desc) {
+       final Label start=new Label(),end=new Label(),handler=new Label();
+       private void hook(String method){visitMethodInsn(INVOKESTATIC,"com/wiktor/jogger/agent/MobileAgent",method,"()V",false);}
+       @Override protected void onMethodEnter(){hook("beforePick");visitLabel(start);}
+       @Override protected void onMethodExit(int opcode){if(opcode!=ATHROW)hook("afterPick");}
+       @Override public void visitMaxs(int maxStack,int maxLocals) {
+        visitLabel(end);visitTryCatchBlock(start,end,handler,null);visitLabel(handler);
+        Object[] locals=(access&ACC_STATIC)==0?new Object[]{name,Opcodes.FLOAT}:new Object[]{Opcodes.FLOAT};
+        visitFrame(F_NEW,locals.length,locals,1,new Object[]{"java/lang/Throwable"});
+        hook("afterPick");mv.visitInsn(ATHROW);super.visitMaxs(Math.max(maxStack,1),maxLocals);
+       }
+      };
+     }
+    },ClassReader.EXPAND_FRAMES);
+    if(found[0]){System.out.println("[Jogger] Touch ray hook installed");return writer.toByteArray();}
+    System.err.println("[Jogger] No matching pick(float) method; controls fall back to centre targeting");
+   }catch(Throwable problem){System.err.println("[Jogger] Pick transformer failed: "+problem);}
+   return null;
+  }
  }
 }
