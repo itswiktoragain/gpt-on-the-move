@@ -23,7 +23,7 @@ In Creative mode, all additions are in the Building Blocks, Natural Blocks, Comb
 
 ## Install
 
-Install Fabric Loader and Fabric API for Minecraft Java 1.21.1, then copy `lumenwild-1.0.0.jar` to your `.minecraft/mods/` folder.
+Install Fabric Loader and Fabric API for Minecraft Java 1.21.1, then copy `lumenwild-1.0.1.jar` to your `.minecraft/mods/` folder.
 
 **Backup existing worlds before adding or removing dimensions.** The world must load the mod to retain its dimension.
 
@@ -36,7 +36,7 @@ cd lumenwild
 gradle build
 ```
 
-The JAR will appear in `build/libs/lumenwild-1.0.0.jar`.
+The JAR will appear in `build/libs/lumenwild-1.0.1.jar`.
 The `generateTextures` Gradle task creates all PNG assets automatically before resource processing.
 
 ## Source structure
