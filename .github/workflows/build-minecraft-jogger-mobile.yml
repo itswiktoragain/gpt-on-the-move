@@ -1,0 +1,103 @@
+name: Build Jogger Mobile APK
+on:
+  push:
+    branches: [minecraft-jogger-mobile]
+    paths: ['minecraft-jogger/mobile/**', '.github/workflows/build-minecraft-jogger-mobile.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: jogger-mobile-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.1'
+          cache-read-only: false
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Install build tools
+        run: sdkmanager 'platforms;android-37.0' 'platforms;android-36.1' 'build-tools;37.0.0' 'ndk;27.3.13750724' 'cmake;3.22.1'
+      - name: Reconstruct pinned engine and apply mobile changes
+        run: |
+          git clone --no-checkout https://github.com/AngelAuraMC/Amethyst-Android.git jogger-source
+          git -C jogger-source checkout --detach 28d6e12d68121b7dd75f2e841058a6b7cdfe4a29
+          git -C jogger-source config submodule.androidnsbypass.url https://github.com/alexytomi/androidnsbypass.git
+          git -C jogger-source submodule update --init --recursive
+          cp -a minecraft-jogger/overlay/. jogger-source/
+          python3 minecraft-jogger/classic-integrate.py jogger-source
+          python3 minecraft-jogger/mobile/apply.py jogger-source
+          python3 jogger-source/scripts/jogger-prepare.py
+          (cd jogger-source && bash scripts/languagelist_updater.sh)
+      - name: Test encrypted vault, gesture ownership and touch projection
+        working-directory: jogger-source
+        run: |
+          mkdir -p mobile-test
+          javac -d mobile-test app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/VaultCrypto.java scripts/mobile-tests/VaultTest.java app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicLogic.java scripts/tests/ClassicLogicTest.java jogger_touch_agent/src/main/java/com/minecraftjogger/touch/TouchRay.java scripts/tests/TouchRayTest.java
+          java -cp mobile-test VaultTest
+          java -cp mobile-test ClassicLogicTest
+          java -cp mobile-test TouchRayTest
+      - name: Prepare signing identity and encrypted recovery
+        env:
+          SAVED_KEY: ${{ secrets.JOGGER_MOBILE_KEYSTORE_BASE64 }}
+          SAVED_PASSWORD: ${{ secrets.JOGGER_MOBILE_KEYSTORE_PASSWORD }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/jogger-signing" out
+          chmod 700 "$RUNNER_TEMP/jogger-signing"
+          export JOGGER_KEYSTORE="$RUNNER_TEMP/jogger-signing/mobile.p12"
+          if [ -n "$SAVED_KEY" ] && [ -n "$SAVED_PASSWORD" ]; then
+            printf '%s' "$SAVED_KEY" | base64 --decode > "$JOGGER_KEYSTORE"
+            export JOGGER_KEYSTORE_PASSWORD="$SAVED_PASSWORD"
+          else
+            export JOGGER_KEYSTORE_PASSWORD="$(openssl rand -base64 36)"
+            echo "::add-mask::$JOGGER_KEYSTORE_PASSWORD"
+            keytool -genkeypair -keystore "$JOGGER_KEYSTORE" -storetype PKCS12 -storepass:env JOGGER_KEYSTORE_PASSWORD -keypass:env JOGGER_KEYSTORE_PASSWORD -alias jogger -keyalg RSA -keysize 3072 -validity 10000 -dname 'CN=Minecraft Jogger Mobile, O=Jogger, C=PL'
+          fi
+          echo "JOGGER_KEYSTORE=$JOGGER_KEYSTORE" >> "$GITHUB_ENV"
+          echo "JOGGER_KEYSTORE_PASSWORD=$JOGGER_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          python3 -m pip install --quiet cryptography
+          python3 minecraft-jogger/mobile/encrypt-signing.py
+      - name: Build release and test packaged touch agent
+        working-directory: jogger-source
+        run: |
+          gradle --no-daemon --console=plain --max-workers=3 :app_pojavlauncher:assembleRelease :jogger_touch_agent:verifyTouchProtocol
+          AGENT=app_pojavlauncher/src/main/assets/components/jogger_touch_agent/jogger_touch_agent.jar
+          python3 jogger_touch_agent/tests/agent_socket_test.py "$JAVA_HOME/bin/java" "$AGENT" jogger_touch_agent/build/classes/java/test
+          mkdir -p mobile-test-source
+          sed 's/org.objectweb.asm/com.minecraftjogger.internal.asm/g' scripts/tests/FovFrameRegression.java > mobile-test-source/FovFrameRegression.java
+          javac -cp "$AGENT" -d mobile-test mobile-test-source/FovFrameRegression.java
+          java -Xverify:all -cp "mobile-test:$AGENT" FovFrameRegression
+          mkdir -p account-transfer
+          javac --release 8 -d account-transfer scripts/mobile-tests/AccountTransfer.java app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/VaultCrypto.java
+          jar cfe ../out/Minecraft-Jogger-Account-Transfer.jar AccountTransfer -C account-transfer .
+      - name: Verify and package APK
+        run: |
+          cp jogger-source/app_pojavlauncher/build/outputs/apk/release/app_pojavlauncher-release.apk out/Minecraft-Jogger-1.2.0-Mobile.apk
+          cp jogger-source/app_pojavlauncher/src/main/assets/components/jogger_touch_agent/jogger_touch_agent.jar out/Minecraft-Jogger-1.2.0-Touch-Agent.jar
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs out/Minecraft-Jogger-1.2.0-Mobile.apk > out/signature.txt
+          "$ANDROID_HOME/build-tools/37.0.0/aapt2" dump badging out/Minecraft-Jogger-1.2.0-Mobile.apk > out/apk-info.txt
+          cp minecraft-jogger/mobile/README.md out/README.md
+          cp minecraft-jogger/mobile/mobile-update.patch out/mobile-update.patch
+          mkdir -p out/verification-tools
+          cp "$ANDROID_HOME/build-tools/37.0.0/lib/apksigner.jar" out/verification-tools/
+          cd out && sha256sum *.apk *.jar > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Minecraft-Jogger-Mobile-APK
+          path: out/
+          retention-days: 90
+          if-no-files-found: error
+      - name: Remove temporary plaintext signing material
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/jogger-signing"
