@@ -1,0 +1,99 @@
+{
+  "has_precipitation": false,
+  "temperature": 0.75,
+  "downfall": 0.15,
+  "effects": {
+    "fog_color": 3267713,
+    "water_color": 6281919,
+    "water_fog_color": 2119027,
+    "sky_color": 7659875,
+    "grass_color": 6329233,
+    "foliage_color": 4785065,
+    "mood_sound": {
+      "sound": "minecraft:ambient.cave",
+      "tick_delay": 6000,
+      "block_search_extent": 8,
+      "offset": 2
+    },
+    "music": {
+      "sound": "minecraft:music.overworld.grove",
+      "min_delay": 12000,
+      "max_delay": 24000,
+      "replace_current_music": false
+    }
+  },
+  "carvers": [
+    "minecraft:cave",
+    "minecraft:cave_extra_underground",
+    "minecraft:canyon"
+  ],
+  "features": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [
+      "lumenwild:prism_ore",
+      "lumenwild:umbral_ore",
+      "lumenwild:lumenstone_veins",
+      "lumenwild:duskstone_veins"
+    ],
+    [],
+    [],
+    [
+      "minecraft:trees_plains",
+      "minecraft:flower_plain",
+      "minecraft:patch_grass_plain",
+      "lumenwild:lumenstone_boulders"
+    ],
+    [
+      "minecraft:freeze_top_layer"
+    ]
+  ],
+  "spawn_costs": {},
+  "spawners": {
+    "monster": [
+      {
+        "type": "minecraft:enderman",
+        "weight": 9,
+        "minCount": 1,
+        "maxCount": 2
+      },
+      {
+        "type": "minecraft:slime",
+        "weight": 4,
+        "minCount": 1,
+        "maxCount": 2
+      }
+    ],
+    "creature": [
+      {
+        "type": "minecraft:sheep",
+        "weight": 9,
+        "minCount": 2,
+        "maxCount": 4
+      },
+      {
+        "type": "minecraft:fox",
+        "weight": 3,
+        "minCount": 1,
+        "maxCount": 2
+      }
+    ],
+    "ambient": [
+      {
+        "type": "minecraft:bat",
+        "weight": 8,
+        "minCount": 1,
+        "maxCount": 3
+      }
+    ],
+    "water_creature": [],
+    "water_ambient": [],
+    "underground_water_creature": [],
+    "axolotls": [],
+    "misc": []
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "dimension.lumenwild.lumenwild": "Lumenwild",
+  "block.lumenwild.lumenstone": "Lumenit",
+  "block.lumenwild.duskstone": "Kamień zmierzchu",
+  "block.lumenwild.lumenmoss": "Świetlisty mech",
+  "block.lumenwild.lumenstone_bricks": "Lumenitowe cegły",
+  "block.lumenwild.prism_ore": "Ruda pryzmatu",
+  "block.lumenwild.deep_prism_ore": "Łupkowa ruda pryzmatu",
+  "block.lumenwild.umbral_ore": "Ruda umbry",
+  "block.lumenwild.prism_block": "Blok pryzmatu",
+  "block.lumenwild.prism_lamp": "Lampa pryzmatyczna",
+  "item.lumenwild.prism_shard": "Odłamek pryzmatu",
+  "item.lumenwild.umbral_dust": "Pył umbry",
+  "item.lumenwild.rift_key": "Klucz szczeliny",
+  "item.lumenwild.prism_sword": "Miecz pryzmatyczny",
+  "item.lumenwild.prism_pickaxe": "Pryzmatyczny kilof"
+}

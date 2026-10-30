@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " PE",
+    " U ",
+    " O "
+  ],
+  "key": {
+    "P": {
+      "item": "lumenwild:prism_shard"
+    },
+    "E": {
+      "item": "minecraft:ender_pearl"
+    },
+    "U": {
+      "item": "lumenwild:umbral_dust"
+    },
+    "O": {
+      "item": "minecraft:crying_obsidian"
+    }
+  },
+  "result": {
+    "id": "lumenwild:rift_key",
+    "count": 1
+  }
+}

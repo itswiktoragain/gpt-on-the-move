@@ -1,0 +1,145 @@
+plugins {
+    id 'fabric-loom' version '1.7.4'
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+}
+
+def shade = { int c, int delta ->
+    int r = Math.max(0, Math.min(255, ((c >> 16) & 255) + delta))
+    int g = Math.max(0, Math.min(255, ((c >> 8) & 255) + delta))
+    int b = Math.max(0, Math.min(255, (c & 255) + delta))
+    return (0xFF000000 | (r << 16) | (g << 8) | b) as int
+}
+
+// Generates original 16x16 pixel-art textures using only the Java standard library.
+// No image packs or external art generators are required to build the mod.
+tasks.register('generateTextures') {
+    def directory = file('src/main/resources/assets/lumenwild/textures')
+    outputs.dir(directory)
+    doLast {
+        def palette = [
+            ['block/lumenstone',        0x416A72, 0x77DCCA, 'rock'],
+            ['block/duskstone',         0x342944, 0x70608F, 'rock'],
+            ['block/lumenmoss',         0x32695E, 0x90D5A8, 'moss'],
+            ['block/lumenstone_bricks', 0x447D86, 0x82E5D3, 'brick'],
+            ['block/prism_ore',         0x57636D, 0x65FBE7, 'ore'],
+            ['block/deep_prism_ore',    0x2B3445, 0x50D5FF, 'ore'],
+            ['block/umbral_ore',        0x352D46, 0xE48DFA, 'ore'],
+            ['block/prism_block',       0x238D9C, 0xA5FFFF, 'gem'],
+            ['block/prism_lamp',        0x185463, 0xB6FFFF, 'lamp'],
+            ['item/prism_shard',        0x215F9A, 0x84FFFF, 'shard'],
+            ['item/umbral_dust',        0x5F3980, 0xF1B5FF, 'dust'],
+            ['item/rift_key',           0x326A85, 0xD9FFFF, 'key'],
+            ['item/prism_sword',        0x227899, 0x99FFFF, 'sword'],
+            ['item/prism_pickaxe',      0x247899, 0x9AFFFF, 'pickaxe']
+        ]
+        palette.eachWithIndex { row, idx ->
+            def (path, baseColor, highlight, kind) = row
+            java.util.Random random = new java.util.Random(8713L + idx * 191L)
+            def img = new java.awt.image.BufferedImage(16,16,java.awt.image.BufferedImage.TYPE_INT_ARGB)
+            for(int y=0; y<16; y++) {
+                for(int x=0; x<16; x++) {
+                    int c = 0
+                    int n = random.nextInt(35) - 17
+                    if(kind in ['rock','moss','brick','ore','gem','lamp']) {
+                        c = shade(baseColor as int, n)
+                        if(kind == 'rock' && ((x + y*3) % 13 == 0 || (x==y+2 && y%4==0))) c=shade(highlight as int,-35)
+                        if(kind == 'moss' && random.nextInt(6)==0) c=shade(highlight as int,-random.nextInt(28))
+                        if(kind == 'brick') {
+                            if(y%8==0 || (x + ((y/8) as int)*4)%8==0) c=shade(baseColor as int,-38)
+                            else if(random.nextInt(9)==0) c=shade(highlight as int,-20)
+                        }
+                        if(kind == 'ore' && ((x*3 + y*5)%11==0 || (random.nextInt(15)==0 && x>1 && x<14))) c=shade(highlight as int, random.nextInt(20)-10)
+                        if(kind == 'gem') {
+                            if((x-y)%6==0 || (x+y)%9==0) c=shade(highlight as int,-10)
+                            if(x==0 || y==0 || x==15 || y==15) c=shade(baseColor as int,-45)
+                        }
+                        if(kind == 'lamp') {
+                            boolean core=(x>=3 && x<=12 && y>=3 && y<=12)
+                            c = core ? shade(highlight as int, -((Math.abs(x-7)+Math.abs(y-7))*10)) : shade(baseColor as int, n-15)
+                            if(x==2 || y==2 || x==13 || y==13) c=shade(0x41A3B7,0)
+                        }
+                    } else {
+                        // Transparent 16x16 item sprites with pixel-perfect silhouettes.
+                        int dx = Math.abs(x-8)
+                        if(kind == 'shard') {
+                            if(dx <= (y<8 ? Math.max(0,(y+1)/3) : Math.max(0,(16-y)/3)) && y>=1 && y<=14) c = shade(highlight as int,-dx*20-(y%4)*8)
+                            if(x==8 && y>2 && y<13) c = shade(highlight as int,20)
+                        }
+                        if(kind == 'dust' && (((x-8)*(x-8)+(y-8)*(y-8)<20 && random.nextInt(5)!=0) || (x==2 && y==11) || (x==13 && y==4))) c=shade(highlight as int,n)
+                        if(kind == 'key') {
+                            int d=(x-7)*(x-7)+(y-5)*(y-5)
+                            if(d>=8 && d<=19 && y<10) c=shade(highlight as int,n)
+                            if(x>=6 && x<=8 && y>=8 && y<=14) c=shade(baseColor as int,15)
+                            if(x>=7 && x<=11 && y==12) c=shade(highlight as int,-20)
+                        }
+                        if(kind == 'sword') {
+                            if(y>=2 && y<=11 && x==14-y) c=shade(highlight as int,15)
+                            if(y>=2 && y<=10 && x==13-y) c=shade(highlight as int,-34)
+                            if((x==4 && y==11) || (x==5 && y==10) || (x==6 && y==9) || (x==3 && y==12) || (x==2 && y==13) || (x==1 && y==14)) c=shade(0x805C54,5)
+                            if((x==3 && y==10) || (x==5 && y==12)) c=shade(0xF8DDA5,-15)
+                        }
+                        if(kind == 'pickaxe') {
+                            if(y>=4 && y<=14 && x==Math.max(2, 15-y)) c=shade(0x7C5A43,n)
+                            if(y==2 && x>=3 && x<=13) c=shade(highlight as int,10)
+                            if(y==3 && x>=2 && x<=12) c=shade(highlight as int,-25)
+                            if((x==2 && y==4) || (x==13 && y==4)) c=shade(highlight as int,-10)
+                        }
+                    }
+                    img.setRGB(x,y,c)
+                }
+            }
+            File out=new File(directory,path+'.png')
+            out.parentFile.mkdirs()
+            javax.imageio.ImageIO.write(img,'png',out)
+        }
+    }
+}
+
+tasks.named('processResources') {
+    dependsOn 'generateTextures'
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.named('jar') {
+    from('LICENSE') { rename { "${it}_${project.archives_base_name}" } }
+}
+
+publishing {
+    publications {
+        create('mavenJava', MavenPublication) {
+            from components.java
+        }
+    }
+}

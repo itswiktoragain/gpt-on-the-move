@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "lumenwild",
+  "version": "${version}",
+  "name": "Lumenwild",
+  "description": "Explore a glowing new dimension full of prism ore, umbral minerals, luminous boulders, and strange equipment.",
+  "authors": [
+    "Lumenwild contributors"
+  ],
+  "contact": {
+    "sources": "https://github.com/itswiktoragain/gpt-on-the-move/tree/mod/lumenwild-1-21-1/lumenwild"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.wiktor.lumenwild.LumenwildMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
