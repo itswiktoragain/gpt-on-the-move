@@ -1,0 +1,430 @@
+diff --git a/app_pojavlauncher/build.gradle b/app_pojavlauncher/build.gradle
+index fc4036b..6d75499 100644
+--- a/app_pojavlauncher/build.gradle
++++ b/app_pojavlauncher/build.gradle
+@@ -103,8 +103,8 @@ android {
+         applicationId "com.wiktor.minecraftjogger.mobile"
+         minSdkVersion 29
+         targetSdkVersion 34
+-        versionCode 15100
+-        versionName "1.5.1-mobile"
++        versionCode 15200
++        versionName "1.5.2-mobile"
+         multiDexEnabled true //important
+         ndk { abiFilters "arm64-v8a", "x86_64" }
+         resValue 'string', 'curseforge_api_key', getCFApiKey()
+diff --git a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java
+index 0b69085..a9ad9bc 100644
+--- a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java
++++ b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java
+@@ -68,11 +68,12 @@ public final class ClassicOverlay extends View implements GrabListener, MCOption
+         Route(int kind, Button button) { this.kind=kind; this.button=button; }
+     }
+     private static final String[] ARROW={"0001000","0011100","0111110","1111111","0001000","0001000","0001000"};
+-    private static final String[] PERSON={"0011100","0011100","0001000","0011100","0111110","0100010","1100011"};
+-    private static final String[] JUMP_ICON={"0001000","0011100","0111110","0001000","0001000","0001000","1111111"};
++    // Bedrock-style diagonal squares: outline for the crouch toggle and filled for jump.
++    private static final String[] CROUCH_DIAMOND={"0001000","0010100","0100010","1000001","0100010","0010100","0001000"};
++    private static final String[] JUMP_DIAMOND={"0001000","0011100","0111110","1111111","0111110","0011100","0001000"};
+     private static final String[] PICK={"1111100","0010110","0010011","0001000","0010000","0100000","1000000"};
+     private static final String[] BLOCK={"1111111","1000001","1011101","1011101","1011101","1000001","1111111"};
+-    private static final String[] CHAT_ICON={"1111111","1000001","1010101","1000001","1111111","0011000","0010000"};
++    private static final String[] CHAT_ICON={"011111110","110000011","100000001","101010101","100000001","111111111","001100000","001000000"};
+     private static final String[] PAUSE_ICON={"0110110","0110110","0110110","0110110","0110110","0110110","0110110"};
+     private static final String[] MENU_ICON={"0000000","1111111","0000000","1111111","0000000","1111111","0000000"};
+     private static final String[] TYPE_ICON={"0000000","1111111","1010101","1101011","1010101","1100011","1111111"};
+@@ -109,7 +110,7 @@ public final class ClassicOverlay extends View implements GrabListener, MCOption
+     public static void physicalKey(int code) {
+         ClassicOverlay overlay=live.get(); if (overlay==null) return;
+         if (overlay.playing() && (code==KeyEvent.KEYCODE_T || code==KeyEvent.KEYCODE_SLASH)) {
+-            overlay.mode="CHAT"; overlay.invalidate();
++            overlay.mode="CHAT"; net.kdt.pojavlaunch.jogger.mobile.MinecraftKeyboard.gameState("CHAT"); overlay.invalidate();
+         }
+     }
+     @Override protected void onAttachedToWindow() {
+@@ -160,20 +161,23 @@ public final class ClassicOverlay extends View implements GrabListener, MCOption
+         geometryW=width;geometryH=height;geometryGui=gui;geometryRatio=ratio;buttons.clear();
+         float cell=Math.max(dp(30),Math.min(dp(49),height*.145f)), x=dp(12), y=height-3*cell-dp(14), gap=dp(2);
+         add(UL,x,y,cell-gap,cell-gap,ARROW,null);add(UP,x+cell,y,cell-gap,cell-gap,ARROW,null);add(UR,x+2*cell,y,cell-gap,cell-gap,ARROW,null);
+-        add(LEFT,x,y+cell,cell-gap,cell-gap,ARROW,null);add(CROUCH,x+cell,y+cell,cell-gap,cell-gap,PERSON,null);add(RIGHT,x+2*cell,y+cell,cell-gap,cell-gap,ARROW,null);
++        add(LEFT,x,y+cell,cell-gap,cell-gap,ARROW,null);add(CROUCH,x+cell,y+cell,cell-gap,cell-gap,CROUCH_DIAMOND,null);add(RIGHT,x+2*cell,y+cell,cell-gap,cell-gap,ARROW,null);
+         add(DOWN,x+cell,y+2*cell,cell-gap,cell-gap,ARROW,null);
+         float gameScale=gui*ratio; float hbHeight=20*gameScale;
+         float hudShift=(capabilities&2)!=0?12*gameScale:0;
+         hotbar.set(width*.5f-90*gameScale-hudShift,height-hbHeight,width*.5f+90*gameScale-hudShift,height);
+         add(BAG,width*.5f+93*gameScale-hudShift,height-22*gameScale,22*gameScale,22*gameScale,DOTS,null);
+         float actionY=Math.min(height-2*cell-dp(14),hotbar.top-cell*.25f);
+-        add(JUMP,width-2*cell-dp(14),actionY,cell*1.5f,cell*1.5f,JUMP_ICON,null);
++        add(JUMP,width-2*cell-dp(14),actionY,cell*1.5f,cell*1.5f,JUMP_DIAMOND,null);
+         float top=Math.max(dp(8),getRootWindowInsets()==null?0:getRootWindowInsets().getStableInsetTop());
+         float h=dp(39), w=dp(53), middle=width*.5f;
+-        add(CHAT,middle-1.5f*w-dp(3),top,w,h,CHAT_ICON,null);add(PAUSE,middle-.5f*w,top,w,h,PAUSE_ICON,null);
++        // Reserve the top-centre row for the XP bar and level. Keep gameplay
++        // utility buttons below it instead of overlapping the Bedrock HUD.
++        float controlsTop=playing()?top+dp(44):top;
++        add(CHAT,middle-1.5f*w-dp(3),controlsTop,w,h,CHAT_ICON,null);add(PAUSE,middle-.5f*w,controlsTop,w,h,PAUSE_ICON,null);
+         float safeLeft=dp(10),safeRight=dp(10);
+         if(getRootWindowInsets()!=null&&getRootWindowInsets().getDisplayCutout()!=null){safeLeft=Math.max(safeLeft,getRootWindowInsets().getDisplayCutout().getSafeInsetLeft());safeRight=Math.max(safeRight,getRootWindowInsets().getDisplayCutout().getSafeInsetRight());}
+-        add(MENU,playing()?middle+.5f*w+dp(3):width-safeRight-w,top,w,h,MENU_ICON,null);
++        add(MENU,playing()?middle+.5f*w+dp(3):width-safeRight-w,controlsTop,w,h,MENU_ICON,null);
+         add(BACK,safeLeft,top,w,h,null,"Leave");add(SEND,width-safeRight-w,top,w,h,SEND_ICON,null);
+     }
+     private void add(int id,float x,float y,float w,float h,String[] icon,String label){buttons.add(new Button(id,x,y,w,h,icon,label));}
+@@ -337,6 +341,7 @@ public final class ClassicOverlay extends View implements GrabListener, MCOption
+         if(id==BAG&&playing()){release();pulse(inventory);mode="SCREEN";return;}
+         if(id==CHAT&&playing()) {
+             release();pulse(chat);mode="CHAT";
++            net.kdt.pojavlaunch.jogger.mobile.MinecraftKeyboard.gameState("CHAT");
+             return;
+         }
+         if(id==PAUSE||id==BACK){release();pulse(256);hideKeyboard();mode="SCREEN";return;}
+diff --git a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/InventoryTouch.java b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/InventoryTouch.java
+index 08bf163..aed7ff6 100644
+--- a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/InventoryTouch.java
++++ b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/InventoryTouch.java
+@@ -36,7 +36,10 @@ public final class InventoryTouch {
+     }
+     public static void doneReply(long id,int status){InventoryTouch i=live.get();if(i!=null)i.handler.post(()->{
+         if(i.request!=id)return;
+-        if(status==0)Toast.makeText(i.view.getContext(),"This inventory cannot accept that drag",Toast.LENGTH_SHORT).show();
++        if(status==0) {
++            // Never leave a picked stack attached to the cursor on an unsupported adapter.
++            i.legacyDrag();
++        }
+         i.request=-1;
+     });}
+     public boolean event(MotionEvent e,boolean nativeAvailable){
+@@ -52,15 +55,17 @@ public final class InventoryTouch {
+             if(!drag&&Math.hypot(x-sx,y-sy)>8*scale){drag=true;handler.removeCallbacks(redraw);
+                 long ms=Math.max(0,e.getEventTime()-start);
+                 dragHeldMs=ms;charge=StackCharge.fraction(ms);selected=StackCharge.selected(count,ms);
+-                if(!canQuery){full=true;mouse(true,sx,sy);}
++                if(!canQuery)full=true;
+             }
+-            if(full)cursor(x,y);view.invalidate();return true;
++            // Do not hold a synthetic mouse button across a drag: vanilla then
++            // treats release as an unfinished inventory pickup.
++            if(drag)cursor(x,y);view.invalidate();return true;
+         }
+         if((action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_POINTER_UP)&&e.getPointerId(index)==pointer){
+             handler.removeCallbacks(redraw);pointer=-1;ended=true;
+             if(drag){
+-                if(full){mouse(false,x,y);}else if(canQuery){sendDrop();}
+-                else{waiting=true;int g=generation;handler.postDelayed(()->{if(waiting&&generation==g){waiting=false;legacyDrag();}},180);}
++                if(canQuery){sendDrop();}
++                else{waiting=true;int g=generation;handler.postDelayed(()->{if(waiting&&generation==g){waiting=false;legacyDrag();}},190);}
+             }else{ // Short tap: preserve vanilla pickup, placement and creative palette behaviour.
+                 mouse(true,x,y);int g=generation;handler.postDelayed(()->{if(g==generation)mouse(false,x,y);},45);
+             }
+@@ -70,12 +75,33 @@ public final class InventoryTouch {
+     private void sendDrop(){
+         if(!canQuery||request<1)return;
+         int amount=selected>0?selected:count;
+-        if(!JoggerTouchBridge.requestInventoryDrop(request,nx(x),ny(y),amount))legacyDrag();
++        if(!JoggerTouchBridge.requestInventoryDrop(request,nx(x),ny(y),amount)) {
++            legacyDrag();request=-1;
++        } else {
++            final int g=generation;final long token=request;
++            handler.postDelayed(()->{
++                if(g==generation && request==token) {request=-1;legacyDrag();}
++            },1100);
++        }
+         view.invalidate();
+     }
+     private void legacyDrag(){
+-        int g=generation;mouse(true,sx,sy);cursor(x,y);
+-        handler.postDelayed(()->{if(g==generation)mouse(false,x,y);},65);
++        // Vanilla touchscreen fallback requires a COMPLETE pickup click followed
++        // by a COMPLETE placement click at the destination, not one held mouse
++        // button whose release is sent over another slot.
++        final int g=generation;
++        final float ox=sx,oy=sy,tx=x,ty=y;
++        cursor(ox,oy);mouse(true,ox,oy);
++        handler.postDelayed(()->{
++            if(g!=generation)return;
++            mouse(false,ox,oy);
++            if(Math.hypot(tx-ox,ty-oy)<8*scale)return;
++            handler.postDelayed(()->{
++                if(g!=generation)return;
++                cursor(tx,ty);mouse(true,tx,ty);
++                handler.postDelayed(()->{if(g==generation)mouse(false,tx,ty);},55);
++            },45);
++        },55);
+     }
+     public void draw(Canvas canvas){
+         if(pointer<0)return;
+diff --git a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MappingCatalog.java b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MappingCatalog.java
+index 73247a3..7fb2585 100644
+--- a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MappingCatalog.java
++++ b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MappingCatalog.java
+@@ -69,10 +69,21 @@ public final class MappingCatalog {
+         if(s.equals("renderer")){if(n.equals("pick")&&a.equals("float"))return "pick";if(n.equals("getFov"))return "fov";}
+         if(s.equals("entity")&&n.equals("getViewVector")&&a.equals("float"))return "view";
+         if(s.equals("mc")&&n.equals("tick")&&a.isEmpty())return "mc.tick";
+-        if(s.equals("hud")){if(n.equals("renderItemHotbar")||n.equals("renderHotbar"))return "hud.hotbar";if(n.equals("renderCrosshair"))return "hud.crosshair";}
++        if(s.equals("hud")){
++            if(n.equals("renderItemHotbar")||n.equals("renderHotbar"))return "hud.hotbar";
++            if(n.equals("renderCrosshair"))return "hud.crosshair";
++            if(n.equals("renderPlayerHealth"))return "hud.health";
++            if(n.equals("renderArmor"))return "hud.armor";
++            if(n.equals("renderHearts"))return "hud.hearts";
++            if(n.equals("renderFood"))return "hud.food";
++            if(n.equals("renderAirBubbles"))return "hud.air";
++            if(n.equals("renderVehicleHealth"))return "hud.vehicle";
++            if(n.equals("renderExperienceBar"))return "hud.experience";
++            if(n.equals("renderExperienceLevel"))return "hud.level";
++        }
+         if(s.equals("chatComponent")&&n.equals("render"))return "chat.render";
+         if(s.equals("chatComponent")&&n.equals("screenToChatY"))return "chat.mouseY";
+-        if(s.equals("graphics")){if(n.equals("pose"))return "graphics.pose";if(n.equals("guiHeight"))return "graphics.height";}
++        if(s.equals("graphics")){if(n.equals("pose"))return "graphics.pose";if(n.equals("guiHeight"))return "graphics.height";if(n.equals("guiWidth"))return "graphics.width";}
+         if(s.equals("pose")){if(n.equals("pushPose"))return "pose.push";if(n.equals("popPose"))return "pose.pop";if(n.equals("translate")&&a.equals("double,double,double"))return "pose.translate";}
+         if(s.equals("options")&&n.equals("touchscreen"))return "options.touchscreen";
+         if(s.equals("option")&&n.equals("set"))return "option.set";
+diff --git a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MinecraftKeyboard.java b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MinecraftKeyboard.java
+index d16e328..67a2666 100644
+--- a/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MinecraftKeyboard.java
++++ b/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MinecraftKeyboard.java
+@@ -24,7 +24,7 @@ public final class MinecraftKeyboard extends LinearLayout {
+     private final Runnable resized;private final ArrayList<Key> keys=new ArrayList<>();
+     private Bitmap[] skin;private Bitmap font;private int[] glyphWidths;private final RectF inputBounds=new RectF();private boolean inputBoundsKnown;private boolean resizedGame;
+     private boolean shift,caps,control,sentShift,sentControl;private int page;private long shiftTime,latestFocus=-1,manualUntil;
+-    private int occupiedHeight;private String gameState="SCREEN";
++    private int occupiedHeight;private String gameState="SCREEN";private boolean manualChatOpen;
+     private MinecraftKeyboard(MainActivity owner,FrameLayout parent,MinecraftProfile p,Runnable resized) {
+         super(owner);this.owner=owner;this.parent=parent;this.resized=resized;
+         setOrientation(VERTICAL);setBackgroundColor(0xff242424);setPadding(dp(5),dp(4),dp(5),dp(4));setFocusable(false);setVisibility(GONE);setFilterTouchesWhenObscured(true);
+@@ -54,8 +54,15 @@ public final class MinecraftKeyboard extends LinearLayout {
+     }
+     public static void gameTap(float x,float y){
+         MinecraftKeyboard k=current();if(k==null||k.getVisibility()==VISIBLE)return;
+-        if(k.gameState.equals("PLAY"))return;
++        // A tap on the chat's input row should always open our in-game keyboard.
++        // A late screen-state packet must not cause the input row to become untappable.
++        if(k.gameState.equals("PLAY") && org.lwjgl.glfw.CallbackBridge.isGrabbing())return;
+         k.state.rearm();
++        if(k.gameState.equals("CHAT") && y>=.86f) {
++            k.manualChatOpen=true;
++            k.manualUntil=SystemClock.uptimeMillis()+1800;
++            k.state.show();k.apply();
++        }
+         net.kdt.pojavlaunch.jogger.JoggerTouchBridge.requestTextFocus(x,y);
+     }
+     public static void inputArea(RectF rect){
+@@ -65,12 +72,13 @@ public final class MinecraftKeyboard extends LinearLayout {
+         if(k.state.visible())k.resize(true);
+     }
+     public static void show(){MinecraftKeyboard k=current();if(k!=null)request(k.owner,true);}
+-    public static void hide(){MinecraftKeyboard k=current();if(k!=null){k.state.hide();k.apply();}}
++    public static void hide(){MinecraftKeyboard k=current();if(k!=null){k.manualChatOpen=false;k.state.hide();k.apply();}}
+     public static boolean visible(){MinecraftKeyboard k=current();return k!=null&&k.getVisibility()==VISIBLE;}
+     public static int height(){MinecraftKeyboard k=current();return k==null?0:k.occupiedHeight;}
+     public static void gameState(String mode){
+         MinecraftKeyboard k=current();if(k==null)return;
+         String previous=k.gameState;k.gameState=mode;
++        if(!mode.equals("CHAT"))k.manualChatOpen=false;
+         for(Key key:k.keys)key.invalidate();
+         // Only dismiss on screen *transitions*, not on repeated inventory status updates.
+         // Creative search/anvil text fields are themselves inventory screens.
+@@ -82,7 +90,7 @@ public final class MinecraftKeyboard extends LinearLayout {
+         MinecraftKeyboard k=current();if(k==null)return;
+         k.ui.post(()->{if(token<k.latestFocus)return;k.latestFocus=token;
+             if(active){k.state.report(token,screenToken,true);k.apply();}
+-            else k.ui.postDelayed(()->{if(k.latestFocus==token&&SystemClock.uptimeMillis()>=k.manualUntil){k.state.report(token,screenToken,false);k.apply();}},240);
++            else k.ui.postDelayed(()->{if(k.latestFocus==token&&SystemClock.uptimeMillis()>=k.manualUntil&&!k.manualChatOpen){k.state.report(token,screenToken,false);k.apply();}},240);
+         });
+     }
+     public static void destroy(MainActivity activity){MinecraftKeyboard k=live.get();if(k!=null&&k.owner==activity){k.cancelKeys();k.shift=k.control=false;k.syncModifiers();k.ui.removeCallbacksAndMessages(null);live.clear();}}
+diff --git a/jogger_touch_agent/build.gradle b/jogger_touch_agent/build.gradle
+index f55cf0a..350c62a 100644
+--- a/jogger_touch_agent/build.gradle
++++ b/jogger_touch_agent/build.gradle
+@@ -8,7 +8,7 @@ jar {
+     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+     exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA', 'module-info.class'
+-    manifest { attributes('Manifest-Version':'1.0', 'Premain-Class':'com.minecraftjogger.touch.JoggerTouchAgent', 'Can-Redefine-Classes':'false', 'Can-Retransform-Classes':'false', 'Implementation-Title':'Minecraft Jogger Classic Touch Agent', 'Implementation-Version':'1.4.0') }
++    manifest { attributes('Manifest-Version':'1.0', 'Premain-Class':'com.minecraftjogger.touch.JoggerTouchAgent', 'Can-Redefine-Classes':'false', 'Can-Retransform-Classes':'false', 'Implementation-Title':'Minecraft Jogger Classic Touch Agent', 'Implementation-Version':'1.5.2') }
+ }
+ tasks.register('verifyTouchProtocol', JavaExec) { dependsOn testClasses; classpath=sourceSets.test.runtimeClasspath; mainClass='com.minecraftjogger.touch.InputStateTest' }
+ 
+diff --git a/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/HudLayout.java b/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/HudLayout.java
+new file mode 100644
+index 0000000..a50957c
+--- /dev/null
++++ b/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/HudLayout.java
+@@ -0,0 +1,22 @@
++package com.minecraftjogger.touch;
++/** GUI-space offsets; game-provided hearts, absorption and bars remain authoritative. */
++public final class HudLayout {
++    public static final class Shift {
++        public final double x,y;
++        public Shift(double x,double y){this.x=x;this.y=y;}
++    }
++    private HudLayout(){}
++    public static Shift shift(int kind,int width,int height){
++        if(width<210||height<80)return new Shift(0,0); // Conservative fallback.
++        double edge=Math.max(0,width/2.0-100.0);
++        switch(kind){
++            case 4: return new Shift(0,-height+56); // Player health group to top.
++            case 5: return new Shift(-edge,0);       // Hearts/armour top-left.
++            case 6: return new Shift(edge,0);        // Hunger/air top-right.
++            case 7: return new Shift(edge,-height+56);// Mount/vehicle hearts.
++            case 8: return new Shift(0,-height+44); // XP bar at top centre.
++            case 9: return new Shift(0,-height+73); // Level below XP bar.
++            default:return new Shift(0,0);
++        }
++    }
++}
+diff --git a/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/MobileHooks.java b/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/MobileHooks.java
+index 653327a..23477df 100644
+--- a/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/MobileHooks.java
++++ b/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/MobileHooks.java
+@@ -15,6 +15,7 @@ public final class MobileHooks {
+     private static final ThreadLocal<Deque<Transform>> transforms=ThreadLocal.withInitial(ArrayDeque::new);
+     private static final Map<Class<?>,Method> graphicGetters=new ConcurrentHashMap<>();
+     private static final Map<Class<?>,PoseOps> poseCache=new ConcurrentHashMap<>();
++    private static final Map<String,Method> dimensionCache=new ConcurrentHashMap<>();
+     private static final class PoseOps {final Method push,pop,move;PoseOps(Method a,Method b,Method c){push=a;pop=b;move=c;}}
+     private static volatile boolean inputTouch;private static long nextTouchCheck;
+     private static final class Transform {Object pose;Method pop;int kind;Transform(int k){kind=k;}}
+@@ -73,6 +74,12 @@ public final class MobileHooks {
+                 if(getter!=null)pose=getter.invoke(graphics);
+             }
+             double dx=kind==1||kind==3?-12:0,dy=kind==2?-80:0;
++            if(kind>=4&&kind<=9){
++                int width=dimension(graphics,"graphics.width","guiWidth");
++                int height=dimension(graphics,"graphics.height","guiHeight");
++                HudLayout.Shift shift=HudLayout.shift(kind,width,height);
++                dx=shift.x;dy=shift.y;
++            }
+             if(pose!=null){Class<?> cls=pose.getClass();PoseOps ops=poseCache.get(cls);
+                 if(ops==null){Method push=findMethod(cls,names.getProperty("method.pose.push"),new String[]{"pushPose","pushMatrix","push"});Method pop=findMethod(cls,names.getProperty("method.pose.pop"),new String[]{"popPose","popMatrix","pop"});Method tr=null;
+                     String mapped=names.getProperty("method.pose.translate","translate");for(Method m:cls.getMethods())if(m.getName().equals(mapped)||m.getName().equals("translate")){Class<?>[] t=m.getParameterTypes();if(Arrays.equals(t,new Class[]{double.class,double.class,double.class})||Arrays.equals(t,new Class[]{float.class,float.class,float.class})||Arrays.equals(t,new Class[]{float.class,float.class})){tr=m;break;}}
+@@ -86,6 +93,18 @@ public final class MobileHooks {
+         }catch(Throwable ignored){}
+     }
+     public static void end(){Deque<Transform> stack=transforms.get();if(stack.isEmpty())return;Transform t=stack.pop();if(t.pop!=null)try{t.pop.invoke(t.pose instanceof Class?null:t.pose);}catch(Throwable ignored){}}
++    private static int dimension(Object graphics,String key,String named){
++        if(graphics==null)return 0;
++        Class<?> type=graphics.getClass();String cacheKey=type.getName()+"/"+key;
++        try{
++            Method m=dimensionCache.get(cacheKey);
++            if(m==null){String mapped=names.getProperty("method."+key);
++                for(Method candidate:type.getMethods())if(candidate.getParameterCount()==0&&candidate.getReturnType()==int.class&&
++                   (candidate.getName().equals(mapped)||candidate.getName().equals(named))){m=candidate;dimensionCache.put(cacheKey,m);break;}
++            }
++            return m==null?0:((Number)m.invoke(graphics)).intValue();
++        }catch(Throwable ignored){return 0;}
++    }
+     private static Method findMethod(Class<?> c,String mapped,String[] known){for(Method m:c.getMethods())if(m.getParameterTypes().length==0){if(m.getName().equals(mapped))return m;for(String s:known)if(m.getName().equals(s))return m;}return null;}
+     public static boolean legacyCrosshair(int x,int y,int u,int v,int width,int height){return u==0&&v==0&&width==16&&height==16&&hideCrosshair();}
+     public static double chatMouseY(double y){return (capabilities&8)!=0?y+80:y;}
+diff --git a/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/MobileTransformer.java b/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/MobileTransformer.java
+index 3ecf5a1..49a36ed 100644
+--- a/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/MobileTransformer.java
++++ b/jogger_touch_agent/src/main/java/com/minecraftjogger/touch/MobileTransformer.java
+@@ -33,8 +33,16 @@ public final class MobileTransformer implements ClassFileTransformer {
+                 if(hud&&method(m,"hud.hotbar","renderItemHotbar","renderHotbar","method_1759"))kind=1;
+                 if(chat&&method(m,"chat.render","render","method_1805"))kind=2;
+                 if(hud&&method(m,"hud.legacy","renderGameOverlay"))kind=3;
++                // Render the game's real health, armour, food, air, mounts, XP and
++                // absorption; do not approximate any player status in Android.
++                if(hud&&method(m,"hud.health","renderPlayerHealth"))kind=4;
++                if(hud&&(method(m,"hud.armor","renderArmor")||method(m,"hud.hearts","renderHearts")))kind=5;
++                if(hud&&(method(m,"hud.food","renderFood")||method(m,"hud.air","renderAirBubbles")))kind=6;
++                if(hud&&method(m,"hud.vehicle","renderVehicleHealth"))kind=7;
++                if(hud&&method(m,"hud.experience","renderExperienceBar"))kind=8;
++                if(hud&&method(m,"hud.level","renderExperienceLevel"))kind=9;
+                 boolean cross=hud&&method(m,"hud.crosshair","renderCrosshair","method_1736");
+-                if((kind!=0||cross)&&Type.getReturnType(m.desc).getSort()==Type.VOID&&(m.access&Opcodes.ACC_STATIC)==0){
++                if((kind!=0||cross)&&Type.getReturnType(m.desc).getSort()==Type.VOID&&(kind!=0||(m.access&Opcodes.ACC_STATIC)==0)){
+                     if(kind==3)for(AbstractInsnNode i:m.instructions.toArray())if(i instanceof MethodInsnNode){MethodInsnNode call=(MethodInsnNode)i;
+                         if(call.getOpcode()==Opcodes.INVOKEVIRTUAL&&call.desc.equals("(IIIIII)V")){
+                             String helper="jogger$quad"+(counter++),desc="(L"+call.owner+";IIIIII)V";MethodNode n=new MethodNode(Opcodes.ACC_PRIVATE|Opcodes.ACC_STATIC|Opcodes.ACC_SYNTHETIC,helper,desc,null,null);n.visitCode();for(int a=1;a<=6;a++)n.visitVarInsn(Opcodes.ILOAD,a);n.visitMethodInsn(Opcodes.INVOKESTATIC,"com/minecraftjogger/touch/MobileHooks","legacyCrosshair","(IIIIII)Z",false);Label draw=new Label();n.visitJumpInsn(Opcodes.IFEQ,draw);n.visitInsn(Opcodes.RETURN);n.visitLabel(draw);n.visitFrame(Opcodes.F_SAME,0,null,0,null);n.visitVarInsn(Opcodes.ALOAD,0);for(int a=1;a<=6;a++)n.visitVarInsn(Opcodes.ILOAD,a);n.visitMethodInsn(call.getOpcode(),call.owner,call.name,call.desc,call.itf);n.visitInsn(Opcodes.RETURN);n.visitMaxs(0,0);n.visitEnd();added.add(n);call.setOpcode(Opcodes.INVOKESTATIC);call.owner=c.name;call.name=helper;call.desc=desc;call.itf=false;
+@@ -52,9 +60,14 @@ public final class MobileTransformer implements ClassFileTransformer {
+         String oldName=original.name;int access=original.access;original.name="jogger$original$"+oldName+"$"+id;original.access=(access&~(Opcodes.ACC_PUBLIC|Opcodes.ACC_PROTECTED|Opcodes.ACC_SYNCHRONIZED))|Opcodes.ACC_PRIVATE|Opcodes.ACC_SYNTHETIC;
+         MethodNode m=new MethodNode(access,oldName,original.desc,original.signature,original.exceptions.toArray(new String[0]));m.visitCode();
+         if(cross){m.visitMethodInsn(Opcodes.INVOKESTATIC,"com/minecraftjogger/touch/MobileHooks","hideCrosshair","()Z",false);Label draw=new Label();m.visitJumpInsn(Opcodes.IFEQ,draw);m.visitInsn(Opcodes.RETURN);m.visitLabel(draw);m.visitFrame(Opcodes.F_SAME,0,null,0,null);}
+-        Type[] args=Type.getArgumentTypes(original.desc);int locals=1;
+-        if(kind!=0){if(args.length>0&&args[0].getSort()==Type.OBJECT)m.visitVarInsn(Opcodes.ALOAD,1);else m.visitInsn(Opcodes.ACONST_NULL);m.visitLdcInsn(kind);m.visitMethodInsn(Opcodes.INVOKESTATIC,"com/minecraftjogger/touch/MobileHooks","begin","(Ljava/lang/Object;I)V",false);}
+-        Label start=new Label(),end=new Label(),handler=new Label();m.visitLabel(start);m.visitVarInsn(Opcodes.ALOAD,0);for(Type arg:args){m.visitVarInsn(arg.getOpcode(Opcodes.ILOAD),locals);locals+=arg.getSize();}m.visitMethodInsn(Opcodes.INVOKESPECIAL,owner,original.name,original.desc,false);m.visitLabel(end);
++        Type[] args=Type.getArgumentTypes(original.desc);
++        boolean staticMethod=(access&Opcodes.ACC_STATIC)!=0;
++        int locals=staticMethod?0:1;
++        if(kind!=0){if(args.length>0&&args[0].getSort()==Type.OBJECT)m.visitVarInsn(Opcodes.ALOAD,locals);else m.visitInsn(Opcodes.ACONST_NULL);m.visitLdcInsn(kind);m.visitMethodInsn(Opcodes.INVOKESTATIC,"com/minecraftjogger/touch/MobileHooks","begin","(Ljava/lang/Object;I)V",false);}
++        Label start=new Label(),end=new Label(),handler=new Label();m.visitLabel(start);
++        if(!staticMethod)m.visitVarInsn(Opcodes.ALOAD,0);
++        for(Type arg:args){m.visitVarInsn(arg.getOpcode(Opcodes.ILOAD),locals);locals+=arg.getSize();}
++        m.visitMethodInsn(staticMethod?Opcodes.INVOKESTATIC:Opcodes.INVOKESPECIAL,owner,original.name,original.desc,false);m.visitLabel(end);
+         if(kind!=0)m.visitMethodInsn(Opcodes.INVOKESTATIC,"com/minecraftjogger/touch/MobileHooks","end","()V",false);m.visitInsn(Opcodes.RETURN);
+         if(kind!=0){m.visitTryCatchBlock(start,end,handler,null);m.visitLabel(handler);m.visitFrame(Opcodes.F_SAME1,0,null,1,new Object[]{"java/lang/Throwable"});m.visitVarInsn(Opcodes.ASTORE,locals);m.visitMethodInsn(Opcodes.INVOKESTATIC,"com/minecraftjogger/touch/MobileHooks","end","()V",false);m.visitVarInsn(Opcodes.ALOAD,locals);m.visitInsn(Opcodes.ATHROW);}
+         m.visitMaxs(0,0);m.visitEnd();return m;
+diff --git a/scripts/mobile16-tests/HudLayoutTest.java b/scripts/mobile16-tests/HudLayoutTest.java
+new file mode 100644
+index 0000000..56e9fd6
+--- /dev/null
++++ b/scripts/mobile16-tests/HudLayoutTest.java
+@@ -0,0 +1,16 @@
++import com.minecraftjogger.touch.HudLayout;
++public class HudLayoutTest {
++    private static int checks;
++    private static void eq(double value,double expected,String name){if(Math.abs(value-expected)>1e-5)throw new AssertionError(name+":"+value);checks++;}
++    public static void main(String[] args){
++        HudLayout.Shift h=HudLayout.shift(4,560,315);eq(h.x,0,"health X");eq(h.y,-259,"health Y");
++        eq(HudLayout.shift(5,560,315).x,-180,"left edge");
++        eq(HudLayout.shift(6,560,315).x,180,"right edge");
++        eq(HudLayout.shift(7,560,315).y,-259,"mount top");
++        eq(HudLayout.shift(8,560,315).y,-271,"xp top");
++        eq(HudLayout.shift(9,560,315).y,-242,"level under bar");
++        eq(HudLayout.shift(4,180,100).y,0,"small GUI fallback");
++        eq(HudLayout.shift(5,560,0).x,0,"missing height fallback");
++        System.out.println("HUD layout: "+checks+" checks passed");
++    }
++}
+diff --git a/scripts/mobile16-tests/HudTransformValidation.java b/scripts/mobile16-tests/HudTransformValidation.java
+new file mode 100644
+index 0000000..141bf94
+--- /dev/null
++++ b/scripts/mobile16-tests/HudTransformValidation.java
+@@ -0,0 +1,40 @@
++import com.minecraftjogger.touch.MobileTransformer;
++import net.kdt.pojavlaunch.jogger.mobile.MappingCatalog;
++import org.objectweb.asm.*;
++import org.objectweb.asm.tree.*;
++import org.objectweb.asm.tree.analysis.*;
++import java.io.*;
++import java.nio.file.*;
++import java.util.*;
++import java.util.zip.*;
++
++public class HudTransformValidation {
++    static int checks;
++    static void check(boolean ok,String label){if(!ok)throw new AssertionError(label);checks++;}
++    public static void main(String[] args)throws Exception {
++        Properties props;
++        try(Reader file=Files.newBufferedReader(Paths.get(args[1]))){props=MappingCatalog.parse(file);}
++        String[] ids={"health","armor","hearts","food","air","vehicle","experience","level"};
++        for(String id:ids){check(props.containsKey("method.hud."+id),"missing HUD method "+id);check(props.containsKey("desc.hud."+id),"missing descriptor "+id);}
++        check(props.containsKey("method.graphics.width"),"missing graphics width");
++        check(props.containsKey("method.graphics.height"),"missing graphics height");
++        String cls=props.getProperty("class.hud"); check(cls!=null,"missing hud class");
++        byte[] in;
++        try(ZipFile archive=new ZipFile(args[0]);InputStream stream=archive.getInputStream(archive.getEntry(cls.replace('.','/')+".class"))){ByteArrayOutputStream data=new ByteArrayOutputStream();byte[] buf=new byte[65536];int n;while((n=stream.read(buf))!=-1)data.write(buf,0,n);in=data.toByteArray();}
++        MobileTransformer transformer=new MobileTransformer(props);
++        byte[] patched=transformer.transform(null,cls.replace('.','/'),null,null,in);
++        check(patched!=null&&patched.length>in.length,"patched HUD class exists");
++        ClassNode oldNode=new ClassNode(),newNode=new ClassNode();new ClassReader(in).accept(oldNode,0);new ClassReader(patched).accept(newNode,0);
++        int wrappers=0,armorStatic=0;
++        for(MethodNode m:newNode.methods){
++            if(m.name.startsWith("jogger$original$"))wrappers++;
++            if(m.name.equals(props.getProperty("method.hud.armor"))&&m.desc.equals(props.getProperty("desc.hud.armor"))&&(m.access&Opcodes.ACC_STATIC)!=0)armorStatic++;
++            if((m.access&(Opcodes.ACC_ABSTRACT|Opcodes.ACC_NATIVE))==0)
++                try{new Analyzer<>(new BasicVerifier()).analyze(newNode.name,m);}
++                catch(AnalyzerException e){throw new AssertionError("Invalid transformed HUD method "+m.name+m.desc,e);}
++        }
++        check(wrappers>=8,"expected HUD wrappers, found "+wrappers);
++        check(armorStatic==1,"static renderArmor wrapper preserved");
++        System.out.println("HUD actual 1.21.4 bytecode: "+checks+" checks passed ("+wrappers+" wrapped methods)");
++    }
++}
