@@ -4,6 +4,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.io.IOException;
 import java.nio.file.Path;
 import dev.wiktor.unboundhorizons.vertical.WideBlockPos;
+import dev.wiktor.unboundhorizons.cubic.CubicTerrainWorld;
+import dev.wiktor.unboundhorizons.cubic.CubicWorldCommands;
+import dev.wiktor.unboundhorizons.cubic.NativeDeepFeatures;
 import dev.wiktor.unboundhorizons.vertical.SparseVerticalStore;
 import dev.wiktor.unboundhorizons.vertical.WideStorageDebugCommands;
 import net.minecraft.util.WorldSavePath;
@@ -29,8 +32,34 @@ public final class UnboundHorizons implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        LOG.info("Unbound Horizons: tested playable Y=-4096..4095; experimental virtual Y world border at +/-29,999,984, absolute hard stop +/-30M.");
+        LOG.info("Unbound Horizons cubic preview: native playable Y=-4096..4095, 3D cubic backend virtual Y=-29999984..+29999984.");
+        NativeDeepFeatures.register(); // Native deep -4096 world ore veins and lakes.
         WideStorageDebugCommands.register();
+        CubicWorldCommands.register(); // Independent 3D cubic generator diagnostics.
+
+        if (Boolean.getBoolean("unboundhorizons.verifyCubic")) {
+            ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+                Path path=server.getSavePath(WorldSavePath.ROOT)
+                    .resolve("unboundhorizons").resolve("cubic_ci");
+                WideBlockPos low=new WideBlockPos(0,-29_999_984,0);
+                WideBlockPos high=new WideBlockPos(0,29_999_984,0);
+                try {
+                    try(CubicTerrainWorld world=new CubicTerrainWorld(path,server.getOverworld().getSeed())) {
+                        world.set(low,"minecraft:diamond_block");
+                        world.set(high,"minecraft:emerald_block");
+                    }
+                    try(CubicTerrainWorld reloaded=new CubicTerrainWorld(path,server.getOverworld().getSeed())) {
+                        boolean pass="minecraft:diamond_block".equals(reloaded.get(low))
+                            && "minecraft:emerald_block".equals(reloaded.get(high))
+                            && reloaded.getChunk(0,-768,0).oreCount()>=0;
+                        if(pass) LOG.info("UNBOUND_CUBIC_BACKEND_PASS");
+                        else LOG.error("UNBOUND_CUBIC_BACKEND_FAIL: 3D cubic edits lost");
+                    }
+                } catch(IOException error) {
+                    LOG.error("UNBOUND_CUBIC_BACKEND_FAIL",error);
+                }
+            });
+        }
         if (Boolean.getBoolean("unboundhorizons.verifyWideStorage")) {
             ServerLifecycleEvents.SERVER_STARTED.register(server -> {
                 Path path = server.getSavePath(WorldSavePath.ROOT).resolve("unboundhorizons")
