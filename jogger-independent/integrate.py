@@ -17,11 +17,14 @@ patch(J/'Core.java',
     Mappings.write(mappings,tiny,new File(dir,"jogger-intermediary.properties"));
    }else new File(dir,"jogger-intermediary.properties").delete();
    File runtime=runtime(s.c,log);File agent=''')
-# Activity rotation does not reset a running input stream; window focus loss does.
+# LWJGL FreeType uses the core generic JNI bindings and the Android OpenJDK FreeType library.
+patch(J/'Core.java','"lwjgl-tinyfd","lwjgl-jemalloc"','"lwjgl-tinyfd","lwjgl-jemalloc","lwjgl-freetype"')
+patch(J/'Core.java','"-Dorg.lwjgl.system.allocator=system","-Dorg.lwjgl.librarypath="',
+ '"-Dorg.lwjgl.system.allocator=system","-Dorg.lwjgl.freetype.libname="+runtime+"/lib/libfreetype.so","-Dorg.lwjgl.librarypath="')
 patch(J/'TouchOverlay.java',
  'else if(b.key>0)Native.press(b.key);',
  'else if(b.key>0&&!b.id.equals("jump"))Native.press(b.key);')
-# No fake game/account is used for smoke tests: this debug-only entry launches --demo.
+# Debug-only entry launches the unmodified official --demo.
 patch(J/'JoggerActivity.java',
  'home();if(BuildConfig.DEBUG&&getIntent().getBooleanExtra("probe",false))',
  'home();if(BuildConfig.DEBUG&&getIntent().getBooleanExtra("smokeDemo",false)){play(true);return;}if(BuildConfig.DEBUG&&getIntent().getBooleanExtra("probe",false))')
