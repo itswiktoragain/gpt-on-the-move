@@ -29,16 +29,17 @@ with zipfile.ZipFile(M) as z:
  for n in z.namelist():
   if n in ('lib/arm64-v8a/libmobileglues.so','lib/x86_64/libmobileglues.so'):
    p=O/'jniLibs'/pathlib.Path(n).relative_to('lib');p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(z.read(n));print('Renderer library:',n,flush=True)
-# Only the renderer engine is extracted. No plugin application or launcher is used.
 C=r'''cmake_minimum_required(VERSION 3.22)
 project(jogger_deps C)
 set(M "${LWJGL}/modules/lwjgl")
-include_directories("${M}/core/src/main/c" "${M}/core/src/main/c/linux" "${FFI}/include")
+include_directories("${M}/core/src/main/c" "${M}/core/src/main/c/linux" "${M}/core/src/main/c/libffi")
 add_compile_definitions(LWJGL_LINUX _GNU_SOURCE)
 if(ANDROID_ABI STREQUAL "arm64-v8a")
  add_compile_definitions(LWJGL_ARM64)
+ include_directories("${M}/core/src/main/c/libffi/aarch64")
 else()
  add_compile_definitions(LWJGL_X64 X86_64)
+ include_directories("${M}/core/src/main/c/libffi/x86")
 endif()
 add_compile_options(-O2 -fPIC -Wno-incompatible-function-pointer-types -Wno-implicit-function-declaration -D__errno_location=__errno)
 file(GLOB CORE "${M}/core/src/main/c/*.c" "${M}/core/src/generated/c/*.c")
