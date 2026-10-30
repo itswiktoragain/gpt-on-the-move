@@ -1,0 +1,41 @@
+name: Jogger development workspace
+on:
+  push:
+    branches: [minecraft-jogger-classic]
+    paths: ['.github/workflows/jogger-workspace.yml']
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare reviewable source snapshot
+        run: |
+          git clone --no-checkout https://github.com/AngelAuraMC/Amethyst-Android.git engine
+          git -C engine checkout --detach 28d6e12d68121b7dd75f2e841058a6b7cdfe4a29
+          cp -a minecraft-jogger/overlay/. engine/
+          python3 minecraft-jogger/classic-integrate.py engine
+          mkdir -p snapshot/source snapshot/project snapshot/tools
+          rsync -a --exclude='.git' --include='*/' --include='*.java' --include='*.xml' --include='*.gradle' --include='*.py' --include='*.properties' --include='*.json' --include='*.md' --exclude='*' engine/ snapshot/source/
+          cp -a minecraft-jogger/. snapshot/project/
+          cp .github/workflows/build-minecraft-jogger-classic.yml snapshot/project/workflow.yml
+          cp "$ANDROID_HOME/platforms/android-35/android.jar" snapshot/tools/android.jar
+          python3 - <<'PY'
+          import json,urllib.request,pathlib
+          p=pathlib.Path('snapshot/tools')
+          def get(url):
+              with urllib.request.urlopen(url,timeout=90) as r:return r.read()
+          manifest=json.loads(get('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json'))
+          url=next(v['url'] for v in manifest['versions'] if v['id']=='1.21.4')
+          version=json.loads(get(url));(p/'version.json').write_text(json.dumps(version))
+          for name in ['client','client_mappings']:
+              (p/(name+('.jar' if name=='client' else '.txt'))).write_bytes(get(version['downloads'][name]['url']))
+          for module in ['asm','asm-commons','asm-tree','asm-util','asm-analysis']:
+              (p/(module+'.jar')).write_bytes(get('https://repo.maven.apache.org/maven2/org/ow2/asm/'+module+'/9.7.1/'+module+'-9.7.1.jar'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jogger-development-snapshot
+          path: snapshot/
+          retention-days: 3
