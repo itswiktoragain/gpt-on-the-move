@@ -14,6 +14,7 @@ public final class WideStorageSelfTest {
 
     public static void main(String[] args) throws Exception {
         final int edge = WideBlockPos.BORDER;
+        final int soft = VerticalWorldBorder.ACTUAL_BORDER;
         Random random = new Random(0x554E424F554E444CL);
 
         // 150,000 complete XYZ round trips covering full border scale.
@@ -34,12 +35,12 @@ public final class WideStorageSelfTest {
             "Top border section");
 
         Path temp = Files.createTempDirectory("unbound-wide-");
-        WideBlockPos lower = new WideBlockPos(edge, -edge, -edge);
-        WideBlockPos upper = new WideBlockPos(edge, edge, -edge);
+        WideBlockPos lower = new WideBlockPos(edge, -soft, -edge);
+        WideBlockPos upper = new WideBlockPos(edge, soft, -edge);
         WideBlockPos oldCollision1 = new WideBlockPos(14, -3000, 14);
         WideBlockPos oldCollision2 = new WideBlockPos(14, 1096, 14);
-        WideBlockPos atBottomNeighbor = new WideBlockPos(-edge, -edge + 1, edge);
-        WideBlockPos atTopNeighbor = new WideBlockPos(-edge, edge - 1, edge);
+        WideBlockPos atBottomNeighbor = new WideBlockPos(-edge, -soft + 1, edge);
+        WideBlockPos atTopNeighbor = new WideBlockPos(-edge, soft - 1, edge);
 
         try (SparseVerticalStore store = new SparseVerticalStore(temp)) {
             store.set(lower, "minecraft:gold_block");
@@ -56,7 +57,7 @@ public final class WideStorageSelfTest {
 
             // Force repeated LRU eviction; only nonempty sections exist on disk.
             for (int i = 0; i < 220; i++) {
-                int y = -edge + i * 4096;
+                int y = -soft + i * 4096;
                 store.set(new WideBlockPos(30, y, 40), "minecraft:iron_block");
                 expect(store.cachedSectionCount() <= SparseVerticalStore.MAX_CACHED_SECTIONS,
                     "Sparse section cache exceeded cap");
@@ -72,7 +73,7 @@ public final class WideStorageSelfTest {
                 "Bottom-neighbor persisted block");
             expect(reopened.get(atTopNeighbor).equals("minecraft:oak_planks"),
                 "Top-neighbor persisted block");
-            expect(reopened.get(new WideBlockPos(0, edge, 0)).equals(SparseVerticalStore.AIR),
+            expect(reopened.get(new WideBlockPos(0, soft, 0)).equals(SparseVerticalStore.AIR),
                 "Absent virtual block is air");
 
             reopened.set(lower, SparseVerticalStore.AIR);
@@ -85,6 +86,47 @@ public final class WideStorageSelfTest {
                 "Unrelated top layer survived removal");
         }
 
+        // The world border starts 16 blocks before the coordinate hard stop.
+        expect(VerticalWorldBorder.BORDER_MARGIN == 16, "16-block margin");
+        expect(VerticalWorldBorder.MIN_PLAYABLE_Y == -29_999_984, "Lower Y border");
+        expect(VerticalWorldBorder.MAX_PLAYABLE_Y == 29_999_984, "Upper Y border");
+        expect(!VerticalWorldBorder.isInsidePlayableY(-29_999_985), "Bottom safety buffer");
+        expect(VerticalWorldBorder.isInsidePlayableY(-29_999_984), "Bottom border is playable");
+        expect(!VerticalWorldBorder.isInsidePlayableY(29_999_985), "Top safety buffer");
+        expect(VerticalWorldBorder.isInsidePlayableY(29_999_984), "Top border is playable");
+        expect(VerticalWorldBorder.isHardStopReached(-30_000_000), "Bottom hard stop");
+        expect(VerticalWorldBorder.isHardStopReached(30_000_000), "Top hard stop");
+        expect(!VerticalWorldBorder.isHardStopReached(-29_999_999), "Inside bottom safety zone");
+        expect(VerticalWorldBorder.clampPlayerFeetY(-30_000_001.0) == -29_999_984.0,
+            "Unconditional bottom clamp from past hard stop");
+        expect(VerticalWorldBorder.clampPlayerFeetY(-30_000_000.0) == -29_999_984.0,
+            "Bottom hard stop clamps to playable boundary");
+        expect(VerticalWorldBorder.clampPlayerFeetY(-29_999_985.0) == -29_999_984.0,
+            "Cannot move even one block through world border");
+        expect(VerticalWorldBorder.clampPlayerFeetY(-29_999_984.0) == -29_999_984.0,
+            "Legal bottom Y stays put");
+        expect(VerticalWorldBorder.clampPlayerFeetY(30_000_000.0) == 29_999_984.0,
+            "Upper hard stop clamps to playable boundary");
+
+        try (SparseVerticalStore store = new SparseVerticalStore(temp)) {
+            for (int forbidden : new int[]{-30_000_000, -29_999_985, 29_999_985, 30_000_000}) {
+                boolean blockedWrite = false;
+                try {
+                    store.set(new WideBlockPos(0, forbidden, 0), "minecraft:stone");
+                } catch (IllegalArgumentException expected) {
+                    blockedWrite = true;
+                }
+                expect(blockedWrite, "Block write forbidden beyond Y border " + forbidden);
+                boolean blockedRead = false;
+                try {
+                    store.get(new WideBlockPos(0, forbidden, 0));
+                } catch (IllegalArgumentException expected) {
+                    blockedRead = true;
+                }
+                expect(blockedRead, "Block read forbidden beyond Y border " + forbidden);
+            }
+        }
+
         boolean rejected = false;
         try {
             new WideBlockPos(0, edge + 1, 0);
@@ -94,7 +136,7 @@ public final class WideStorageSelfTest {
         expect(rejected, "Positions outside border must be rejected");
 
         System.out.println("UNBOUND_WIDE_STORAGE_PASS: 150000 coordinate roundtrips, "
-            + "both world-border Y extremes, signed sections, on-disk persistence, "
+            + "Y-border at +/-29999984, hard stops at +/-30M, signed sections, on-disk persistence, "
             + "old packed-Y collision avoidance, 220 LRU evictions, and deletion.");
         System.out.println("Self-test temp dir: " + temp);
     }
