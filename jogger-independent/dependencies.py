@@ -27,9 +27,9 @@ M=get('https://github.com/MobileGL-Dev/MobileGlues-release/releases/download/V2.
 get('https://raw.githubusercontent.com/MobileGL-Dev/MobileGlues/main/LICENSE',O/'licenses/mobileglues/LICENSE')
 with zipfile.ZipFile(M) as z:
  for n in z.namelist():
-  if n.startswith(('lib/arm64-v8a/','lib/x86_64/')) and n.endswith('.so'):
+  if n in ('lib/arm64-v8a/libmobileglues.so','lib/x86_64/libmobileglues.so'):
    p=O/'jniLibs'/pathlib.Path(n).relative_to('lib');p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(z.read(n));print('Renderer library:',n,flush=True)
-# Only native renderer libraries are extracted. No plugin application, classes or manifest are used.
+# Only the renderer engine is extracted. No plugin application or launcher is used.
 C=r'''cmake_minimum_required(VERSION 3.22)
 project(jogger_deps C)
 set(M "${LWJGL}/modules/lwjgl")
@@ -62,20 +62,21 @@ S=D/'cmake';S.mkdir(exist_ok=True);(S/'CMakeLists.txt').write_text(C)
 for abi,arch,h in [('arm64-v8a','arm64','8d41ec401ee59f7722df60ed991f81ad146e130452804bfdd8a05d3436f7bbfe'),('x86_64','x86_64','cb88723961f5f9ad63afa1f212eb199816c27cabfd7dc66567bde1d8fb69713b')]:
  print('BUILD',abi,flush=True)
  p=get('https://github.com/AngelAuraMC/angelauramc-openjdk-build/releases/download/download_jre21/jre21-android-'+arch+'.tar.xz',D/('jre-'+arch+'.tar.xz'),h)
- with tarfile.open(p) as t,zipfile.ZipFile(O/('runtime-'+abi+'.zip'),'w',zipfile.ZIP_DEFLATED,compresslevel=3) as z:
-  ms=t.getmembers();rs=[m.name for m in ms if m.isfile() and (m.name=='release' or m.name.endswith('/release'))];root=rs[0][:-7] if rs else ''
-  for m in ms:
-   name=m.name[len(root):] if m.name.startswith(root) else m.name
-   while name.startswith('./'):name=name[2:]
-   if not name or name.startswith('/') or '..' in pathlib.PurePosixPath(name).parts:continue
-   if m.isfile() or m.issym() or m.islnk():
-    f=t.extractfile(m)
-    if f:z.writestr(name,f.read())
+ if not (O/('runtime-'+abi+'.zip')).exists():
+  with tarfile.open(p) as t,zipfile.ZipFile(O/('runtime-'+abi+'.zip'),'w',zipfile.ZIP_DEFLATED,compresslevel=3) as z:
+   ms=t.getmembers();rs=[m.name for m in ms if m.isfile() and (m.name=='release' or m.name.endswith('/release'))];root=rs[0][:-7] if rs else ''
+   for m in ms:
+    name=m.name[len(root):] if m.name.startswith(root) else m.name
+    while name.startswith('./'):name=name[2:]
+    if not name or name.startswith('/') or '..' in pathlib.PurePosixPath(name).parts:continue
+    if m.isfile() or m.issym() or m.islnk():
+     f=t.extractfile(m)
+     if f:z.writestr(name,f.read())
  out=O/'jniLibs'/abi;out.mkdir(parents=True,exist_ok=True);tr='aarch64-linux-android' if abi=='arm64-v8a' else 'x86_64-linux-android';prefix=D/('ffi-'+abi)
  if not (prefix/'lib/libffi.a').exists():
   if not (F/'configure').exists():run('./autogen.sh',cwd=F)
-  b=D/('ffi-build-'+abi);b.mkdir(exist_ok=True);e=dict(os.environ,CC=str(T/(tr+'29-clang')),CXX=str(T/(tr+'29-clang++')),AR=str(T/'llvm-ar'),RANLIB=str(T/'llvm-ranlib'),STRIP=str(T/'llvm-strip'),CFLAGS='-O2 -fPIC')
-  run(F/'configure','--host='+tr,'--prefix='+str(prefix),'--disable-shared','--enable-static','--with-pic',cwd=b,env=e);run('make','-j3',cwd=b,env=e);run('make','install',cwd=b,env=e)
+  b=D/('ffi-build-'+abi);b.mkdir(exist_ok=True);e=dict(os.environ,CC=str(T/(tr+'29-clang')),CXX=str(T/(tr+'29-clang++')),AR=str(T/'llvm-ar'),RANLIB=str(T/'llvm-ranlib'),NM=str(T/'llvm-nm'),OBJDUMP=str(T/'llvm-objdump'),READELF=str(T/'llvm-readelf'),STRIP=str(T/'llvm-strip'),CFLAGS='-O2 -fPIC')
+  run(F/'configure','--host='+tr,'--prefix='+str(prefix),'--disable-shared','--enable-static','--with-pic','--disable-exec-static-tramp','--disable-docs',cwd=b,env=e);run('make','-j3',cwd=b,env=e);run('make','install',cwd=b,env=e)
  common=['-DCMAKE_TOOLCHAIN_FILE='+str(N/'build/cmake/android.toolchain.cmake'),'-DANDROID_ABI='+abi,'-DANDROID_PLATFORM=android-29','-DCMAKE_BUILD_TYPE=Release','-DANDROID_STL=c++_shared','-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384']
  b=D/('lwjgl-build-'+abi);run('cmake','-S',S,'-B',b,*common,'-DLWJGL='+str(L),'-DFFI='+str(prefix));run('cmake','--build',b,'--parallel','3')
  for f in b.glob('liblwjgl*.so'):shutil.copy(f,out/f.name)
