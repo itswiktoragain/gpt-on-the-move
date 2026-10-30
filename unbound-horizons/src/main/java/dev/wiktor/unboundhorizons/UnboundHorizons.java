@@ -1,6 +1,12 @@
 package dev.wiktor.unboundhorizons;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.io.IOException;
+import java.nio.file.Path;
+import dev.wiktor.unboundhorizons.vertical.WideBlockPos;
+import dev.wiktor.unboundhorizons.vertical.SparseVerticalStore;
+import dev.wiktor.unboundhorizons.vertical.WideStorageDebugCommands;
+import net.minecraft.util.WorldSavePath;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.block.Block;
@@ -23,7 +29,32 @@ public final class UnboundHorizons implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        LOG.info("Unbound Horizons height-engine experiment: -4096..4095; no built-in LOD.");
+        LOG.info("Unbound Horizons: tested playable Y=-4096..4095; experimental sparse vertical backend addressable to +/-30M.");
+        WideStorageDebugCommands.register();
+        if (Boolean.getBoolean("unboundhorizons.verifyWideStorage")) {
+            ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+                Path path = server.getSavePath(WorldSavePath.ROOT).resolve("unboundhorizons")
+                    .resolve("wide_storage_ci_test");
+                WideBlockPos bottom = new WideBlockPos(30_000_000,-30_000_000,-30_000_000);
+                WideBlockPos top = new WideBlockPos(30_000_000,30_000_000,-30_000_000);
+                try {
+                    try(SparseVerticalStore store=new SparseVerticalStore(path)) {
+                        store.set(bottom, "minecraft:deepslate");
+                        store.set(top, "minecraft:stone");
+                    }
+                    try(SparseVerticalStore reopened=new SparseVerticalStore(path)) {
+                        if ("minecraft:deepslate".equals(reopened.get(bottom))
+                            && "minecraft:stone".equals(reopened.get(top))) {
+                            LOG.info("UNBOUND_WIDE_BACKEND_PASS");
+                        } else {
+                            LOG.error("UNBOUND_WIDE_BACKEND_FAIL: data lost");
+                        }
+                    }
+                } catch(IOException error) {
+                    LOG.error("UNBOUND_WIDE_BACKEND_FAIL",error);
+                }
+            });
+        }
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             var world = server.getOverworld();
 
