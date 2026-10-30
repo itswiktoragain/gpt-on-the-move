@@ -1,0 +1,38 @@
+name: Jogger native dependencies
+on:
+  push:
+    branches: [jogger-independent]
+    paths: ['jogger-independent/dependencies.py', '.github/workflows/jogger-native.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - run: sdkmanager 'ndk;27.3.13750724' 'cmake;3.22.1' 'platforms;android-35' 'build-tools;35.0.0'
+      - run: sudo apt-get update -qq && sudo apt-get install -y autoconf automake libtool texinfo cmake ninja-build
+      - uses: actions/cache@v4
+        with:
+          path: jogger-independent/dependency-output
+          key: jogger-native-v1-${{ hashFiles('jogger-independent/dependencies.py') }}
+      - name: Compile dependencies
+        run: python3 -u jogger-independent/dependencies.py 2>&1 | tee native-build.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Jogger-native-dependencies
+          path: |
+            jogger-independent/dependency-output/
+            native-build.log
+          retention-days: 30
