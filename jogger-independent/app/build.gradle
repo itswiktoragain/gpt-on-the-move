@@ -1,6 +1,4 @@
-plugins {
-    id 'com.android.application'
-}
+plugins { id 'com.android.application' }
 android {
     namespace 'com.wiktor.jogger'
     compileSdk 35
@@ -8,21 +6,36 @@ android {
         applicationId 'com.wiktor.jogger'
         minSdk 29
         targetSdk 32
-        versionCode 2
-        versionName '0.2.0-independent-preview'
+        versionCode 3
+        versionName '0.3.0-independent'
+        def client = System.getenv('JOGGER_MICROSOFT_CLIENT_ID') ?: ''
+        if (client && !(client ==~ /[0-9a-fA-F-]{36}/)) throw new GradleException('Invalid Microsoft client ID')
+        buildConfigField 'String', 'MICROSOFT_CLIENT_ID', '"' + client + '"'
     }
+    buildFeatures { buildConfig true }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+    signingConfigs {
+        jogger {
+            if (System.getenv('JOGGER_KEYSTORE')) {
+                storeFile file(System.getenv('JOGGER_KEYSTORE'))
+                storePassword System.getenv('JOGGER_KEYSTORE_PASSWORD')
+                keyAlias 'jogger'
+                keyPassword System.getenv('JOGGER_KEYSTORE_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
+            if (System.getenv('JOGGER_KEYSTORE')) signingConfig signingConfigs.jogger
         }
     }
     packaging {
-        resources {
-            excludes += ['META-INF/DEPENDENCIES', 'META-INF/NOTICE']
-        }
+        jniLibs { useLegacyPackaging true; keepDebugSymbols += ['**/*.so'] }
+        resources { excludes += ['META-INF/DEPENDENCIES'] }
     }
+    androidResources { noCompress += ['zip','jar'] }
 }
