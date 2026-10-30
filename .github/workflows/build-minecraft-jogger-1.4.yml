@@ -85,8 +85,8 @@ jobs:
         run: |
           cp jogger-source/app_pojavlauncher/build/outputs/apk/release/app_pojavlauncher-release.apk out/Minecraft-Jogger-1.4.0-Mobile-CI.apk
           cp jogger-source/app_pojavlauncher/src/main/assets/components/jogger_touch_agent/jogger_touch_agent.jar out/Minecraft-Jogger-1.4.0-Touch-Agent.jar
-          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs out/Minecraft-Jogger-1.3.0-Mobile-CI.apk > out/signature-ci.txt
-          "$ANDROID_HOME/build-tools/37.0.0/aapt2" dump badging out/Minecraft-Jogger-1.3.0-Mobile-CI.apk > out/apk-info.txt
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs out/Minecraft-Jogger-1.4.0-Mobile-CI.apk > out/signature-ci.txt
+          "$ANDROID_HOME/build-tools/37.0.0/aapt2" dump badging out/Minecraft-Jogger-1.4.0-Mobile-CI.apk > out/apk-info.txt
           cp minecraft-jogger/inventory-ux/mobile14.patch out/
           mkdir -p out/verification-tools
           cp "$ANDROID_HOME/build-tools/37.0.0/lib/apksigner.jar" out/verification-tools/
