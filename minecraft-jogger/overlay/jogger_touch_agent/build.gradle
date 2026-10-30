@@ -1,0 +1,28 @@
+plugins {
+    id 'java-library'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+jar {
+    archiveFileName = 'jogger_touch_agent.jar'
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    manifest {
+        attributes('Manifest-Version': '1.0',
+                'Premain-Class': 'com.minecraftjogger.touch.JoggerTouchAgent',
+                'Can-Redefine-Classes': 'false',
+                'Can-Retransform-Classes': 'false',
+                'Implementation-Title': 'Minecraft Jogger Touch Agent',
+                'Implementation-Version': '1.0.0')
+    }
+}
+
+tasks.register('verifyTouchProtocol', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.minecraftjogger.touch.InputStateTest'
+}

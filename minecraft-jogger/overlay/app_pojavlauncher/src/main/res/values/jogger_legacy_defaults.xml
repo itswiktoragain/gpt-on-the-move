@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- English fallbacks for strings retained by upstream translated resources. -->
+    <string name="login_error_invalid_username">Enter a valid Minecraft username.</string>
+    <string name="login_microsoft">Sign in with Microsoft</string>
+    <string name="mg_renderer_multidraw">Multi-draw emulation mode</string>
+    <string name="mg_renderer_title_multidrawCompute">Use compute multi-draw emulation</string>
+    <string name="mg_renderer_summary_multidrawCompute">Use compute shaders for multi-draw emulation.</string>
+</resources>
