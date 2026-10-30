@@ -3,6 +3,9 @@ package dev.wiktor.unboundhorizons.cubic;
 import dev.wiktor.unboundhorizons.UnboundHorizons;
 import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
 import net.fabricmc.fabric.api.biome.v1.BiomeSelectors;
+import net.minecraft.block.Blocks;
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
@@ -27,6 +30,14 @@ public final class NativeDeepFeatures {
     }
 
     public static void register() {
+        // Register worldgen feature types before Fabric biome modifications
+        // resolve their configured feature references from datapack JSON.
+        Registry.register(Registries.FEATURE,
+            Identifier.of(UnboundHorizons.MOD_ID, "deep_water_pocket"),
+            new DeepPocketFeature(Blocks.WATER.getDefaultState()));
+        Registry.register(Registries.FEATURE,
+            Identifier.of(UnboundHorizons.MOD_ID, "deep_lava_pocket"),
+            new DeepPocketFeature(Blocks.LAVA.getDefaultState()));
         for (String feature : new String[] {
             "deep_iron", "deep_copper", "deep_coal", "deep_gold",
             "deep_redstone", "deep_lapis", "deep_diamond", "deep_emerald"
@@ -44,6 +55,6 @@ public final class NativeDeepFeatures {
                 key(lake)
             );
         }
-        UnboundHorizons.LOG.info("Registered deep native-world ores and occasional underground water/lava lakes.");
+        UnboundHorizons.LOG.info("Registered deep native-world ores and bounded single-chunk water/lava pockets (not vanilla LakeFeature).");
     }
 }

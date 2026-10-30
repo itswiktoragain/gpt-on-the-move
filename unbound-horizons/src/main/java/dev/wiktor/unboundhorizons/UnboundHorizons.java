@@ -1,6 +1,7 @@
 package dev.wiktor.unboundhorizons;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.nio.file.Path;
 import dev.wiktor.unboundhorizons.vertical.WideBlockPos;
@@ -33,7 +34,13 @@ public final class UnboundHorizons implements ModInitializer {
     @Override
     public void onInitialize() {
         LOG.info("Unbound Horizons cubic preview: native playable Y=-4096..4095, 3D cubic backend virtual Y=-29999984..+29999984.");
-        NativeDeepFeatures.register(); // Native deep -4096 world ore veins and lakes.
+        if (FabricLoader.getInstance().isModLoaded("distanthorizons")) {
+            LOG.error("Distant Horizons detected. DH 3.3.3 cannot safely render Unbound Horizons' " +
+                "extended negative-Y columns; overlapping/negative render intervals have been " +
+                "observed. Disable DH for this world. 0.6.1 fixes native lake chunk accesses, " +
+                "NOT Distant Horizons' separate render-data format.");
+        }
+        NativeDeepFeatures.register(); // Native deep ores and chunk-contained fluid pockets.
         WideStorageDebugCommands.register();
         CubicWorldCommands.register(); // Independent 3D cubic generator diagnostics.
 

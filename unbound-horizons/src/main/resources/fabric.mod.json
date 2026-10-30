@@ -3,7 +3,7 @@
   "id": "unboundhorizons",
   "version": "${version}",
   "name": "Unbound Horizons",
-  "description": "Experimental deep-world generation and lava-free deep caverns. No LOD; use Distant Horizons for distant terrain.",
+  "description": "Extended-height Overworld with native deep ores and chunk-local fluid pockets, plus an experimental virtual 3D cubic generator. Distant Horizons 3.3.3 is currently incompatible with its modified world height.",
   "authors": [
     "Wiktor",
     "OpenAI"
