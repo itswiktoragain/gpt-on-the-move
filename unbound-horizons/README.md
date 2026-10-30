@@ -1,51 +1,76 @@
-# Unbound Horizons 0.5.1-preview — 16-block Y border margin
+# Unbound Horizons 0.6.0-preview — 3D Cubic Chunk Generator
 
-Minecraft 1.21.4, Fabric, Fabric API, Java 21.
+Minecraft Java **1.21.4**, **Fabric**, Fabric API and Java 21.
 
-## Boundary specification
+## What actually works in Minecraft
 
-- **Actual virtual Y world border:** -29,999,984 to +29,999,984
-- **Absolute coordinate hard stops:** -30,000,000 and +30,000,000
-- **Safety buffer:** 16 blocks at each end
-- Player-foot positions are clamped to the actual border and outgoing
-  vertical velocity is zeroed at the border, as a safeguard for future
-  native vertical-range integration.
-- Sparse-virtual-section **writes and reads are rejected** in the 16-block
-  safety buffer; records there cannot be placed.
-- The 12-byte coordinate type still represents the technical +/-30M
-  endpoints, but they are deliberately not playable or writable blocks.
+- Native playable dimension currently spans **Y=-4096 through +4095**.
+- Its Overworld noise terrain generates down to Y=-4096 (unlike
+  vanilla's -64 world floor).
+- The mod now injects **real deep ores** at -4096..-96 into newly generated
+  Overworld chunks: iron, copper, coal, gold, redstone, lapis,
+  diamond and emerald (native configured/placed features).
+- Real occasional **underground water and lava lakes** are placed at
+  Y=-4096..-128. Deep aquifers no longer turn every empty cave into lava,
+  while independently placed lakes CAN contain fluid.
+- Generated bedrock is replaced. Built-in LOD remains removed;
+  Distant Horizons is separate and compatibility is not confirmed.
+- Use a **NEW test world**. Existing chunks do NOT retroactively gain
+  new ores or lakes.
 
-## What is actually playable
+## New 3D cubic chunk backend
 
-**Current actual Minecraft gameplay remains Y=-4096..+4095.** This preview
-DOES NOT make the native world 60 million blocks tall. The new border and
-sparse storage form an engine prototype; vanilla chunk storage,
-rendering, physics, packets and generation are not connected to the
-60-million-height virtual space yet.
+The independent cubic generator divides space into **16x16x16 cubic chunks**,
+indexed by **chunkX, chunkY, chunkZ**. There is no 60M-high section array.
 
-A server-side player tick guard and general Entity.setPosition guard are
-implemented, but are not evidence that every movement path at Y=-30M is
-covered: the full native cubic height engine remains unimplemented.
+- Natural sections generate **independently in Y** as needed.
+- Deterministic noise coordinates make caves, ore veins, and wet/dry cave
+  systems continue across XYZ section boundaries.
+- Vertical 3D virtual biomes: dripstone grotto, crystal caverns,
+  flooded depths, magma chambers, sculk trench, lush abyss,
+  basalt rifts, deep slate and sky islands.
+- Ore veins repeat at deep Y, including **Y=-10,000, -1,000,000,
+  and near Y=-29,999,984**.
+- Natural water and lava reservoirs are biome-dependent, not a blanket
+  lava fill; deep chambers still contain air.
+- High positive Y can form floating rocky islands.
+- Only requested sections are generated; at most 128 generated cubes
+  are retained, each containing exactly **4096 byte palette IDs**.
+- Only user changes are saved to separate gzip-compressed per-cube
+  disk files; mined air is preserved as a proper override.
+- The 16-block vertical safety margin remains: virtual playable border
+  at **+/-29,999,984**, hard technical stop at +/-30,000,000.
 
-## Developer diagnostics (operator permissions)
+## Critical limitation
 
-- `/unboundheight info` — display limits
-- `/unboundheight check -30000000` — hard stop
-- `/unboundheight check -29999985` — 16-block safety buffer
-- `/unboundheight check -29999984` — actual world border
-- `/unboundheight set 0 -29999984 0 minecraft:stone` — write a VIRTUAL record
-- `/unboundheight get 0 -29999984 0` — read a VIRTUAL record
+**The new cubic section engine is still VIRTUAL.** It does NOT yet replace
+Minecraft's native chunk manager, lighting, physics, block interaction,
+worldgen network packets, entity movement, or client rendering.
+The game is NOT actually playable at Y=-29,999,984 or +29,999,984.
+The only real playable extension remains Y=-4096..+4095.
+A complete replacement of those subsystems is required before the full
+60-million-height cubic world can be experienced in Minecraft.
 
-**Virtual records are NOT actual Minecraft blocks.**
+## Diagnostic commands (OP level 2)
 
-## Safety and compatibility
+- `/cubicworld info` — status and limitations
+- `/cubicworld biome 0 -100000 0` — virtual vertical biome
+- `/cubicworld chunk 0 -100000 0` — one **16x16x16** virtual section,
+  biome, ore/lava/water/air counts
+- `/cubicworld get 0 -100000 0` — sampled generated/edited block
+- `/cubicworld mine 0 -100000 0` — store virtual mined air
+- `/cubicworld set 0 -100000 0 minecraft:diamond_block` — virtual edit
+- `/cubicworld restore 0 -100000 0` — remove override
 
-Do not open valued saves with this experimental mod. It still uses the
-previous engine's 14-bit Y packed BlockPos and int-section-NBT changes
-for the playable -4096..4095 world. Make a fresh test world.
-Distant Horizons integration for extended-height worlds is still
-unverified and the built-in LOD remains removed.
+These commands deliberately say **VIRTUAL**. They never place a native
+Minecraft block at out-of-bounds heights.
 
-Tests include full-range coordinate serialization, both actual border
-positions, hard-stop write rejections, forced clamp behavior, 220 LRU
-evictions, persistence across restarts, and a Minecraft server startup.
+## Safety
+
+Never open important existing saves with this version. The underlying
+0.4.2 engine changes packed BlockPos Y allocation and NBT section
+serialization. Always back up or create a new test world.
+Do not install alongside an earlier Unbound Horizons JAR (same mod ID).
+Mod interoperability, including Distant Horizons, is experimental.
+
+See `docs/world-border-y-engine.md` for remaining engine integration work.
