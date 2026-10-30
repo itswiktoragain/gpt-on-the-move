@@ -37,6 +37,7 @@ jobs:
           git -C jogger-source submodule update --init --recursive
           cp -a minecraft-jogger/overlay/. jogger-source/
           python3 minecraft-jogger/classic-integrate.py jogger-source
+          python3 minecraft-jogger/fov-hotfix.py jogger-source
           python3 jogger-source/scripts/jogger-prepare.py
           (cd jogger-source && bash scripts/languagelist_updater.sh)
       - name: Test gestures, input ownership and touch projection
@@ -60,7 +61,7 @@ jobs:
           else
             export JOGGER_KEYSTORE_PASSWORD="$(openssl rand -base64 36)"
             echo "::add-mask::$JOGGER_KEYSTORE_PASSWORD"
-            keytool -genkeypair -keystore "$JOGGER_KEYSTORE" -storetype PKCS12 -storepass:env JOGGER_KEYSTORE_PASSWORD -keypass:env JOGGER_KEYSTORE_PASSWORD -alias jogger -keyalg RSA -keysize 3072 -validity 10000 -dname 'CN=Minecraft Jogger Classic Preview, O=Jogger, C=PL'
+            keytool -genkeypair -keystore "$JOGGER_KEYSTORE" -storetype PKCS12 -storepass:env JOGGER_KEYSTORE_PASSWORD -keypass:env JOGGER_KEYSTORE_PASSWORD -alias jogger -keyalg RSA -keysize 3072 -validity 10000 -dname 'CN=Minecraft Jogger Classic Fixed, O=Jogger, C=PL'
           fi
           echo "JOGGER_KEYSTORE=$JOGGER_KEYSTORE" >> "$GITHUB_ENV"
           echo "JOGGER_KEYSTORE_PASSWORD=$JOGGER_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
@@ -69,18 +70,20 @@ jobs:
         run: |
           gradle --no-daemon --console=plain --max-workers=3 :app_pojavlauncher:assembleRelease :jogger_touch_agent:verifyTouchProtocol
           python3 jogger_touch_agent/tests/agent_socket_test.py "$JAVA_HOME/bin/java" app_pojavlauncher/src/main/assets/components/jogger_touch_agent/jogger_touch_agent.jar jogger_touch_agent/build/classes/java/test
+          javac -cp app_pojavlauncher/src/main/assets/components/jogger_touch_agent/jogger_touch_agent.jar -d classic-test scripts/tests/FovFrameRegression.java
+          java -Xverify:all -cp classic-test:app_pojavlauncher/src/main/assets/components/jogger_touch_agent/jogger_touch_agent.jar FovFrameRegression
       - name: Verify finished APK
         run: |
           mkdir -p out
-          cp jogger-source/app_pojavlauncher/build/outputs/apk/release/app_pojavlauncher-release.apk out/Minecraft-Jogger-1.1.0-Classic.apk
+          cp jogger-source/app_pojavlauncher/build/outputs/apk/release/app_pojavlauncher-release.apk out/Minecraft-Jogger-1.1.1-Classic-Fixed.apk
           cp jogger-source/app_pojavlauncher/src/main/assets/components/jogger_touch_agent/jogger_touch_agent.jar out/Minecraft-Jogger-Classic-Touch-Agent.jar
-          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs out/Minecraft-Jogger-1.1.0-Classic.apk > out/signature.txt
-          "$ANDROID_HOME/build-tools/37.0.0/aapt2" dump badging out/Minecraft-Jogger-1.1.0-Classic.apk > out/apk-info.txt
-          cp minecraft-jogger/CLASSIC.md out/README.md
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs out/Minecraft-Jogger-1.1.1-Classic-Fixed.apk > out/signature.txt
+          "$ANDROID_HOME/build-tools/37.0.0/aapt2" dump badging out/Minecraft-Jogger-1.1.1-Classic-Fixed.apk > out/apk-info.txt
+          printf '%s\n' '1.1.1 fixes the FOV local-variable VerifyError. Separate package: com.wiktor.minecraftjogger.classic.repaired. Does not update or delete an existing Classic install. For existing data use the in-place repair JAR.' > out/HOTFIX.txt
           cd out && sha256sum *.apk *.jar > SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
-          name: Minecraft-Jogger-Classic-APK
+          name: Minecraft-Jogger-Classic-Fixed-APK
           path: out/
           retention-days: 90
           if-no-files-found: error
