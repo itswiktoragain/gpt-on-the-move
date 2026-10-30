@@ -73,7 +73,7 @@ Release signing uses these environment variables:
 - **JOGGER_KEYSTORE_PASSWORD**: its password.
 - Key alias: **jogger**.
 
-Keep the signing identity private and stable for update-compatible APKs. The delivered APK uses a separately preserved Jogger signing identity. The CI workflow can reuse repository secrets JOGGER_KEYSTORE_BASE64 and JOGGER_KEYSTORE_PASSWORD. Without them, CI makes a temporary preview identity; that build cannot install as an update over a differently signed APK.
+Keep the signing identity private and stable for update-compatible APKs. The delivered APK uses a distinct, locally generated Jogger signing identity. The CI workflow can reuse repository secrets JOGGER_KEYSTORE_BASE64 and JOGGER_KEYSTORE_PASSWORD. Without them, CI makes a temporary preview identity; that build cannot install as an update over a differently signed APK.
 
 Output: jogger-source/app_pojavlauncher/build/outputs/apk/release/app_pojavlauncher-release.apk.
 

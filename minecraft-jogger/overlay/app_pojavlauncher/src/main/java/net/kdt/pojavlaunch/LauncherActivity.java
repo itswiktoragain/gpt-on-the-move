@@ -406,6 +406,17 @@ public class LauncherActivity extends BaseActivity {
     }
 
     @Override
+    protected void onPostResume() {
+        super.onPostResume();
+        // BaseActivity adjusts fullscreen flags; restore legible icons on Jogger's light bars.
+        getWindow().setStatusBarColor(0xfffafafa);
+        getWindow().setNavigationBarColor(0xfffafafa);
+        View decor = getWindow().getDecorView();
+        decor.setSystemUiVisibility(decor.getSystemUiVisibility()
+                | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         ContextExecutor.setActivity(this);

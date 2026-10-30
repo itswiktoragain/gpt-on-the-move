@@ -1,0 +1,49 @@
+{
+  "file": "Minecraft-Jogger-1.0.0-preview.apk",
+  "bytes": 161977200,
+  "sha256": "5abb7e3f913c8cf06f158061b54c9c61b4077a65560547776bcb1bc4b9298b8c",
+  "package": "com.wiktor.minecraftjogger",
+  "version": "1.0.0-preview",
+  "versionCode": 10000,
+  "minSdk": 29,
+  "targetSdk": 34,
+  "abis": [
+    "arm64-v8a",
+    "x86_64"
+  ],
+  "bundledJava": 8,
+  "automaticJavaDownloads": [
+    17,
+    21,
+    25
+  ],
+  "touchAgentAsset": "assets/components/jogger_touch_agent/jogger_touch_agent.jar",
+  "touchAgentSha256": "8fb04cf19a3798f2e65699469f1903240ffe9704304dd8f93000ea15736d54cb",
+  "touchAgentManifest": "Manifest-Version: 1.0\r\nPremain-Class: com.minecraftjogger.touch.JoggerTouchAgent\r\nCan-Redefine-Classes: false\r\nCan-Retransform-Classes: false\r\nImplementation-Title: Minecraft Jogger Touch Agent\r\nImplementation-Version: 1.0.0\r\n\r\n",
+  "signatureVerified": true,
+  "signerCertSha256": "09d4a1e9a70927e1b027e5527e3fc71eda31ab92a81793c6cfe7b44ffe12e830",
+  "releaseBuild": "successful",
+  "releaseLintMissingDefaults": "resolved with English fallback resources",
+  "touchProtocolUnitTest": "passed",
+  "realJvmPremainSocketIntegration": "passed",
+  "deviceAccountSignIn": "not tested",
+  "minecraftGameplay": "not tested",
+  "statusBarFix": "Included: restores dark status/navigation icons on the light launcher background",
+  "emulatorChecks": {
+    "androidVersion": "Android 10 / API 29, x86_64, software CPU and renderer",
+    "installation": "Passed: final APK installed successfully using adb; same unique Jogger signer",
+    "firstLaunch": "Passed: final native Home displayed and launcher setup-progress bar completed",
+    "home": "Passed: branding, Play / Instances / Library tabs, account action, default My first world 1.21.4 profile and Play action displayed",
+    "systemBars": "Passed: dark status icons on light launcher background after final fix",
+    "instanceList": "Passed on preceding UI-equivalent build: default profile listed in Instances tab",
+    "androidRuntimeExceptions": "None observed in captured logcat",
+    "instanceCreationPersistence": "Not tested to completion",
+    "libraryImportsSettings": "Not exercised in emulator",
+    "deviceCodeDialog": "Not exercised in emulator",
+    "accountSignInAndGameplay": "Not tested: no user account authentication performed",
+    "environmentNote": "The unaccelerated emulator displayed a System UI ANR during its initial cold boot. It was dismissed; Jogger did not raise an AndroidRuntime exception."
+  },
+  "screenshots": [
+    "Minecraft-Jogger-Home.png"
+  ]
+}
