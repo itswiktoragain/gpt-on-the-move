@@ -125,8 +125,9 @@ jobs:
               ('ACTION_DOWN && worldPointer>=0)release();',
                'ACTION_DOWN && (worldPointer>=0||lookPointer>=0))release();'),
           ):
-              assert src.count(old)==1, f'Legacy source-test drift: {old}'
-              src=src.replace(old,new,1)
+              count=2 if old=='PixelDiagonalIcons' else 1
+              assert src.count(old)==count, f'Legacy source-test drift: {old}'
+              src=src.replace(old,new,count)
           Path('mobile-test-source/ReleaseRoutingSourceTest.java').write_text(src)
           UPGRADE_161_TEST
           javac --release 8 -d mobile-test mobile-test-source/ReleaseRoutingSourceTest.java
