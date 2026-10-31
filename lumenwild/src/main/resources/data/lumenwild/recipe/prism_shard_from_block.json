@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "lumenwild:prism_block"
+    }
+  ],
+  "result": {
+    "id": "lumenwild:prism_shard",
+    "count": 9
+  }
+}

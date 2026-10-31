@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "lumenwild:aetherstone",
+    "lumenwild:riftstone",
+    "lumenwild:duskstone",
+    "lumenwild:lumenstone"
+  ]
+}

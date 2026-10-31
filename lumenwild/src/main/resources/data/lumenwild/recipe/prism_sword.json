@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " P ",
+    " P ",
+    " S "
+  ],
+  "key": {
+    "P": {
+      "item": "lumenwild:prism_shard"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    }
+  },
+  "result": {
+    "id": "lumenwild:prism_sword",
+    "count": 1
+  }
+}

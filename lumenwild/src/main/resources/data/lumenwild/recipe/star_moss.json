@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    {
+      "item": "minecraft:moss_block"
+    },
+    {
+      "item": "lumenwild:prism_shard"
+    }
+  ],
+  "result": {
+    "id": "lumenwild:star_moss",
+    "count": 2
+  }
+}
