@@ -48,7 +48,19 @@ tasks.register('generateTextures') {
             ['item/umbral_dust',        0x5F3980, 0xF1B5FF, 'dust'],
             ['item/rift_key',           0x326A85, 0xD9FFFF, 'key'],
             ['item/prism_sword',        0x227899, 0x99FFFF, 'sword'],
-            ['item/prism_pickaxe',      0x247899, 0x9AFFFF, 'pickaxe']
+            ['item/prism_pickaxe',      0x247899, 0x9AFFFF, 'pickaxe'],
+            ['block/aetherstone', 0x3A748A, 0x84E8D6, 'stone'],
+            ['block/polished_aetherstone', 0x3B8799, 0x98F5E5, 'polish'],
+            ['block/aetherstone_bricks', 0x408295, 0x93D6CF, 'brick'],
+            ['block/riftstone', 0x25233C, 0xB96AEE, 'rift'],
+            ['block/riftstone_bricks', 0x3D3155, 0xC18DF1, 'brick'],
+            ['block/shadow_moss', 0x3F305B, 0xAB79D7, 'moss'],
+            ['block/star_moss', 0x24677D, 0xAEFFF6, 'star'],
+            ['block/halo_crystal', 0x3B90C3, 0xDAFFFF, 'halo'],
+            ['block/crystal_bloom', 0x6C4DA5, 0xF6C4FF, 'bloom'],
+            ['block/wispwood', 0x364B66, 0x7DE9D5, 'wood'],
+            ['block/wisp_planks', 0x476E80, 0xAFE9D5, 'plank'],
+            ['block/skyglass', 0x4F9BAE, 0xB9F7FF, 'glass']
         ]
         palette.eachWithIndex { row, idx ->
             def (path, baseColor, highlight, kind) = row
@@ -58,13 +70,37 @@ tasks.register('generateTextures') {
                 for(int x=0; x<16; x++) {
                     int c = 0
                     int n = random.nextInt(35) - 17
-                    if(kind in ['rock','moss','brick','ore','gem','lamp']) {
+                    if(kind in ['rock','stone','rift','moss','star','brick','polish','ore','gem','halo','bloom','wood','plank','glass','lamp']) {
                         c = shade(baseColor as int, n)
                         if(kind == 'rock' && ((x + y*3) % 13 == 0 || (x==y+2 && y%4==0))) c=shade(highlight as int,-35)
-                        if(kind == 'moss' && random.nextInt(6)==0) c=shade(highlight as int,-random.nextInt(28))
+                        if(kind in ['moss','star'] && random.nextInt(6)==0) c=shade(highlight as int,-random.nextInt(28))
                         if(kind == 'brick') {
                             if(y%8==0 || (x + ((y/8) as int)*4)%8==0) c=shade(baseColor as int,-38)
                             else if(random.nextInt(9)==0) c=shade(highlight as int,-20)
+                        }
+                        if(kind == 'stone' && (x+y*3)%9==0) c=shade(highlight as int,-18)
+                        if(kind == 'rift' && ((x*5-y*2)%11==0 || (x+y)%13==0)) c=shade(highlight as int,-15)
+                        if(kind == 'star' && ((x*7+y*3)%23==0 || (x+y*9)%31==0)) c=shade(highlight as int,22)
+                        if(kind == 'polish') {
+                            if(x==0 || x==15 || y==0 || y==15) c=shade(baseColor as int,-40)
+                            if(x>3 && x<12 && y>3 && y<12 && (x+y)%9==0) c=shade(highlight as int,-18)
+                        }
+                        if(kind == 'halo' || kind == 'bloom') {
+                            if(x==0 || x==15 || y==0 || y==15) c=shade(baseColor as int,-48)
+                            else if(Math.abs(x-8)+Math.abs(y-8)<7) c=shade(highlight as int,-(Math.abs(x-8)+Math.abs(y-8))*8)
+                            else if((x+y)%5==0) c=shade(highlight as int,-30)
+                        }
+                        if(kind == 'wood') {
+                            if(x%4==0) c=shade(baseColor as int,-28)
+                            if(y%7==0 && x%4!=0) c=shade(highlight as int,-45)
+                        }
+                        if(kind == 'plank') {
+                            if(y%4==0) c=shade(baseColor as int,-38)
+                            else if(x%7==0) c=shade(highlight as int,-35)
+                        }
+                        if(kind == 'glass') {
+                            c=(0x55000000 | (highlight as int)) as int
+                            if(x==0 || y==0 || x==15 || y==15 || x==y) c=(0xC0000000 | (highlight as int)) as int
                         }
                         if(kind == 'ore' && ((x*3 + y*5)%11==0 || (random.nextInt(15)==0 && x>1 && x<14))) c=shade(highlight as int, random.nextInt(20)-10)
                         if(kind == 'gem') {
