@@ -33,18 +33,26 @@ swap('add(DOWN,x+cell,y+2*cell,cell-gap,cell-gap,ARROW,null);',
 # A mine that has begun keeps the left mouse button held and the initial
 # off-centre block ray alive during finger drift. Unheld swipes retain the
 # original camera behavior and clear the touch target.
-swap('handler.removeCallbacks(hold);target(0,0,false);',
-     'handler.removeCallbacks(hold);if(MiningLookPolicy.clearTargetOnMove(gesture.mining))target(0,0,false);')
-# A delayed hit classification must not override mining after a drag.
-# Preserve normal classification for an actual stationary hold.
-# Guard a classification response no matter which spacing the earlier patch used.
-# Some source revisions use a different tapReply condition; never risk a
-# failed build simply because a safety check was formatted differently.
+# Find the world-drag block structurally: later source revisions interpose
+# pendingHold cancellation between removeCallbacks() and target().
 import re
-reply_pattern=r'if\s*\(\s*pendingHold\s*!=\s*request\s*\|\|\s*worldPointer\s*<\s*0\s*\|\|\s*!gesture\.mining\s*\)\s*return;'
-replacement='if(pendingHold!=request||worldPointer<0||!gesture.mining||!MiningLookPolicy.applyDelayedClassification(gesture.moved))return;'
-s,classification_count=re.subn(reply_pattern,replacement,s)
-print("Classification guard patched:",classification_count)
+drag=re.search(r'if\s*\(\s*gesture\.moved\s*\)\s*\{(?P<body>.*?)\n\s*\}',s,re.S)
+if drag is None:
+    raise RuntimeError("1.6.2: world-drag block missing")
+body=drag.group("body")
+if body.count("target(0,0,false);")!=1:
+    raise RuntimeError("1.6.2: expected one target clear in world-drag block")
+replacement_body=body.replace("target(0,0,false);",
+    "if(MiningLookPolicy.clearTargetOnMove(gesture.mining))target(0,0,false);")
+s=s[:drag.start("body")]+replacement_body+s[drag.end("body"):]
+
+# The hold classifier response is asynchronous. Once the user drags while
+# mining, it must not switch an already-down left button to the use button.
+classifier="inputs.set(-3,ClassicLogic.TouchAction.hold("
+if s.count(classifier)!=1:
+    raise RuntimeError("1.6.2: expected one classifier action")
+s=s.replace(classifier,
+    "if(!MiningLookPolicy.applyDelayedClassification(gesture.moved))return;\n            "+classifier,1)
 overlay.write_text(s)
 for filename in ("PixelDirectionIcons.java","MiningLookPolicy.java"):
     shutil.copyfile(here/filename,root/app/filename)
