@@ -173,6 +173,9 @@ jobs:
           old='if (!MiningDragPolicy.keepAttackWhileLooking(gesture.mining,inputs.held(-1)))'
           assert src.count(old)==1
           src=src.replace(old,'if(!gesture.mining)')
+          old='worldPointer=-1;lookPointer=-1;lastSlot=-1;'
+          assert src.count(old)==1
+          src=src.replace(old,'worldPointer=-1;lookPointer=-1;cameraTurning=false;lookMoved=false;lastSlot=-1;')
           Path('mobile-test-source/CameraAndSpriteRegression.java').write_text(src)
           ADAPT_164
           javac --release 8 -cp mobile-test -d mobile-test app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/CameraLookPolicy.java app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/PixelIconLayout.java mobile-test-source/CameraAndSpriteRegression.java
