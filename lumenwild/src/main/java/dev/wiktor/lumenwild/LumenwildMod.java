@@ -77,7 +77,7 @@ public final class LumenwildMod implements ModInitializer {
     public static final Block CRYSTAL_BLOOM = block("crystal_bloom",
         new Block(AbstractBlock.Settings.copy(Blocks.AMETHYST_BLOCK).strength(2.3f).requiresTool().luminance(s -> 12)));
     public static final Block WISPWOOD = block("wispwood",
-        new Block(AbstractBlock.Settings.copy(Blocks.OAK_LOG).strength(2.2f).luminance(s -> 3)));
+        new Block(AbstractBlock.Settings.copy(Blocks.OAK_PLANKS).strength(2.2f).luminance(s -> 3)));
     public static final Block WISP_PLANKS = block("wisp_planks",
         new Block(AbstractBlock.Settings.copy(Blocks.OAK_PLANKS).strength(2.0f).luminance(s -> 3)));
     public static final Block SKYGLASS = block("skyglass",
