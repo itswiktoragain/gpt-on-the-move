@@ -1,8 +1,8 @@
 {
-  "type": "minecraft:overworld",
+  "type": "lumenwild:sky_realm",
   "generator": {
     "type": "minecraft:noise",
-    "settings": "minecraft:overworld",
+    "settings": "lumenwild:sky_archipelago",
     "biome_source": {
       "type": "minecraft:fixed",
       "biome": "lumenwild:glimmering_fields"

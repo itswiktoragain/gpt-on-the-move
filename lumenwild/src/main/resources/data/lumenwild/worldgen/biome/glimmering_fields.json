@@ -3,12 +3,12 @@
   "temperature": 0.75,
   "downfall": 0.15,
   "effects": {
-    "fog_color": 3267713,
-    "water_color": 6281919,
+    "fog_color": 2032723,
+    "water_color": 4353479,
     "water_fog_color": 2119027,
-    "sky_color": 7659875,
-    "grass_color": 6329233,
-    "foliage_color": 4785065,
+    "sky_color": 6274494,
+    "grass_color": 6346184,
+    "foliage_color": 6383983,
     "mood_sound": {
       "sound": "minecraft:ambient.cave",
       "tick_delay": 6000,
@@ -20,15 +20,15 @@
       "min_delay": 12000,
       "max_delay": 24000,
       "replace_current_music": false
+    },
+    "particle": {
+      "options": {
+        "type": "minecraft:end_rod"
+      },
+      "probability": 0.004
     }
   },
-  "carvers": {
-    "air": [
-      "minecraft:cave",
-      "minecraft:cave_extra_underground",
-      "minecraft:canyon"
-    ]
-  },
+  "carvers": {},
   "features": [
     [],
     [],
@@ -37,35 +37,32 @@
     [],
     [],
     [
-      "lumenwild:prism_ore",
-      "lumenwild:umbral_ore",
       "lumenwild:lumenstone_veins",
-      "lumenwild:duskstone_veins"
+      "lumenwild:duskstone_veins",
+      "lumenwild:prism_ore",
+      "lumenwild:umbral_ore"
     ],
     [],
     [],
     [
-      "minecraft:trees_plains",
-      "minecraft:flower_plain",
-      "minecraft:patch_grass_plain",
+      "lumenwild:crystal_spires",
+      "lumenwild:sky_orbs",
       "lumenwild:lumenstone_boulders"
     ],
-    [
-      "minecraft:freeze_top_layer"
-    ]
+    []
   ],
   "spawn_costs": {},
   "spawners": {
     "monster": [
       {
         "type": "minecraft:enderman",
-        "weight": 9,
+        "weight": 8,
         "minCount": 1,
         "maxCount": 2
       },
       {
         "type": "minecraft:slime",
-        "weight": 4,
+        "weight": 3,
         "minCount": 1,
         "maxCount": 2
       }
@@ -73,21 +70,15 @@
     "creature": [
       {
         "type": "minecraft:sheep",
-        "weight": 9,
+        "weight": 8,
         "minCount": 2,
         "maxCount": 4
-      },
-      {
-        "type": "minecraft:fox",
-        "weight": 3,
-        "minCount": 1,
-        "maxCount": 2
       }
     ],
     "ambient": [
       {
         "type": "minecraft:bat",
-        "weight": 8,
+        "weight": 6,
         "minCount": 1,
         "maxCount": 3
       }
