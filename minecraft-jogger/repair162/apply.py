@@ -41,7 +41,7 @@ swap('handler.removeCallbacks(hold);target(0,0,false);',
 # Some source revisions use a different tapReply condition; never risk a
 # failed build simply because a safety check was formatted differently.
 import re
-reply_pattern=r'if\\s*\\(\\s*pendingHold\\s*!=\\s*request\\s*\\|\\|\\s*worldPointer\\s*<\\s*0\\s*\\|\\|\\s*!gesture\\.mining\\s*\\)\\s*return;'
+reply_pattern=r'if\s*\(\s*pendingHold\s*!=\s*request\s*\|\|\s*worldPointer\s*<\s*0\s*\|\|\s*!gesture\.mining\s*\)\s*return;'
 replacement='if(pendingHold!=request||worldPointer<0||!gesture.mining||!MiningLookPolicy.applyDelayedClassification(gesture.moved))return;'
 s,classification_count=re.subn(reply_pattern,replacement,s)
 print("Classification guard patched:",classification_count)
