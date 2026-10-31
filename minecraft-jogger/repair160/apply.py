@@ -68,6 +68,17 @@ edit(mobile,
 # When ray is available, BLOCK mines and genuine MISS still uses held items.
 overlay="app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java"
 edit(overlay,
+     '''            pendingHold=++tapSequence;
+            long request=pendingHold;
+            if(JoggerTouchBridge.requestTap(request))''',
+     '''            pendingHold=++tapSequence;
+            long request=pendingHold;
+            // Start left-button mining at the HOLD threshold, not up to
+            // 350ms later. A classified air MISS may switch to Use Item,
+            // but a disconnected or unsupported ray must still be playable.
+            inputs.set(-3,-1);
+            if(JoggerTouchBridge.requestTap(request))''')
+edit(overlay,
      'inputs.set(-3,ClassicLogic.TouchAction.hold(hit));',
      '''inputs.set(-3,ClassicLogic.TouchAction.hold(
                 !raySupported && hit==2 ? 1 : hit));''')
