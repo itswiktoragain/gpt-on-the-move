@@ -111,7 +111,22 @@ jobs:
           java -cp mobile-test MiningMappingTest app_pojavlauncher/src/main/assets/jogger-ui-only-1.21.4.properties | tee -a ../out/regression.txt
           javac --release 8 -d mobile-test app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicTopBarLayout.java ../minecraft-jogger/keyboard-button-1.5.4/KeyboardButtonLayoutTest.java
           java -cp mobile-test KeyboardButtonLayoutTest | tee -a ../out/regression.txt
-          javac --release 8 -cp mobile-test:jogger_touch_agent/build/classes/java/main -d mobile-test ../minecraft-jogger/repair160/RestoredControlsTest.java
+          mkdir -p mobile-test-source
+          python3 - <<'ADAPT_RESTORED_TEST'
+          from pathlib import Path
+          src=Path('../minecraft-jogger/repair160/RestoredControlsTest.java').read_text()
+          replacements=(
+              ('ok(overlay.contains("!raySupported && hit==2 ? 1 : hit"),"unavailable ray must mine instead of use item");',
+               'ok(overlay.contains("TouchRoutingPolicy.holdFallbackHit(raySupported)"),"hold fallback happens only if game-side classification times out");'),
+              ('ok(overlay.contains("inputs.set(-3,-1);"),"hold begins mining without a delayed hit-classification reply");',
+               'ok(!overlay.contains("inputs.set(-3,-1);"),"long hold must not pre-attack mobs before game-side classification");')
+          )
+          for old,new in replacements:
+              assert src.count(old)==1, 'Old restored-controls test source drift'
+              src=src.replace(old,new,1)
+          Path('mobile-test-source/RestoredControlsTest.java').write_text(src)
+          ADAPT_RESTORED_TEST
+          javac --release 8 -cp mobile-test:jogger_touch_agent/build/classes/java/main -d mobile-test mobile-test-source/RestoredControlsTest.java
           java -cp mobile-test:jogger_touch_agent/build/classes/java/main RestoredControlsTest app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MinecraftKeyboard.java | tee -a ../out/regression.txt
           javac --release 8 -cp mobile-test -d mobile-test app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/MouseAckPolicy.java app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/PixelDiagonalIcons.java ../minecraft-jogger/repair161/ReleaseAndPixelTest.java
           java -cp mobile-test ReleaseAndPixelTest | tee -a ../out/regression.txt
