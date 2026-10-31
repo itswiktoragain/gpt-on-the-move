@@ -79,8 +79,9 @@ jobs:
           java -cp mobile-test:jogger_touch_agent/build/classes/java/main com.minecraftjogger.touch.HudRuntimeTest | tee -a ../out/regression.txt
           javac --release 8 -d mobile-test app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicTopBarLayout.java ../minecraft-jogger/keyboard-button-1.5.4/KeyboardButtonLayoutTest.java
           java -cp mobile-test KeyboardButtonLayoutTest | tee -a ../out/regression.txt
-          javac --release 8 -cp jogger_touch_agent/build/classes/java/main -d mobile-test ../minecraft-jogger/touch-safe-1.5.5/LegacyTouchRegression.java
-          java -cp mobile-test:jogger_touch_agent/build/classes/java/main LegacyTouchRegression app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java | tee -a ../out/regression.txt
+          # The 1.5.5 LegacyTouchRegression asserted that drag was locked
+          # during mining. That behavior was a regression versus Jogger 1.3.
+          # LauncherTouchMovementTest covers the restored behavior instead.
           javac --release 8 -cp mobile-test -d mobile-test ../minecraft-jogger/launcher-gesture-1.5.7/LauncherTouchMovementTest.java
           java -cp mobile-test LauncherTouchMovementTest app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java | tee -a ../out/regression.txt
           grep -Fq 'org/lwjgl/util/glu/Project' jogger_touch_agent/src/main/java/com/minecraftjogger/touch/LegacyIndex.java
