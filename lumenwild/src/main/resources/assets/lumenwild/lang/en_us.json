@@ -1,5 +1,5 @@
 {
-  "dimension.lumenwild.lumenwild": "Lumenwild",
+  "dimension.lumenwild.lumenwild": "Lumenwild — Sky Archipelago",
   "block.lumenwild.lumenstone": "Lumenstone",
   "block.lumenwild.duskstone": "Duskstone",
   "block.lumenwild.lumenmoss": "Lumenmoss",
@@ -13,5 +13,17 @@
   "item.lumenwild.umbral_dust": "Umbral Dust",
   "item.lumenwild.rift_key": "Rift Key",
   "item.lumenwild.prism_sword": "Prism Sword",
-  "item.lumenwild.prism_pickaxe": "Prism Pickaxe"
+  "item.lumenwild.prism_pickaxe": "Prism Pickaxe",
+  "block.lumenwild.aetherstone": "Aetherstone",
+  "block.lumenwild.polished_aetherstone": "Polished Aetherstone",
+  "block.lumenwild.aetherstone_bricks": "Aetherstone Bricks",
+  "block.lumenwild.riftstone": "Riftstone",
+  "block.lumenwild.riftstone_bricks": "Riftstone Bricks",
+  "block.lumenwild.shadow_moss": "Shadow Moss",
+  "block.lumenwild.star_moss": "Star Moss",
+  "block.lumenwild.halo_crystal": "Halo Crystal",
+  "block.lumenwild.crystal_bloom": "Crystal Bloom",
+  "block.lumenwild.wispwood": "Wispwood",
+  "block.lumenwild.wisp_planks": "Wisp Planks",
+  "block.lumenwild.skyglass": "Skyglass"
 }

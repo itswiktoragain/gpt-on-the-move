@@ -3,7 +3,7 @@
   "id": "lumenwild",
   "version": "${version}",
   "name": "Lumenwild",
-  "description": "Explore a glowing new dimension full of prism ore, umbral minerals, luminous boulders, and strange equipment.",
+  "description": "Three-tier floating sky archipelago with a custom 3D density generator, giant crystals, halo meteorites and 21 luminous blocks.",
   "authors": [
     "Lumenwild contributors"
   ],
@@ -15,6 +15,9 @@
   "entrypoints": {
     "main": [
       "dev.wiktor.lumenwild.LumenwildMod"
+    ],
+    "client": [
+      "dev.wiktor.lumenwild.LumenwildClient"
     ]
   },
   "depends": {

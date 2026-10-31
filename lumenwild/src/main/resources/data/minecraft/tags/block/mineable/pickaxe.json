@@ -7,6 +7,13 @@
     "lumenwild:prism_ore",
     "lumenwild:deep_prism_ore",
     "lumenwild:umbral_ore",
-    "lumenwild:prism_block"
+    "lumenwild:prism_block",
+    "lumenwild:aetherstone",
+    "lumenwild:polished_aetherstone",
+    "lumenwild:aetherstone_bricks",
+    "lumenwild:riftstone",
+    "lumenwild:riftstone_bricks",
+    "lumenwild:halo_crystal",
+    "lumenwild:crystal_bloom"
   ]
 }

@@ -13,5 +13,17 @@
   "item.lumenwild.umbral_dust": "Pył umbry",
   "item.lumenwild.rift_key": "Klucz szczeliny",
   "item.lumenwild.prism_sword": "Miecz pryzmatyczny",
-  "item.lumenwild.prism_pickaxe": "Pryzmatyczny kilof"
+  "item.lumenwild.prism_pickaxe": "Pryzmatyczny kilof",
+  "block.lumenwild.aetherstone": "Kamień eteru",
+  "block.lumenwild.polished_aetherstone": "Polerowany kamień eteru",
+  "block.lumenwild.aetherstone_bricks": "Eterowe cegły",
+  "block.lumenwild.riftstone": "Szczelinowiec",
+  "block.lumenwild.riftstone_bricks": "Cegły szczelinowe",
+  "block.lumenwild.shadow_moss": "Mrokomech",
+  "block.lumenwild.star_moss": "Gwiezdny mech",
+  "block.lumenwild.halo_crystal": "Kryształ aureoli",
+  "block.lumenwild.crystal_bloom": "Kryształowy kwiat",
+  "block.lumenwild.wispwood": "Drewno błędnika",
+  "block.lumenwild.wisp_planks": "Deski błędnika",
+  "block.lumenwild.skyglass": "Nieboszkło"
 }
