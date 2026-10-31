@@ -183,7 +183,19 @@ jobs:
           java -cp mobile-test CameraAndSpriteRegression app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java | tee -a ../out/regression.txt
           javac --release 8 -cp mobile-test -d mobile-test app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/TouchRoutingPolicy.java ../minecraft-jogger/repair165/GameplayInput165Test.java
           # 1.6.5 test expected the unreliable native-only state check.
-          sed 's/private boolean playing() { return !stopped \&\& CallbackBridge.isGrabbing(); }/private boolean playing() { return !stopped \&\& TouchRoutingPolicy.canRouteWorld(CallbackBridge.isGrabbing(),mode); }/' ../minecraft-jogger/repair165/GameplayInput165Test.java > mobile-test-source/GameplayInput165Test.java
+          python3 - <<'ADAPT_165'
+          from pathlib import Path
+          src=Path('../minecraft-jogger/repair165/GameplayInput165Test.java').read_text()
+          for old,new in (
+              ('private boolean playing() { return !stopped && CallbackBridge.isGrabbing(); }',
+               'private boolean playing() { return !stopped && TouchRoutingPolicy.canRouteWorld(CallbackBridge.isGrabbing(),mode); }'),
+              ('equals(TouchRoutingPolicy.effectiveMode(false,"PLAY","SCREEN"),"SCREEN"',
+               'equals(TouchRoutingPolicy.effectiveMode(false,"PLAY","SCREEN"),"PLAY"')
+          ):
+              assert src.count(old)==1, 'Old test source drift'
+              src=src.replace(old,new,1)
+          Path('mobile-test-source/GameplayInput165Test.java').write_text(src)
+          ADAPT_165
           javac --release 8 -cp mobile-test -d mobile-test mobile-test-source/GameplayInput165Test.java
           java -cp mobile-test GameplayInput165Test app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java | tee -a ../out/regression.txt
           javac --release 11 -cp mobile-test -d mobile-test ../minecraft-jogger/repair166/StreamRecovery166Test.java
