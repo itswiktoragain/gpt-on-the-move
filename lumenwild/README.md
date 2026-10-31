@@ -57,3 +57,5 @@ The terrain no longer uses Minecraft's overworld noise settings. Instead, `sky_a
 **Existing worlds:** Create a fresh world to experience the complete floating islands, or travel to never-generated chunks after making a backup. Existing chunks are never regenerated just because the mod updates. The dimension's noise settings and dimension type have changed substantially.
 
 **CI verification:** The build launches a genuine Minecraft dedicated server and samples generated Lumenwild terrain for native stone, elevated landmasses and void.
+
+**Arrival safety:** If the key lands at a void coordinate, Lumenwild searches nearby islands or creates a luminous 7×7 sky platform. Wispwood and two types of moss also have survival recipes.

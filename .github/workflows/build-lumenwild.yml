@@ -7,10 +7,6 @@ on:
     paths:
       - 'lumenwild/**'
       - '.github/workflows/build-lumenwild.yml'
-  pull_request:
-    paths:
-      - 'lumenwild/**'
-      - '.github/workflows/build-lumenwild.yml'
   workflow_dispatch:
 
 jobs:

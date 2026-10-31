@@ -188,8 +188,31 @@ public final class LumenwildMod implements ModInitializer {
 
             int x = serverPlayer.getBlockX();
             int z = serverPlayer.getBlockZ();
-            // Generating the destination chunk first gives the player a real surface.
             int y = target.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z);
+
+            if (!inLumenwild && y < 92) {
+                // Floating islands have real gaps. Find nearby land if the portal
+                // would otherwise lead to an abyss, rather than spawning at Y=-59.
+                int[][] offsets = {
+                    {24, 0}, {-24, 0}, {0, 24}, {0, -24},
+                    {48, 0}, {-48, 0}, {0, 48}, {0, -48},
+                    {48, 48}, {-48, 48}, {48, -48}, {-48, -48}
+                };
+                for (int[] offset : offsets) {
+                    int candidateX = x + offset[0];
+                    int candidateZ = z + offset[1];
+                    int candidateY = target.getTopY(
+                        Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, candidateX, candidateZ);
+                    if (candidateY >= 105 && candidateY <= 310) {
+                        x = candidateX;
+                        z = candidateZ;
+                        y = candidateY;
+                        break;
+                    }
+                }
+                // No nearby island: generate a guaranteed safe sky-platform.
+                if (y < 92) y = 166;
+            }
             y = Math.max(target.getBottomY() + 5, Math.min(y, target.getTopY() - 5));
             createLandingPad(target, x, y, z, inLumenwild);
             serverPlayer.teleport(target, x + 0.5, y + 0.1, z + 0.5,
@@ -201,10 +224,21 @@ public final class LumenwildMod implements ModInitializer {
     }
 
     private static void createLandingPad(ServerWorld target, int x, int y, int z, boolean returning) {
-        Block ground = returning ? Blocks.STONE_BRICKS : LUMENSTONE;
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dz = -2; dz <= 2; dz++) {
-                target.setBlockState(new BlockPos(x + dx, y - 1, z + dz), ground.getDefaultState());
+        Block ground = returning ? Blocks.STONE_BRICKS : AETHERSTONE;
+        for (int dx = -3; dx <= 3; dx++) {
+            for (int dz = -3; dz <= 3; dz++) {
+                Block edge = (!returning && (Math.abs(dx) == 3 || Math.abs(dz) == 3))
+                    ? LUMENSTONE : ground;
+                target.setBlockState(new BlockPos(x + dx, y - 1, z + dz), edge.getDefaultState());
+            }
+        }
+        if (!returning) {
+            // Easy-to-see corner lamps make the arrival platform visible in the void.
+            for (int dx : new int[]{-3, 3}) {
+                for (int dz : new int[]{-3, 3}) {
+                    target.setBlockState(new BlockPos(x + dx, y, z + dz),
+                        HALO_CRYSTAL.getDefaultState());
+                }
             }
         }
         // Prevent suffocation in trees or terrain at the landing spot.
