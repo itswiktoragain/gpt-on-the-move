@@ -224,7 +224,9 @@ jobs:
                 ('inputs.set(-3,ClassicLogic.TouchAction.hold(hit))',
                  'inputs.set(-3,ClassicLogic.TouchAction.hold('),
                 ('int code=ClassicLogic.TouchAction.tap(button);',
-                 'int code=ClassicLogic.TouchAction.tap(')
+                 'int code=ClassicLogic.TouchAction.tap('),
+                ('if(gesture.moved && !gesture.mining){\n                            pendingHold=-1;pendingProbe=-1;',
+                 'if(gesture.moved && !gesture.mining){\n                            handler.removeCallbacks(hold);\n                            pendingHold=-1;pendingProbe=-1;')
             ]
           }
           for filename,rules in replacements.items():
