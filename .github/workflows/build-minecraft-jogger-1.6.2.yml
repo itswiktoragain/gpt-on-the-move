@@ -61,6 +61,17 @@ jobs:
           python3 minecraft-jogger/repair161/apply.py jogger-source
           python3 minecraft-jogger/repair162/apply.py jogger-source
           python3 jogger-source/scripts/jogger-prepare.py
+          # The upstream pluginManagement excludes Maven Central. Gradle 9.6
+          # occasionally gets Kotlin transitive JAR 404s via Plugin Portal.
+          # Resolve Android plugins at Google and Kotlin dependencies at Maven Central.
+          python3 - <<'MAVEN_CENTRAL'
+          from pathlib import Path
+          p=Path('jogger-source/settings.gradle')
+          s=p.read_text()
+          old="        gradlePluginPortal()\n        google()\n"
+          assert s.count(old)==1, "Upstream plugin repository source drift"
+          p.write_text(s.replace(old,"        google()\n        mavenCentral()\n        gradlePluginPortal()\n",1))
+          MAVEN_CENTRAL
           (cd jogger-source && bash scripts/languagelist_updater.sh)
       - name: Test tap-only focus, inventory actions, stack charge, pixel glyphs, vault and gestures
         working-directory: jogger-source
