@@ -53,6 +53,7 @@ jobs:
       - name: Test tap-only focus, inventory actions, stack charge, pixel glyphs, vault and gestures
         working-directory: jogger-source
         run: |
+          set -euo pipefail
           mkdir -p mobile-test ../out
           gradle --no-daemon --console=plain --max-workers=3 :jogger_touch_agent:classes
           javac --release 8 -cp jogger_touch_agent/build/classes/java/main -d mobile-test \
@@ -103,6 +104,7 @@ jobs:
       - name: Build release and exercise packaged agent
         working-directory: jogger-source
         run: |
+          set -euo pipefail
           gradle --no-daemon --console=plain --max-workers=3 :app_pojavlauncher:assembleRelease :jogger_touch_agent:verifyTouchProtocol
           AGENT=app_pojavlauncher/src/main/assets/components/jogger_touch_agent/jogger_touch_agent.jar
           python3 jogger_touch_agent/tests/agent_socket_test.py "$JAVA_HOME/bin/java" "$AGENT" jogger_touch_agent/build/classes/java/test | tee -a ../out/keyboard-tests.txt
