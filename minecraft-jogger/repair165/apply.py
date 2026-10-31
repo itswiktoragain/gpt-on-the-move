@@ -195,13 +195,8 @@ def test_replace(rel,old,new):
     if count!=1:raise RuntimeError(f'Unexpected legacy test {rel}: {count} matches for {old[:100]!r}')
     p.write_text(src.replace(old,new,1))
 
-restored='scripts/mobile16-tests/RestoredControlsTest.java'
-test_replace(restored,
-    'ok(overlay.contains("!raySupported && hit==2 ? 1 : hit"),"unavailable ray must mine instead of use item");',
-    'ok(overlay.contains("TouchRoutingPolicy.holdFallbackHit(raySupported)"),"hold fallback is chosen only after waiting for hit classification");')
-test_replace(restored,
-    'ok(overlay.contains("inputs.set(-3,-1);"),"hold begins mining without a delayed hit-classification reply");',
-    'ok(!overlay.contains("inputs.set(-3,-1);"),"long hold never punches a mob before hit classification");')
+# Historical repair160 source test is outside reconstructed Android tree;
+# its updated expectations are built by the CI runner, not here.
 touchtest='scripts/mobile15-tests/TouchActionRegression.java'
 test_replace(touchtest,'eq(ClassicLogic.TouchAction.tap(2),-2,"tap on air uses held item");',
     'eq(ClassicLogic.TouchAction.tap(2),0,"tap on air does not accidentally use an item");')
