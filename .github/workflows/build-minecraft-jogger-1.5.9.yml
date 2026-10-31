@@ -43,11 +43,10 @@ jobs:
           python3 minecraft-jogger/mobile-1.5/apply.py jogger-source
           python3 minecraft-jogger/orientation-1.5.1/apply.py jogger-source
           python3 minecraft-jogger/mobile-1.5.2/apply.py jogger-source
-          # Snapshot source from 1.5.2. All touch code must remain identical.
           mkdir -p out
           cp jogger-source/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java out/baseline152-ClassicOverlay.java
-          (cd jogger-source && sha256sum app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicLogic.java               app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/InventoryTouch.java               jogger_touch_agent/src/main/java/com/minecraftjogger/touch/ClassicGameHooks.java               jogger_touch_agent/src/main/java/com/minecraftjogger/touch/TouchRay.java               jogger_touch_agent/src/main/java/com/minecraftjogger/touch/MobileTransformer.java) > out/baseline152-controls.sha256
-          # NO 1.5.3+ patch; only the scoped 1.5.2 UI companion patch.
+          (cd jogger-source && sha256sum app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicLogic.java app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/InventoryTouch.java jogger_touch_agent/src/main/java/com/minecraftjogger/touch/ClassicGameHooks.java jogger_touch_agent/src/main/java/com/minecraftjogger/touch/TouchRay.java jogger_touch_agent/src/main/java/com/minecraftjogger/touch/MobileTransformer.java) > out/baseline152-controls.sha256
+          # NO 1.5.3-1.5.8 controls patches are applied.
           python3 minecraft-jogger/rollback152-ui/apply.py jogger-source
           (cd jogger-source && sha256sum -c ../out/baseline152-controls.sha256)
           python3 - <<'VERIFY_ROLLBACK'
@@ -55,7 +54,7 @@ jobs:
           before=Path("out/baseline152-ClassicOverlay.java").read_text()
           after=Path("jogger-source/app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java").read_text()
           expected=before.replace("float controlsTop=playing()?top+dp(44):top;","float controlsTop=top+dp(2);")
-          assert before != expected and expected==after, "Touch overlay differs from 1.5.2 beyond upper button Y"
+          assert before!=expected and expected==after, "Touch overlay differs from 1.5.2 beyond upper button Y"
           print("Verified: 1.5.2 touch controls preserved byte for byte")
           VERIFY_ROLLBACK
           python3 jogger-source/scripts/jogger-prepare.py
@@ -91,7 +90,9 @@ jobs:
           javac --release 8 -cp jogger_touch_agent/build/classes/java/main -d mobile-test ../minecraft-jogger/rollback152-ui/WorldSearchFocusTest.java ../minecraft-jogger/rollback152-ui/HudRuntimeTest.java
           java -cp mobile-test:jogger_touch_agent/build/classes/java/main com.minecraftjogger.touch.WorldSearchFocusTest | tee -a ../out/regression.txt
           java -cp mobile-test:jogger_touch_agent/build/classes/java/main com.minecraftjogger.touch.HudRuntimeTest | tee -a ../out/regression.txt
-          grep -q '^class.edit=fpd
+          grep -q '^class.edit=fpd$' app_pojavlauncher/src/main/assets/jogger-ui-only-1.21.4.properties
+          grep -q '^method.hud.health=b$' app_pojavlauncher/src/main/assets/jogger-ui-only-1.21.4.properties
+          grep -Fq 'File mapping = net.kdt.pojavlaunch.jogger.mobile.UiMapping.mappings(context);' app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/JoggerTouchBridge.java
       - name: Prepare temporary build signing
         run: |
           mkdir -p "$RUNNER_TEMP/jogger-signing"
@@ -126,98 +127,6 @@ jobs:
           cp minecraft-jogger/mobile-1.5.2/mobile152.patch out/
           cp minecraft-jogger/rollback152-ui/apply.py out/rollback152-ui-apply.py
           cp minecraft-jogger/rollback152-ui/UiMappingFilter.java out/
-          mkdir -p out/verification-tools
-          cp "$ANDROID_HOME/build-tools/37.0.0/lib/apksigner.jar" out/verification-tools/
-          grep -q "versionCode='15900'" out/apk-info.txt
-          cd out && sha256sum *.apk *.jar > SHA256SUMS
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Minecraft-Jogger-1.5.9-Rollback-APK-CI
-          path: out/
-          retention-days: 90
-          if-no-files-found: error
-      - name: Remove temporary signing key
-        if: always()
-        run: rm -rf "$RUNNER_TEMP/jogger-signing"
- app_pojavlauncher/src/main/assets/jogger-ui-only-1.21.4.properties
-          grep -q '^method.hud.health=b
-      - name: Prepare temporary build signing
-        run: |
-          mkdir -p "$RUNNER_TEMP/jogger-signing"
-          chmod 700 "$RUNNER_TEMP/jogger-signing"
-          export JOGGER_KEYSTORE="$RUNNER_TEMP/jogger-signing/build.p12"
-          export JOGGER_KEYSTORE_PASSWORD="$(openssl rand -base64 36)"
-          echo "::add-mask::$JOGGER_KEYSTORE_PASSWORD"
-          keytool -genkeypair -keystore "$JOGGER_KEYSTORE" -storetype PKCS12 -storepass:env JOGGER_KEYSTORE_PASSWORD -keypass:env JOGGER_KEYSTORE_PASSWORD -alias jogger -keyalg RSA -keysize 3072 -validity 10000 -dname 'CN=Jogger CI intermediate, O=Jogger, C=PL'
-          echo "JOGGER_KEYSTORE=$JOGGER_KEYSTORE" >> "$GITHUB_ENV"
-          echo "JOGGER_KEYSTORE_PASSWORD=$JOGGER_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-          echo 'CI artifact uses a temporary key. Delivery is re-signed locally with the retained 1.2 key; private signing material is never uploaded.' > out/SIGNING.txt
-      - name: Build release and exercise packaged agent
-        working-directory: jogger-source
-        run: |
-          gradle --no-daemon --console=plain --max-workers=3 :app_pojavlauncher:assembleRelease :jogger_touch_agent:verifyTouchProtocol
-          AGENT=app_pojavlauncher/src/main/assets/components/jogger_touch_agent/jogger_touch_agent.jar
-          python3 jogger_touch_agent/tests/agent_socket_test.py "$JAVA_HOME/bin/java" "$AGENT" jogger_touch_agent/build/classes/java/test | tee -a ../out/keyboard-tests.txt
-          mkdir -p mobile-test-source
-          sed 's/org.objectweb.asm/com.minecraftjogger.internal.asm/g' scripts/tests/FovFrameRegression.java > mobile-test-source/FovFrameRegression.java
-          javac -cp "$AGENT" -d mobile-test mobile-test-source/FovFrameRegression.java
-          java -Xverify:all -cp "mobile-test:$AGENT" FovFrameRegression | tee -a ../out/keyboard-tests.txt
-      - name: Verify and package APK
-        run: |
-          cp jogger-source/app_pojavlauncher/build/outputs/apk/release/app_pojavlauncher-release.apk out/Minecraft-Jogger-1.5.9-Mobile-CI.apk
-          cp jogger-source/app_pojavlauncher/src/main/assets/components/jogger_touch_agent/jogger_touch_agent.jar out/Minecraft-Jogger-1.5.9-Touch-Agent.jar
-          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs out/Minecraft-Jogger-1.5.9-Mobile-CI.apk > out/signature-ci.txt
-          "$ANDROID_HOME/build-tools/37.0.0/aapt2" dump badging out/Minecraft-Jogger-1.5.9-Mobile-CI.apk > out/apk-info.txt
-          cp minecraft-jogger/mobile-1.5/mobile15.patch out/
-          cp minecraft-jogger/orientation-1.5.1/RenderSurfacePolicy.java out/
-          cp minecraft-jogger/orientation-1.5.1/apply.py out/orientation-repair-source.py
-          cp minecraft-jogger/mobile-1.5.2/mobile152.patch out/
-          mkdir -p out/verification-tools
-          cp "$ANDROID_HOME/build-tools/37.0.0/lib/apksigner.jar" out/verification-tools/
-          grep -q "versionCode='15900'" out/apk-info.txt
-          cd out && sha256sum *.apk *.jar > SHA256SUMS
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Minecraft-Jogger-1.5.9-Rollback-APK-CI
-          path: out/
-          retention-days: 90
-          if-no-files-found: error
-      - name: Remove temporary signing key
-        if: always()
-        run: rm -rf "$RUNNER_TEMP/jogger-signing"
- app_pojavlauncher/src/main/assets/jogger-ui-only-1.21.4.properties
-          grep -Fq 'File mapping = net.kdt.pojavlaunch.jogger.mobile.UiMapping.mappings(context);' app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/JoggerTouchBridge.java
-      - name: Prepare temporary build signing
-        run: |
-          mkdir -p "$RUNNER_TEMP/jogger-signing"
-          chmod 700 "$RUNNER_TEMP/jogger-signing"
-          export JOGGER_KEYSTORE="$RUNNER_TEMP/jogger-signing/build.p12"
-          export JOGGER_KEYSTORE_PASSWORD="$(openssl rand -base64 36)"
-          echo "::add-mask::$JOGGER_KEYSTORE_PASSWORD"
-          keytool -genkeypair -keystore "$JOGGER_KEYSTORE" -storetype PKCS12 -storepass:env JOGGER_KEYSTORE_PASSWORD -keypass:env JOGGER_KEYSTORE_PASSWORD -alias jogger -keyalg RSA -keysize 3072 -validity 10000 -dname 'CN=Jogger CI intermediate, O=Jogger, C=PL'
-          echo "JOGGER_KEYSTORE=$JOGGER_KEYSTORE" >> "$GITHUB_ENV"
-          echo "JOGGER_KEYSTORE_PASSWORD=$JOGGER_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-          echo 'CI artifact uses a temporary key. Delivery is re-signed locally with the retained 1.2 key; private signing material is never uploaded.' > out/SIGNING.txt
-      - name: Build release and exercise packaged agent
-        working-directory: jogger-source
-        run: |
-          gradle --no-daemon --console=plain --max-workers=3 :app_pojavlauncher:assembleRelease :jogger_touch_agent:verifyTouchProtocol
-          AGENT=app_pojavlauncher/src/main/assets/components/jogger_touch_agent/jogger_touch_agent.jar
-          python3 jogger_touch_agent/tests/agent_socket_test.py "$JAVA_HOME/bin/java" "$AGENT" jogger_touch_agent/build/classes/java/test | tee -a ../out/keyboard-tests.txt
-          mkdir -p mobile-test-source
-          sed 's/org.objectweb.asm/com.minecraftjogger.internal.asm/g' scripts/tests/FovFrameRegression.java > mobile-test-source/FovFrameRegression.java
-          javac -cp "$AGENT" -d mobile-test mobile-test-source/FovFrameRegression.java
-          java -Xverify:all -cp "mobile-test:$AGENT" FovFrameRegression | tee -a ../out/keyboard-tests.txt
-      - name: Verify and package APK
-        run: |
-          cp jogger-source/app_pojavlauncher/build/outputs/apk/release/app_pojavlauncher-release.apk out/Minecraft-Jogger-1.5.9-Mobile-CI.apk
-          cp jogger-source/app_pojavlauncher/src/main/assets/components/jogger_touch_agent/jogger_touch_agent.jar out/Minecraft-Jogger-1.5.9-Touch-Agent.jar
-          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs out/Minecraft-Jogger-1.5.9-Mobile-CI.apk > out/signature-ci.txt
-          "$ANDROID_HOME/build-tools/37.0.0/aapt2" dump badging out/Minecraft-Jogger-1.5.9-Mobile-CI.apk > out/apk-info.txt
-          cp minecraft-jogger/mobile-1.5/mobile15.patch out/
-          cp minecraft-jogger/orientation-1.5.1/RenderSurfacePolicy.java out/
-          cp minecraft-jogger/orientation-1.5.1/apply.py out/orientation-repair-source.py
-          cp minecraft-jogger/mobile-1.5.2/mobile152.patch out/
           mkdir -p out/verification-tools
           cp "$ANDROID_HOME/build-tools/37.0.0/lib/apksigner.jar" out/verification-tools/
           grep -q "versionCode='15900'" out/apk-info.txt
