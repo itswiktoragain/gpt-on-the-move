@@ -116,7 +116,19 @@ jobs:
           java -cp mobile-test ReleaseAndPixelTest | tee -a ../out/regression.txt
           mkdir -p mobile-test-source
           # The 1.6.4 overlay has TWO intentional look routes (primary and secondary finger).
-          sed -e 's/PixelDiagonalIcons/PixelDirectionIcons/g' -e 's/length-1==1/length-1==2/g' ../minecraft-jogger/repair161/ReleaseRoutingSourceTest.java > mobile-test-source/ReleaseRoutingSourceTest.java
+          python3 - <<'UPGRADE_161_TEST'
+          from pathlib import Path
+          src=Path('../minecraft-jogger/repair161/ReleaseRoutingSourceTest.java').read_text()
+          for old,new in (
+              ('PixelDiagonalIcons','PixelDirectionIcons'),
+              ('length-1==1','length-1==2'),
+              ('ACTION_DOWN && worldPointer>=0)release();',
+               'ACTION_DOWN && (worldPointer>=0||lookPointer>=0))release();'),
+          ):
+              assert src.count(old)==1, f'Legacy source-test drift: {old}'
+              src=src.replace(old,new,1)
+          Path('mobile-test-source/ReleaseRoutingSourceTest.java').write_text(src)
+          UPGRADE_161_TEST
           javac --release 8 -d mobile-test mobile-test-source/ReleaseRoutingSourceTest.java
           java -cp mobile-test ReleaseRoutingSourceTest app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/JoggerTouchBridge.java | tee -a ../out/regression.txt
           # 1.6.4 fills the arrowhead further, but its one-cell shaft begins on row 5.
