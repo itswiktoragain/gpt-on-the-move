@@ -1,0 +1,62 @@
+import java.util.Properties;
+import net.kdt.pojavlaunch.jogger.mobile.UiMappingFilter;
+public final class UiMappingFilterTest {
+    private static int checks;
+    private static void eq(boolean b,String label){if(!b)throw new AssertionError(label);checks++;}
+    public static void main(String[] args) {
+        Properties old=new Properties(),known=new Properties();
+        old.setProperty("class.renderer","old.renderer");
+        old.setProperty("method.pick","originalPick");
+        old.setProperty("method.view","originalView");
+        old.setProperty("field.x","originalVectorX");
+        old.setProperty("field.hitResult","originalHit");
+        old.setProperty("crosshair.mode","original");
+        old.setProperty("method.hud.health","badHudMethod");
+        known.setProperty("class.renderer","new.renderer");
+        known.setProperty("method.pick","newPick");
+        known.setProperty("method.view","newView");
+        known.setProperty("field.x","newVectorX");
+        known.setProperty("field.hitResult","newHit");
+        known.setProperty("class.mc","flk");
+        known.setProperty("field.screen","z");
+        known.setProperty("field.screen.width","n");
+        known.setProperty("field.screen.height","o");
+        known.setProperty("field.widget.x","c");
+        known.setProperty("field.widget.y","d");
+        known.setProperty("field.widget.width","g");
+        known.setProperty("field.widget.height","h");
+        known.setProperty("method.gui.focused","aL_");
+        known.setProperty("method.widget.focused","aM_");
+        known.setProperty("class.edit","fpd");
+        known.setProperty("class.hud","foe");
+        known.setProperty("desc.hud.health","(Lfof;)V");
+        known.setProperty("method.hud.health","b");
+        known.setProperty("method.pose.translate","a");
+        known.setProperty("method.graphics.height","b");
+        known.setProperty("method.mc.tick","t");
+        Properties merged=UiMappingFilter.merge(old,known,"1.21.4");
+        eq("old.renderer".equals(merged.getProperty("class.renderer")),"original renderer untouched");
+        eq("originalPick".equals(merged.getProperty("method.pick")),"original pick untouched");
+        eq("originalView".equals(merged.getProperty("method.view")),"original view untouched");
+        eq("originalVectorX".equals(merged.getProperty("field.x")),"original vector untouched");
+        eq("originalHit".equals(merged.getProperty("field.hitResult")),"original hit untouched");
+        eq("original".equals(merged.getProperty("crosshair.mode")),"original crosshair untouched");
+        eq("flk".equals(merged.getProperty("class.mc")),"UI Minecraft class mapped");
+        eq("fpd".equals(merged.getProperty("class.edit")),"World search input mapped");
+        eq("aL_".equals(merged.getProperty("method.gui.focused")),"Screen focus mapper");
+        eq("n".equals(merged.getProperty("field.screen.width")),"World search screen bounds");
+        eq("h".equals(merged.getProperty("field.widget.height")),"Text field bounds");
+        eq("foe".equals(merged.getProperty("class.hud")),"Real Minecraft HUD");
+        eq("b".equals(merged.getProperty("method.hud.health")),"Health mapping replaced");
+        eq("(Lfof;)V".equals(merged.getProperty("desc.hud.health")),"Overload disambiguation");
+        eq("a".equals(merged.getProperty("method.pose.translate")),"GUI transformations");
+        eq("t".equals(merged.getProperty("method.mc.tick")),"UI monitoring hook");
+        Properties older=UiMappingFilter.merge(old,known,"1.8");
+        eq(older.size()==old.size(),"Other Minecraft versions preserve 1.5.2 exactly");
+        eq("badHudMethod".equals(older.getProperty("method.hud.health")),"Other version unmodified");
+        eq(!UiMappingFilter.uiKey("method.pick"),"ray transform explicitly excluded");
+        eq(!UiMappingFilter.uiKey("method.hit.getType"),"block interaction explicitly excluded");
+        eq(!UiMappingFilter.uiKey("field.options"),"controls options explicitly excluded");
+        System.out.println("UiMappingFilterTest: "+checks+" checks passed");
+    }
+}
