@@ -45,7 +45,9 @@ edit(overlay,
 # A new DOWN has exactly one active finger: discard any orphaned mining state.
 edit(overlay,
      '        layoutControls();int action=event.getActionMasked(),index=event.getActionIndex(),id=event.getPointerId(index);',
-     '''        layoutControls();int action=event.getActionMasked(),index=event.getActionIndex(),id=event.getPointerId(index);
+     '''        layoutControls();int action=event.getActionMasked(),index=event.getActionIndex();
+        // CANCEL and OUTSIDE can arrive without an active pointer.
+        int id=index>=0&&index<event.getPointerCount()?event.getPointerId(index):-1;
         if(action==MotionEvent.ACTION_OUTSIDE){release();return true;}
         if(action==MotionEvent.ACTION_DOWN && worldPointer>=0)release();''')
 
