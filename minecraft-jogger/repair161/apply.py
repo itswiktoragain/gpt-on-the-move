@@ -74,6 +74,10 @@ edit(overlay,
             }
             Route route=routes.get(id);routes.remove(id);inputs.set(id+100);''')
 edit(overlay,
+     'Route route=routes.get(id);routes.remove(id);inputs.set(id+100);',
+     '''Route route=routes.get(id);routes.remove(id);inputs.set(id+100);
+            if(route==null&&id==worldPointer){release();return true;}''')
+edit(overlay,
      'pendingHold=-1;inputs.set(-3);worldPointer=-1;long generation=gestureGeneration;',
      '''pendingHold=-1;inputs.set(-3);worldPointer=-1;long generation=gestureGeneration;
                     if(!inputs.held(-1))JoggerTouchBridge.forceAttackRelease();''')
