@@ -17,8 +17,8 @@ public final class WorldgenSmokeTest {
         if (sky == null) throw new IllegalStateException("Lumenwild dimension was not registered");
 
         int nativeStone = 0, openSky = 0, visibleVoid = 0, upperBlocks = 0, lowerBlocks = 0;
-        for (int x = 0; x <= 96; x += 48) {
-            for (int z = 0; z <= 96; z += 48) {
+        for (int x = 0; x <= 192; x += 48) {
+            for (int z = 0; z <= 192; z += 48) {
                 for (int y = -40; y <= 300; y += 4) {
                     BlockState state = sky.getBlockState(new BlockPos(x, y, z));
                     if (state.isOf(LumenwildMod.AETHERSTONE)) {

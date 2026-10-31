@@ -41,13 +41,13 @@
                       "from_y": 84,
                       "to_y": 145,
                       "from_value": -1.2,
-                      "to_value": 0.18
+                      "to_value": 0.43
                     },
                     "argument2": {
                       "type": "minecraft:y_clamped_gradient",
                       "from_y": 169,
                       "to_y": 231,
-                      "from_value": 0.18,
+                      "from_value": 0.43,
                       "to_value": -1.2
                     }
                   },
@@ -55,11 +55,11 @@
                     "type": "minecraft:add",
                     "argument1": {
                       "type": "minecraft:mul",
-                      "argument1": 1.4,
+                      "argument1": 0.9,
                       "argument2": {
                         "type": "minecraft:noise",
                         "noise": "lumenwild:drifts",
-                        "xz_scale": 0.006,
+                        "xz_scale": 0.7,
                         "y_scale": 0
                       }
                     },
@@ -77,13 +77,13 @@
                         "from_y": -54,
                         "to_y": 8,
                         "from_value": -1.2,
-                        "to_value": 0.15
+                        "to_value": 0.37
                       },
                       "argument2": {
                         "type": "minecraft:y_clamped_gradient",
                         "from_y": 36,
                         "to_y": 98,
-                        "from_value": 0.15,
+                        "from_value": 0.37,
                         "to_value": -1.2
                       }
                     },
@@ -91,11 +91,11 @@
                       "type": "minecraft:add",
                       "argument1": {
                         "type": "minecraft:mul",
-                        "argument1": 1.4,
+                        "argument1": 0.9,
                         "argument2": {
                           "type": "minecraft:noise",
                           "noise": "lumenwild:undertow",
-                          "xz_scale": 0.009,
+                          "xz_scale": 0.9,
                           "y_scale": 0
                         }
                       },
@@ -111,13 +111,13 @@
                         "from_y": 214,
                         "to_y": 259,
                         "from_value": -1.2,
-                        "to_value": 0.03
+                        "to_value": 0.14
                       },
                       "argument2": {
                         "type": "minecraft:y_clamped_gradient",
                         "from_y": 277,
                         "to_y": 317,
-                        "from_value": 0.03,
+                        "from_value": 0.14,
                         "to_value": -1.2
                       }
                     },
@@ -125,11 +125,11 @@
                       "type": "minecraft:add",
                       "argument1": {
                         "type": "minecraft:mul",
-                        "argument1": 1.4,
+                        "argument1": 0.9,
                         "argument2": {
                           "type": "minecraft:noise",
                           "noise": "lumenwild:crown",
-                          "xz_scale": 0.008,
+                          "xz_scale": 0.76,
                           "y_scale": 0
                         }
                       },
@@ -146,8 +146,8 @@
                   "argument2": {
                     "type": "minecraft:noise",
                     "noise": "lumenwild:turbulence",
-                    "xz_scale": 0.043,
-                    "y_scale": 0.052
+                    "xz_scale": 0.42,
+                    "y_scale": 0.45
                   }
                 },
                 "argument2": {
@@ -156,8 +156,8 @@
                   "argument2": {
                     "type": "minecraft:noise",
                     "noise": "lumenwild:fractures",
-                    "xz_scale": 0.092,
-                    "y_scale": 0.13
+                    "xz_scale": 0.68,
+                    "y_scale": 0.74
                   }
                 }
               }
