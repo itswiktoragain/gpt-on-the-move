@@ -220,7 +220,11 @@ jobs:
                  'gesture.begin(x,y,event.getEventTime(),dp(WorldGesturePolicy.actionSlopDp()))'),
                 ('if(!gesture.mining){','if(gesture.moved && !gesture.mining){'),
                 ('TouchRoutingPolicy.holdFallbackHit(true)),-2,"Known-ray timeout defaults to held item use"',
-                 'TouchRoutingPolicy.holdFallbackHit(true)),-1,"Known-ray timeout defaults to held mining fallback"')
+                 'TouchRoutingPolicy.holdFallbackHit(true)),-1,"Known-ray timeout defaults to held mining fallback"'),
+                ('inputs.set(-3,ClassicLogic.TouchAction.hold(hit))',
+                 'inputs.set(-3,ClassicLogic.TouchAction.hold('),
+                ('int code=ClassicLogic.TouchAction.tap(button);',
+                 'int code=ClassicLogic.TouchAction.tap(')
             ]
           }
           for filename,rules in replacements.items():
