@@ -27,6 +27,7 @@ public final class RestoredControlsTest {
         ok(keyboard.contains("state.rearm();state.show();apply();"),"manual keyboard opens on demand");
         ok(keyboard.contains("if(!mode.equals(previous))k.manualOverride=false;"),"manual keyboard remains until a screen transition");
         ok(overlay.contains("!raySupported && hit==2 ? 1 : hit"),"unavailable ray must mine instead of use item");
+        ok(overlay.contains("inputs.set(-3,-1);"),"hold begins mining without a delayed hit-classification reply");
         ok(!overlay.contains("aimLegacy("),"no camera warp workaround");
         ok(overlay.contains("gesture.move(x,y);"),"1.5.2 smooth drag behavior unchanged");
         ok(overlay.contains("inputs.set(-3);worldPointer=-1;"),"finger release ends mining");
