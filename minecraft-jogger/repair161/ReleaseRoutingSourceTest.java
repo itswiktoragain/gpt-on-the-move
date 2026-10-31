@@ -41,7 +41,7 @@ public final class ReleaseRoutingSourceTest {
         ok(overlay.contains("MinecraftKeyboard.toggleManual()"),
                 "Manual keyboard button remains in 1.6.1");
         ok(!overlay.contains("aimLegacy("),"Camera-teleport workaround remains removed");
-        ok(overlay.split("CallbackBridge.mouseX+=", -1).length-1==1,
+        ok(overlay.split(java.util.regex.Pattern.quote("CallbackBridge.mouseX+="), -1).length-1==1,
                 "Camera only moves via intentional finger drag");
         System.out.println("ReleaseRoutingSourceTest: "+checks+" checks passed");
     }
