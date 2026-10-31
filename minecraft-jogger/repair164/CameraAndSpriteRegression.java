@@ -72,6 +72,14 @@ public final class CameraAndSpriteRegression {
         ok(motion.contains("route.kind==LOOK&&pointer==lookPointer&&playing()"),"Independent second finger is processed on MOVE");
         ok(motion.contains("float dx=(x-lookX)*factor,dy=(y-lookY)*factor"),"Second finger sends actual movement delta");
         ok(motion.contains("lookX=x;lookY=y;"),"Look pointer updates position each MOVE");
+        int lookStart=motion.indexOf("}else if(route.kind==LOOK&&pointer==lookPointer&&playing())");
+        int lookEnd=motion.indexOf("}else if(directional(route.button))",lookStart);
+        ok(lookStart>=0&&lookEnd>lookStart,"Independent launcher look route isolated");
+        String nativeLook=motion.substring(lookStart,lookEnd);
+        ok(nativeLook.contains("CallbackBridge.sendCursorPos(CallbackBridge.mouseX,CallbackBridge.mouseY)"),
+            "Camera motion goes through launcher's native mouse callback");
+        ok(!nativeLook.contains("JoggerTouchBridge")&&!nativeLook.contains("TouchRay")&&!nativeLook.contains("MobileHooks")&&!nativeLook.contains("target("),
+            "Injected game agent is NOT used for camera movement");
         ok(motion.contains("shouldRotate(gesture.moved,gesture.mining,inputs.held(-1))"),"Primary finger can turn during mining with no 8dp threshold");
         ok(motion.contains("if (!MiningDragPolicy.keepAttackWhileLooking(gesture.mining,inputs.held(-1)))"),"Held mining attack stays pressed while turning");
         ok(source.contains("if(route.kind==LOOK&&id==lookPointer)lookPointer=-1;"),"Second look pointer releases independently");
