@@ -112,6 +112,7 @@ jobs:
           java -cp mobile-test:jogger_touch_agent/build/classes/java/main RestoredControlsTest app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/mobile/MinecraftKeyboard.java | tee -a ../out/regression.txt
           javac --release 8 -cp mobile-test -d mobile-test app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/MouseAckPolicy.java app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/PixelDiagonalIcons.java ../minecraft-jogger/repair161/ReleaseAndPixelTest.java
           java -cp mobile-test ReleaseAndPixelTest | tee -a ../out/regression.txt
+          mkdir -p mobile-test-source
           sed 's/PixelDiagonalIcons/PixelDirectionIcons/g' ../minecraft-jogger/repair161/ReleaseRoutingSourceTest.java > mobile-test-source/ReleaseRoutingSourceTest.java
           javac --release 8 -d mobile-test mobile-test-source/ReleaseRoutingSourceTest.java
           java -cp mobile-test ReleaseRoutingSourceTest app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/JoggerTouchBridge.java | tee -a ../out/regression.txt
