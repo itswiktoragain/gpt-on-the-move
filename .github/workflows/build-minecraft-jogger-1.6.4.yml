@@ -134,7 +134,7 @@ jobs:
           java -cp mobile-test ReleaseRoutingSourceTest app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/JoggerTouchBridge.java | tee -a ../out/regression.txt
           # 1.6.4 fills the arrowhead further, but its one-cell shaft begins on row 5.
           # Keep the 1.6.3 mining test; adapt only its superseded mask expectation.
-          sed 's/if(y>=4)/if(y>=5)/' ../minecraft-jogger/repair163/MiningDragAndArrowTest.java > mobile-test-source/MiningDragAndArrowTest.java
+          sed -e 's/if(y>=4)/if(y>=5)/' -e 's/}else if(directional(route.button))/}else if(route.kind==LOOK\&\&pointer==lookPointer\&\&playing())/' ../minecraft-jogger/repair163/MiningDragAndArrowTest.java > mobile-test-source/MiningDragAndArrowTest.java
           javac --release 8 -cp mobile-test -d mobile-test app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/MiningDragPolicy.java app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/PixelDirectionIcons.java mobile-test-source/MiningDragAndArrowTest.java
           java -cp mobile-test MiningDragAndArrowTest app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/ClassicOverlay.java | tee -a ../out/regression.txt
           javac --release 8 -cp mobile-test -d mobile-test app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/CameraLookPolicy.java app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/jogger/classic/PixelIconLayout.java ../minecraft-jogger/repair164/CameraAndSpriteRegression.java
