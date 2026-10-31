@@ -3,6 +3,7 @@ package dev.wiktor.lumenwild;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
@@ -55,6 +56,41 @@ public final class LumenwildMod implements ModInitializer {
     public static final Block PRISM_LAMP = block("prism_lamp",
         new Block(AbstractBlock.Settings.copy(Blocks.SEA_LANTERN).strength(1.3f).luminance(s -> 15)));
 
+
+    // These twelve blocks form the geology and construction materials of the sky realm.
+    public static final Block AETHERSTONE = block("aetherstone",
+        new Block(AbstractBlock.Settings.copy(Blocks.STONE).strength(2.5f).requiresTool().luminance(s -> 2)));
+    public static final Block POLISHED_AETHERSTONE = block("polished_aetherstone",
+        new Block(AbstractBlock.Settings.copy(Blocks.POLISHED_ANDESITE).strength(2.8f).requiresTool().luminance(s -> 4)));
+    public static final Block AETHERSTONE_BRICKS = block("aetherstone_bricks",
+        new Block(AbstractBlock.Settings.copy(Blocks.STONE_BRICKS).strength(2.9f).requiresTool().luminance(s -> 4)));
+    public static final Block RIFTSTONE = block("riftstone",
+        new Block(AbstractBlock.Settings.copy(Blocks.DEEPSLATE).strength(3.4f).requiresTool()));
+    public static final Block RIFTSTONE_BRICKS = block("riftstone_bricks",
+        new Block(AbstractBlock.Settings.copy(Blocks.DEEPSLATE_BRICKS).strength(3.6f).requiresTool().luminance(s -> 2)));
+    public static final Block SHADOW_MOSS = block("shadow_moss",
+        new Block(AbstractBlock.Settings.copy(Blocks.MOSS_BLOCK).strength(0.9f).luminance(s -> 4)));
+    public static final Block STAR_MOSS = block("star_moss",
+        new Block(AbstractBlock.Settings.copy(Blocks.MOSS_BLOCK).strength(0.9f).luminance(s -> 9)));
+    public static final Block HALO_CRYSTAL = block("halo_crystal",
+        new Block(AbstractBlock.Settings.copy(Blocks.AMETHYST_BLOCK).strength(2.7f).requiresTool().luminance(s -> 15)));
+    public static final Block CRYSTAL_BLOOM = block("crystal_bloom",
+        new Block(AbstractBlock.Settings.copy(Blocks.AMETHYST_BLOCK).strength(2.3f).requiresTool().luminance(s -> 12)));
+    public static final Block WISPWOOD = block("wispwood",
+        new Block(AbstractBlock.Settings.copy(Blocks.OAK_LOG).strength(2.2f).luminance(s -> 3)));
+    public static final Block WISP_PLANKS = block("wisp_planks",
+        new Block(AbstractBlock.Settings.copy(Blocks.OAK_PLANKS).strength(2.0f).luminance(s -> 3)));
+    public static final Block SKYGLASS = block("skyglass",
+        new Block(AbstractBlock.Settings.copy(Blocks.GLASS).nonOpaque().strength(0.7f).luminance(s -> 7)));
+
+    // Configured / placed features are data-driven, but the geometry is custom Java code.
+    public static final net.minecraft.world.gen.feature.Feature<net.minecraft.world.gen.feature.DefaultFeatureConfig> CRYSTAL_SPIRE =
+        Registry.register(Registries.FEATURE, id("crystal_spire"),
+            new CrystalSpireFeature(net.minecraft.world.gen.feature.DefaultFeatureConfig.CODEC));
+    public static final net.minecraft.world.gen.feature.Feature<net.minecraft.world.gen.feature.DefaultFeatureConfig> SKY_ORB =
+        Registry.register(Registries.FEATURE, id("sky_orb"),
+            new SkyOrbFeature(net.minecraft.world.gen.feature.DefaultFeatureConfig.CODEC));
+
     public static final Item PRISM_SHARD = item("prism_shard", new Item(new Item.Settings()));
     public static final Item UMBRAL_DUST = item("umbral_dust", new Item(new Item.Settings()));
     public static final Item RIFT_KEY = item("rift_key",
@@ -91,18 +127,37 @@ public final class LumenwildMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        // The test scans generated chunks only when explicitly enabled by CI.
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            if ("1".equals(System.getenv("LUMENWILD_WORLDGEN_TEST"))) {
+                WorldgenSmokeTest.verify(server);
+            }
+        });
+
         ItemGroupEvents.modifyEntriesEvent(ItemGroups.BUILDING_BLOCKS).register(e -> {
             e.add(LUMENSTONE);
             e.add(DUSKSTONE);
             e.add(LUMENSTONE_BRICKS);
             e.add(PRISM_BLOCK);
             e.add(PRISM_LAMP);
+            e.add(AETHERSTONE);
+            e.add(POLISHED_AETHERSTONE);
+            e.add(AETHERSTONE_BRICKS);
+            e.add(RIFTSTONE);
+            e.add(RIFTSTONE_BRICKS);
+            e.add(HALO_CRYSTAL);
+            e.add(CRYSTAL_BLOOM);
+            e.add(WISPWOOD);
+            e.add(WISP_PLANKS);
+            e.add(SKYGLASS);
         });
         ItemGroupEvents.modifyEntriesEvent(ItemGroups.NATURAL).register(e -> {
             e.add(LUMENMOSS);
             e.add(PRISM_ORE);
             e.add(DEEP_PRISM_ORE);
             e.add(UMBRAL_ORE);
+            e.add(SHADOW_MOSS);
+            e.add(STAR_MOSS);
         });
         ItemGroupEvents.modifyEntriesEvent(ItemGroups.INGREDIENTS).register(e -> {
             e.add(PRISM_SHARD);
