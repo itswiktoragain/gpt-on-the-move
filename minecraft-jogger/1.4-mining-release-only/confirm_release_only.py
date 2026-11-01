@@ -44,11 +44,16 @@ elif mode=='after':
        ('    public static void report(String state, boolean capability) {','    public static void physicalKey('),
        ('    @Override public void onGrabState(boolean grabbed) {','    @Override public void onOptionChanged()'),
        ('    private boolean playing() {','    private float dp('),
-       ('        if(action==MotionEvent.ACTION_MOVE) {','        if(action==MotionEvent.ACTION_CANCEL)'),
        ('    private boolean targetEnabled()','    public void release()')
     ]
     for first,last in guarded:
         assert block(old,first,last)==block(current,first,last),'CAMERA CHANGE forbidden: '+first
+    old_move=block(old,'        if(action==MotionEvent.ACTION_MOVE) {','        if(action==MotionEvent.ACTION_CANCEL)')
+    new_move=block(current,'        if(action==MotionEvent.ACTION_MOVE) {','        if(action==MotionEvent.ACTION_CANCEL)')
+    was='handler.removeCallbacks(hold);inputs.set(-3);target(0,0,false);'
+    now_release='handler.removeCallbacks(hold);if(!gesture.mining)inputs.set(-3);target(0,0,false);'
+    assert old_move.count(was)==1,'Original 1.4 mining bug unavailable'
+    assert new_move==old_move.replace(was,now_release,1),'UNSAFE: changed camera MOVE routing/math'
     assert old.count('CallbackBridge.sendCursorPos(')==current.count('CallbackBridge.sendCursorPos(')
     assert oldbridge.count('CallbackBridge.sendCursorPos(')==newbridge.count('CallbackBridge.sendCursorPos(')
     assert oldbridge.count('CallbackBridge.isGrabbing(')==newbridge.count('CallbackBridge.isGrabbing(')
@@ -66,6 +71,7 @@ elif mode=='after':
        'unchanged_source_files':len(now)-len(diff),
        'only_changed_source_files':sorted(diff),
        'original_camera_move_grab_and_target_code_byte_identical':True,
+       'only_movement_change':'do not release held mining button during camera movement',
        'original_game_agent_inventory_keyboard_and_controls_assets_identical':True,
        'later_1_5_to_1_6_patches_absent':True,
        'scope':'mining release and stale mouse ACK only'
