@@ -87,6 +87,7 @@ public final class MiningRelease140Test {
         ok(overlay.contains("if(!inputs.held(-1))JoggerTouchBridge.releaseAttackIfUnheld();"),"World-finger UP releases left mouse");
         ok(overlay.contains("inputs.clear();\n        JoggerTouchBridge.releaseAttackIfUnheld();"),"Cancel releases attack immediately");
         ok(overlay.contains("if(action==MotionEvent.ACTION_CANCEL){release();return true;}"),"Original Android cancel preserved");
+        ok(overlay.contains("handler.removeCallbacks(hold);if(!gesture.mining)inputs.set(-3);target(0,0,false);"),"Active long-press mining is not released when finger begins looking");
         ok(bridge.contains("public static void releaseAttackIfUnheld()"),"Reliable native release implemented");
         ok(bridge.contains("if(HELD_MOUSE.containsKey(0))return;"),"Other active mining owners protected");
         ok(bridge.contains("deliverMouse(0,0,false);"),"Native mouse up is immediate");
@@ -101,8 +102,6 @@ public final class MiningRelease140Test {
             "    @Override public void onOptionChanged()",
             "    private boolean playing() {",
             "    private float dp(",
-            "        if(action==MotionEvent.ACTION_MOVE) {",
-            "        if(action==MotionEvent.ACTION_CANCEL)",
             "    private boolean targetEnabled()",
             "    public void release()"
         };
@@ -110,6 +109,15 @@ public final class MiningRelease140Test {
             String start=boundaries[i],end=boundaries[i+1];
             ok(block(original,start,end).equals(block(overlay,start,end)),"Original camera/grab/move block untouched: "+start);
         }
+        String originallyMoving=block(original,
+            "        if(action==MotionEvent.ACTION_MOVE) {","        if(action==MotionEvent.ACTION_CANCEL)");
+        String nowMoving=block(overlay,
+            "        if(action==MotionEvent.ACTION_MOVE) {","        if(action==MotionEvent.ACTION_CANCEL)");
+        String earlyRelease="handler.removeCallbacks(hold);inputs.set(-3);target(0,0,false);";
+        ok(originallyMoving.contains(earlyRelease),"Pinned 1.4 had release-on-drag mining bug");
+        ok(nowMoving.equals(originallyMoving.replace(earlyRelease,
+            "handler.removeCallbacks(hold);if(!gesture.mining)inputs.set(-3);target(0,0,false);")),
+            "Camera MOVE math byte-identical; only active mining release guard changed");
         ok(overlay.contains("CallbackBridge.sendCursorPos(CallbackBridge.mouseX,CallbackBridge.mouseY)"),"Native camera movement retained");
         ok(original.split("CallbackBridge.sendCursorPos\\(", -1).length==overlay.split("CallbackBridge.sendCursorPos\\(", -1).length,"No additional cursor moves");
         ok(bridge.split("CallbackBridge.sendCursorPos\\(", -1).length==oldBridge.split("CallbackBridge.sendCursorPos\\(", -1).length,"Bridge has no new camera writes");
