@@ -34,17 +34,21 @@ def edit_bridge(old,new):
 # ACTION_DOWN can happen after an earlier final ACTION_UP was lost.
 # This runs BEFORE the original ACTION_DOWN gameplay routing.
 edit_overlay(
-'''        layoutControls();int action=event.getActionMasked(),index=event.getActionIndex(),id=event.getPointerId(index);
-        if(action==MotionEvent.ACTION_DOWN && !playing() && hit(event.getX(),event.getY())==null)return false;''',
+'''        layoutControls();int action=event.getActionMasked(),index=event.getActionIndex(),id=event.getPointerId(index);''',
 '''        layoutControls();int action=event.getActionMasked(),index=event.getActionIndex();
         if(action==MotionEvent.ACTION_OUTSIDE){release();return true;}
         int id=index>=0&&index<event.getPointerCount()?event.getPointerId(index):-1;
         // A fresh DOWN starts a new Android gesture. A previous touch still
         // recorded here means its UP was lost; release its mining button.
-        if(action==MotionEvent.ACTION_DOWN && (worldPointer>=0||routes.size()>0))release();
-        if(action==MotionEvent.ACTION_DOWN && !playing() && hit(event.getX(),event.getY())==null)return false;''')
+        if(action==MotionEvent.ACTION_DOWN && (worldPointer>=0||routes.size()>0))release();''')
 
-# The original MOVE/camera code above and after this block remains BYTE IDENTICAL.
+# Fix the original 1.4.0 release-on-drag bug: the game still owns the left
+# button once a long-hold begins, even if this finger later looks around.
+# Only guard the input release; leave the cursor's MOVE/delta math untouched.
+edit_overlay(
+    'handler.removeCallbacks(hold);inputs.set(-3);target(0,0,false);',
+    'handler.removeCallbacks(hold);if(!gesture.mining)inputs.set(-3);target(0,0,false);')
+
 # The first/final finger lifting must clear mining even if its Route was lost.
 edit_overlay(
 '''        if(action==MotionEvent.ACTION_UP||action==MotionEvent.ACTION_POINTER_UP) {
@@ -126,10 +130,16 @@ for start,end in [
  ('    public static void report(String state, boolean capability) {','    public static void physicalKey('),
  ('    @Override public void onGrabState(boolean grabbed) {','    @Override public void onOptionChanged()'),
  ('    private boolean playing() {','    private float dp('),
- ('        if(action==MotionEvent.ACTION_MOVE) {','        if(action==MotionEvent.ACTION_CANCEL)'),
  ('    private boolean targetEnabled()','    public void release()')
 ]:
     assert block(s,start,end)==block(original,start,end),'UNSAFE: touched original camera/routing block '+start
+# The ONLY change inside ACTION_MOVE is retaining the ongoing attack hold.
+old_move=block(original,'        if(action==MotionEvent.ACTION_MOVE) {','        if(action==MotionEvent.ACTION_CANCEL)')
+new_move=block(s,'        if(action==MotionEvent.ACTION_MOVE) {','        if(action==MotionEvent.ACTION_CANCEL)')
+old_cancel='handler.removeCallbacks(hold);inputs.set(-3);target(0,0,false);'
+assert old_move.count(old_cancel)==1
+assert new_move==old_move.replace(old_cancel,
+    'handler.removeCallbacks(hold);if(!gesture.mining)inputs.set(-3);target(0,0,false);',1), 'UNSAFE: camera movement or gesture dispatch changed'
 assert s.count('CallbackBridge.sendCursorPos(CallbackBridge.mouseX,CallbackBridge.mouseY)')==1,'Original native camera path changed'
 assert original.count('CallbackBridge.sendCursorPos(CallbackBridge.mouseX,CallbackBridge.mouseY)')==1
 assert b.count('CallbackBridge.sendCursorPos(')==old_bridge.count('CallbackBridge.sendCursorPos('),'Bridge changed camera'
