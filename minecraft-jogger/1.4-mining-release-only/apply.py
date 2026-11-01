@@ -72,11 +72,9 @@ edit_overlay(
                 JoggerTouchBridge.releaseAttackIfUnheld();
             if(route!=null) {''')
 edit_overlay(
+'''                    inputs.set(-3);worldPointer=-1;long generation=gestureGeneration;''',
 '''                    inputs.set(-3);worldPointer=-1;long generation=gestureGeneration;
-                    if(place)pulse(-2);''',
-'''                    inputs.set(-3);worldPointer=-1;long generation=gestureGeneration;
-                    if(!inputs.held(-1))JoggerTouchBridge.releaseAttackIfUnheld();
-                    if(place)pulse(-2);''')
+                    if(!inputs.held(-1))JoggerTouchBridge.releaseAttackIfUnheld();''')
 edit_overlay(
 '''        inputs.clear();routes.clear();sneaking=sprinting=false;sprint.reset();target(0,0,false);invalidate();''',
 '''        inputs.clear();
