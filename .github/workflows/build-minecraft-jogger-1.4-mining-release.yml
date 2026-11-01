@@ -141,3 +141,13 @@ jobs:
       - name: Remove temporary signing key
         if: always()
         run: rm -rf "$RUNNER_TEMP/jogger-signing"
+      - name: Preserve pinned 1.4 control source for diagnosis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jogger140-raw-overlay-diagnostics
+          path: |
+            out/mining-original-overlay.java
+            out/mining-original-bridge.java
+          retention-days: 7
+          if-no-files-found: ignore
