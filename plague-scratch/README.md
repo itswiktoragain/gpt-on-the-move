@@ -26,7 +26,11 @@ PLAGUE_TEXTURES=plague-scratch/input/Plague_Inc_Unity_Textures_Extracted.zip \
   python plague-scratch/remaster.py \
   plague-scratch/input/Plague_Inc_Unity_Assets_Scratch.sb3 \
   plague-scratch/Plague_Inc_Remastered_Scratch.sb3
-python plague-scratch/validate.py plague-scratch/Plague_Inc_Remastered_Scratch.sb3
+python plague-scratch/visual_rebuild.py \
+  plague-scratch/Plague_Inc_Remastered_Scratch.sb3 \
+  plague-scratch/input/Plague_Inc_Unity_Textures_Extracted.zip \
+  plague-scratch/Plague_Inc_Country_Map_Rebuild.sb3
+python plague-scratch/validate.py plague-scratch/Plague_Inc_Country_Map_Rebuild.sb3
 ```
 
 The rebuilt .sb3 has a redesigned world screen, but is not a pixel-exact or complete reproduction of the Unity game. Its menus outside the world screen are still work in progress.
