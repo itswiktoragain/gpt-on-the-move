@@ -1,0 +1,36 @@
+name: Build Plague Scratch SB3
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install 'Pillow>=10,<13'
+      - name: Check user-supplied input files
+        run: |
+          test -s plague-scratch/input/Plague_Inc_Unity_Assets_Scratch.sb3 || { echo "::error::Missing previous SB3. See plague-scratch/README.md"; exit 1; }
+          test -s plague-scratch/input/Plague_Inc_Unity_Textures_Extracted.zip || { echo "::error::Missing extracted Unity textures. See plague-scratch/README.md"; exit 1; }
+      - name: Build native Scratch project
+        env:
+          PLAGUE_TEXTURES: plague-scratch/input/Plague_Inc_Unity_Textures_Extracted.zip
+        run: |
+          python plague-scratch/remaster.py \
+            plague-scratch/input/Plague_Inc_Unity_Assets_Scratch.sb3 \
+            plague-scratch/Plague_Inc_Remastered_Scratch.sb3
+      - name: Check Scratch structure and asset references
+        run: python plague-scratch/validate.py plague-scratch/Plague_Inc_Remastered_Scratch.sb3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Plague-Inc-Scratch-Rebuild
+          path: plague-scratch/Plague_Inc_Remastered_Scratch.sb3
+          if-no-files-found: error
