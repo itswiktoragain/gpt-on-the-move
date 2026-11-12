@@ -1,0 +1,47 @@
+name: Publish Breaking the Bank Vanilla Scratch Downloads
+
+on:
+  workflow_run:
+    workflows: ['Build Breaking the Bank - Vanilla Scratch']
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Retrieve verified Scratch projects from successful build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p downloads
+          gh run download "$RUN_ID" -R "$REPO" \
+            -n BreakingTheBank-Vanilla-Compatible -D downloads
+          gh run download "$RUN_ID" -R "$REPO" \
+            -n BreakingTheBank-Vanilla-Quality -D downloads
+          test -s downloads/BreakingTheBank_Vanilla_Compatible.sb3
+          test -s downloads/BreakingTheBank_Vanilla_Quality.sb3
+          ls -lh downloads
+      - name: Publish direct GitHub Release downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          REV: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          tag='breaking-the-bank-vanilla-v1'
+          if gh release view "$tag" -R "$REPO" >/dev/null 2>&1; then
+            gh release upload "$tag" downloads/*.sb3 -R "$REPO" --clobber
+          else
+            gh release create "$tag" downloads/*.sb3 -R "$REPO" \
+              --target "$REV" \
+              --title 'Breaking the Bank - Vanilla Scratch 3' \
+              --notes 'Standalone Scratch 3 projects. No custom extensions or external video. Compatible: 12 FPS / 192x144. Quality: 15 FPS / 240x180. Both use the original Flash artwork and audio with repeated frames deduplicated; frame rate and resolution are reduced to keep Scratch memory use manageable. Download a .sb3 and open it in vanilla Scratch.'
+          fi
