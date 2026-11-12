@@ -1,0 +1,192 @@
+name: Build Breaking the Bank — Native Scratch Objects
+
+on:
+  push:
+    paths:
+      - 'breaking-the-bank-scratch/build_native.py.xz.b64'
+      - 'breaking-the-bank-scratch/swfparse.py'
+      - 'breaking-the-bank-scratch/swfsvg.py'
+      - '.github/workflows/build-breaking-the-bank-objects.yml'
+  workflow_dispatch:
+    inputs:
+      swf_url:
+        description: 'Optional alternative HTTPS URL for the exact original SWF'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  native-scratch:
+    name: Convert Flash display-list objects to native Scratch sprites
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install original vector and audio dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libcairo2 libffi-dev
+          python -m pip install --disable-pip-version-check 'Pillow>=10,<12' 'CairoSVG>=2.7,<3' 'numpy>=1.26,<3'
+
+      - name: Obtain exact source SWF
+        shell: bash
+        env:
+          CUSTOM_SWF_URL: ${{ inputs.swf_url || '' }}
+        run: |
+          set -euo pipefail
+          cd breaking-the-bank-scratch
+          expected=dfbd9ae58e9e505aae7d0edb26e7c2aa5d46e63815ccfbcbb8158dc982f7e835
+          urls=()
+          if [[ -n "$CUSTOM_SWF_URL" ]]; then urls+=("$CUSTOM_SWF_URL"); fi
+          urls+=("https://uploads.ungrounded.net/457000/457209_Bank_NG.swf")
+          for url in "${urls[@]}"; do
+            echo "Checking SWF from $url"
+            if curl -fLsS --retry 2 --connect-timeout 15 --max-time 120 \
+              --user-agent "Mozilla/5.0" "$url" -o game.swf; then
+              if echo "$expected  game.swf" | sha256sum --check --status; then
+                mv game.swf 457209_Bank_NG.swf
+                break
+              fi
+              echo "Downloaded SWF does not match the exact user-provided source"
+            fi
+          done
+          if [[ ! -f 457209_Bank_NG.swf ]]; then
+            echo "::error::Original SWF could not be downloaded with the correct checksum"
+            exit 1
+          fi
+          echo "$expected  457209_Bank_NG.swf" | sha256sum --check
+
+      - name: Expand native conversion source
+        run: |
+          python - <<'PY'
+          import base64,lzma,pathlib
+          root=pathlib.Path('breaking-the-bank-scratch')
+          encoded=(root/'build_native.py.xz.b64').read_text().strip()
+          src=lzma.decompress(base64.b64decode(encoded))
+          (root/'build_native.py').write_bytes(src)
+          print('Recovered',len(src),'bytes of native-Scratch conversion source')
+          PY
+          python -m compileall -q breaking-the-bank-scratch/
+
+      - name: Extract original Flash audio tracks
+        run: |
+          python - <<'PY'
+          import pathlib
+          audio=pathlib.Path('breaking-the-bank-scratch/audio.py')
+          root=str(audio.parent.resolve())
+          src=audio.read_text()
+          src=src.replace('/mnt/data/bank_port',root)
+          src=src.replace('/mnt/data/457209_Bank_NG.swf',root+'/457209_Bank_NG.swf')
+          audio.write_text(src)
+          PY
+          python breaking-the-bank-scratch/audio.py
+
+      - name: Build full Quality project at 30 FPS
+        run: |
+          python breaking-the-bank-scratch/build_native.py \
+            --output breaking-the-bank-scratch/BreakingTheBank_Objects_Quality.sb3
+
+      - name: Validate native Scratch project and RAM footprint
+        run: |
+          python - <<'PY'
+          import io,json,collections,zipfile,pathlib
+          from PIL import Image
+          f=pathlib.Path('breaking-the-bank-scratch/BreakingTheBank_Objects_Quality.sb3')
+          with zipfile.ZipFile(f) as z:
+            assert z.testzip() is None
+            p=json.loads(z.read('project.json'))
+            assert p['extensions']==[]
+            sprites=p['targets'][1:]
+            assert len(sprites)>=170, len(sprites)
+            assert sum(len(t['costumes']) for t in sprites)>1900
+            assert p['targets'][0]['broadcasts']
+            assert not p.get('extensionURLs')
+            images={}
+            for t in p['targets']:
+              for c in t['costumes']:
+                key=c['md5ext']
+                if key not in images:
+                  with Image.open(io.BytesIO(z.read(key))) as im:
+                    images[key]=im.size
+            assert sum(w*h*4 for w,h in images.values())<500*2**20
+            for t in sprites:
+              d={v[0]:v[1] for v in t['lists'].values()}
+              assert len(set(len(d[k]) for k in ['At','Costume','X','Y','Direction','Size','Ghost','Action','Hover']))==1
+              for ci,sz in zip(d['Costume'],d['Size']):
+                if ci:
+                  costume=t['costumes'][ci-1]
+                  w,h=images[costume['md5ext']]
+                  scale=sz/100
+                  low=min(1,max(5/w,5/h))
+                  high=min(720/w,540/h)
+                  assert low-0.01<=scale<=high+0.01,(t['name'],scale,low,high)
+            print(f'PASS: {len(sprites)} real Scratch sprites, {len(images)} unique raster assets, {f.stat().st_size//1024} KiB')
+          PY
+
+      - name: Generate release documentation
+        run: |
+          cat > breaking-the-bank-scratch/README_NATIVE.md <<'TXT'
+          # Breaking the Bank — Native Scratch Quality conversion
+
+          This is an object-based Scratch 3 conversion of the supplied Newgrounds
+          Flash game, **not** the old single-sprite movie conversion.
+
+          * Flash display-list objects become separate, editable Scratch sprites.
+          * Original placement transform matrices drive real Scratch position,
+            direction, size and opacity keyframes.
+          * Native clickable buttons follow the original Flash GotoLabel actions.
+          * Supports the six original branches and their failure-menu choices.
+          * All audio is extracted from the original SWF.
+          * Animation is timed to the original 30 FPS.
+          * No TurboWarp extension, external video stream, or internet at playback.
+
+          Open the .sb3 in the regular Scratch editor using File > Load from your
+          computer. Press the green flag, click a choice when the intro stops,
+          or press keys 1-6. Press R to restart.
+
+          Notes: Scratch supports rotations and uniform scaling, not all of
+          Flash's complex color/blend and shear effects. Nested SWF levels below
+          the first internal display-list level are converted to costumes rather
+          than one editable sprite per individual vector path. The Newgrounds
+          scripting API was not ported. This conversion is significantly more
+          editable than the previous film-strip version but is not a full
+          ActionScript virtual machine.
+          TXT
+
+      - name: Upload verified Scratch game
+        uses: actions/upload-artifact@v4
+        with:
+          name: BreakingTheBank-Native-Quality-Objects
+          path: |
+            breaking-the-bank-scratch/BreakingTheBank_Objects_Quality.sb3
+            breaking-the-bank-scratch/README_NATIVE.md
+            breaking-the-bank-scratch/build_native.py
+          compression-level: 0
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Publish permanent GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="breaking-the-bank-native-objects-v2"
+          game="breaking-the-bank-scratch/BreakingTheBank_Objects_Quality.sb3"
+          readme="breaking-the-bank-scratch/README_NATIVE.md"
+          source="breaking-the-bank-scratch/build_native.py"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$game" "$readme" "$source" --clobber
+          else
+            gh release create "$tag" "$game" "$readme" "$source" \
+              --title "Breaking the Bank — native Scratch Quality (v2)" \
+              --notes-file "$readme"
+          fi
