@@ -1,0 +1,150 @@
+name: Build lightweight Breaking the Bank for TurboWarp
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-bank-stream.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  streaming-build:
+    name: Streamed Flash animation, tiny SB3 and public media
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Flash rasterization, video and audio dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcairo2 libffi-dev ffmpeg
+          python -m pip install --disable-pip-version-check 'Pillow>=10,<12' 'numpy>=1.26,<3' 'CairoSVG>=2.7,<3'
+
+      - name: Download the exact Flash game the user supplied
+        shell: bash
+        run: |
+          set -euo pipefail
+          f="breaking-the-bank-scratch/457209_Bank_NG.swf"
+          expected="dfbd9ae58e9e505aae7d0edb26e7c2aa5d46e63815ccfbcbb8158dc982f7e835"
+          if [[ ! -s "$f" ]]; then
+            curl --fail --location --silent --show-error --retry 5 \
+              --connect-timeout 20 --max-time 120 \
+              --user-agent "Mozilla/5.0" \
+              "https://uploads.ungrounded.net/457000/457209_Bank_NG.swf" \
+              -o "$f"
+          fi
+          echo "$expected  $f" | sha256sum --check
+
+      - name: Configure original Flash scripts for GitHub runner paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE/breaking-the-bank-scratch"
+          for py in "$root"/*.py; do
+            sed -i \
+              -e "s|/mnt/data/bank_port|$root|g" \
+              -e "s|/mnt/data/457209_Bank_NG.swf|$root/457209_Bank_NG.swf|g" \
+              -e "s|/mnt/data/Breaking_the_Bank_Flash_to_Scratch.sb3|$root/BreakingTheBank.sb3|g" \
+              "$py"
+          done
+          mkdir -p "$root/assets"
+          python -m compileall -q "$root"
+
+      - name: Extract the original Flash soundtracks
+        run: python breaking-the-bank-scratch/audio.py
+
+      - name: Render original frames at 30 FPS
+        run: python breaking-the-bank-scratch/rendersheets.py
+
+      - name: Encode the same frames as a compact stream
+        run: python breaking-the-bank-scratch/encode_stream.py
+
+      - name: Build TurboWarp Scratch project with one click sprite
+        run: python breaking-the-bank-scratch/build_streaming.py
+
+      - name: Validate lightweight SB3 and original video
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m zipfile -t breaking-the-bank-scratch/BreakingTheBank_Lite.sb3
+          ffprobe -v error -select_streams v:0 \
+            -show_entries stream=codec_name,width,height,avg_frame_rate,nb_frames \
+            -of default=noprint_wrappers=1 \
+            breaking-the-bank-scratch/BreakingTheBank_video.mp4
+          python - <<'PY'
+          import json,zipfile
+          f='breaking-the-bank-scratch/BreakingTheBank_Lite.sb3'
+          with zipfile.ZipFile(f) as z:
+              data=json.loads(z.read('project.json'))
+          assert data['extensions']==['bankstream']
+          assert len(data['targets'][1]['costumes'])==1
+          assert len(data['targets'][1]['sounds'])==7
+          assert 'bankstream' in data['extensionURLs']
+          print('VALIDATED: 1 sprite costume, 7 original sounds, custom extension linked')
+          PY
+
+      - name: Publish tiny project and video to the public bank-stream branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp breaking-the-bank-scratch/BreakingTheBank_video.mp4 "$RUNNER_TEMP/bank_video.mp4"
+          cp breaking-the-bank-scratch/BreakingTheBank_Lite.sb3 "$RUNNER_TEMP/bank_lite.sb3"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --heads origin bank-stream | grep -q 'refs/heads/bank-stream'; then
+            git fetch origin bank-stream
+            git switch bank-stream
+          else
+            git switch --orphan bank-stream
+            git rm -rf . || true
+          fi
+          mkdir -p breaking-the-bank-scratch/media
+          cp "$RUNNER_TEMP/bank_video.mp4" breaking-the-bank-scratch/media/BreakingTheBank.mp4
+          cp "$RUNNER_TEMP/bank_lite.sb3" breaking-the-bank-scratch/media/BreakingTheBank_Lite.sb3
+          cat > breaking-the-bank-scratch/media/README.md <<'MD'
+          # Breaking the Bank - lightweight TurboWarp version
+          Open BreakingTheBank_Lite.sb3 in https://turbowarp.org/editor .
+          When prompted, allow the custom Bank Stream extension from the main branch.
+          Hit the green flag. The original Flash animation streams from
+          BreakingTheBank.mp4 hosted in this branch.
+          Choose a branch by clicking the six original menu choices or pressing 1-6.
+          Press R to restart. This is TurboWarp-specific and needs internet;
+          regular Scratch does not support this custom extension.
+          Unlike the old 900-costume SB3, it contains only one image sprite.
+          Audio and branch selection are controlled by Scratch scripts.
+          MD
+          git add breaking-the-bank-scratch/media/
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish lightweight Breaking the Bank video and Scratch project"
+            git push origin bank-stream
+          fi
+
+      - name: Upload lightweight project as a GitHub Actions artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BreakingTheBank_Lite_TurboWarp
+          path: |
+            breaking-the-bank-scratch/BreakingTheBank_Lite.sb3
+            breaking-the-bank-scratch/BreakingTheBank_video.mp4
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Verify published public video and SB3
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/bank-stream/breaking-the-bank-scratch/media"
+          curl --fail --location --silent --show-error --retry 6 --retry-delay 2 \
+            --retry-all-errors --head "$base/BreakingTheBank.mp4"
+          curl --fail --location --silent --show-error --retry 6 --retry-delay 2 \
+            --retry-all-errors --head "$base/BreakingTheBank_Lite.sb3"
