@@ -1,0 +1,77 @@
+name: Build Breaking the Bank for Scratch
+
+on:
+  workflow_dispatch:
+    inputs:
+      swf_url:
+        description: 'Optional direct URL to the original 457209_Bank_NG.swf'
+        required: false
+        type: string
+  push:
+    paths:
+      - 'breaking-the-bank-scratch/**'
+      - '.github/workflows/build-breaking-the-bank.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-sb3:
+    name: Render Flash and package Scratch 3 project
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install rasterizer and audio tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcairo2 libffi-dev ffmpeg
+          python -m pip install --disable-pip-version-check 'Pillow>=10,<12' 'numpy>=1.26,<3' 'CairoSVG>=2.7,<3'
+      - name: Obtain and verify original SWF
+        shell: bash
+        env:
+          CUSTOM_SWF_URL: ${{ inputs.swf_url || '' }}
+        run: |
+          set -euo pipefail
+          dest="breaking-the-bank-scratch/457209_Bank_NG.swf"
+          expected="dfbd9ae58e9e505aae7d0edb26e7c2aa5d46e63815ccfbcbb8158dc982f7e835"
+          if [[ -s "$dest" ]]; then
+            echo "Using Flash source checked into the repo"
+          else
+            urls=()
+            if [[ -n "$CUSTOM_SWF_URL" ]]; then urls+=("$CUSTOM_SWF_URL"); fi
+            urls+=("https://uploads.ungrounded.net/457000/457209_Bank_NG.swf")
+            for url in "${urls[@]}"; do
+              echo "Attempting Flash source: $url"
+              if curl --fail --location --silent --show-error --retry 2 --connect-timeout 15 --max-time 90 \
+                --user-agent "Mozilla/5.0" "$url" -o "$dest.tmp"; then
+                if echo "$expected  $dest.tmp" | sha256sum --check --status; then
+                  mv "$dest.tmp" "$dest"
+                  break
+                else
+                  echo "Downloaded file does not match the uploaded original SWF"
+                fi
+              fi
+            done
+          fi
+          if [[ ! -s "$dest" ]] || ! echo "$expected  $dest" | sha256sum --check; then
+            echo "::error::Original SWF unavailable or checksum mismatch. Add 457209_Bank_NG.swf to breaking-the-bank-scratch/ or supply its direct URL when running the workflow."
+            exit 1
+          fi
+      - name: Reconstruct seven Flash scene audio tracks
+        run: python breaking-the-bank-scratch/audio.py
+      - name: Render 5,395 Flash animation frames
+        run: python breaking-the-bank-scratch/rendersheets.py
+      - name: Construct and validate SB3
+        run: python breaking-the-bank-scratch/build_project.py
+      - name: Upload Scratch game
+        uses: actions/upload-artifact@v4
+        with:
+          name: BreakingTheBank-Scratch3
+          path: breaking-the-bank-scratch/BreakingTheBank.sb3
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
