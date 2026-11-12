@@ -61,6 +61,20 @@ jobs:
             echo "::error::Original SWF unavailable or checksum mismatch. Add 457209_Bank_NG.swf to breaking-the-bank-scratch/ or supply its direct URL when running the workflow."
             exit 1
           fi
+      - name: Configure converter paths for the runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE/breaking-the-bank-scratch"
+          for py in "$root"/*.py; do
+            sed -i \
+              -e "s|/mnt/data/bank_port|$root|g" \
+              -e "s|/mnt/data/457209_Bank_NG.swf|$root/457209_Bank_NG.swf|g" \
+              -e "s|/mnt/data/Breaking_the_Bank_Flash_to_Scratch.sb3|$root/BreakingTheBank.sb3|g" \
+              "$py"
+          done
+          mkdir -p "$root/assets"
+          python -m compileall -q "$root"
       - name: Reconstruct seven Flash scene audio tracks
         run: python breaking-the-bank-scratch/audio.py
       - name: Render 5,395 Flash animation frames
