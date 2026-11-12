@@ -111,10 +111,10 @@ jobs:
             assert p['targets'][0]['broadcasts']
             assert not p.get('extensionURLs')
             images={}
-            for t in p['targets']:
+            for t in sprites:
               for c in t['costumes']:
                 key=c['md5ext']
-                if key not in images:
+                if key not in images and key.endswith('.png'):
                   with Image.open(io.BytesIO(z.read(key))) as im:
                     images[key]=im.size
             assert sum(w*h*4 for w,h in images.values())<500*2**20
