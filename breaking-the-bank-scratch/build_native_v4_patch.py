@@ -94,6 +94,17 @@ swap('raw=cairosvg.svg2png(bytestring=svg.encode(),output_width=w,output_height=
                 self.base_png_cache[basekey]=raw
                 if len(self.base_png_cache)>60:self.base_png_cache.popitem(last=False)''')
 
+# Keep vanilla Scratch's texture memory bounded. Flash fades generate many
+# recolored costumes: only these transient variants are rasterized smaller.
+swap('''preferred=1.0 if displayed_extent>350 else PIXEL_SCALE
+        raster_scale=min(preferred,1536/max(maxx-minx,maxy-miny))''',
+'''preferred=1.0 if displayed_extent>350 else PIXEL_SCALE
+        if rgb is not None:
+            rm,ra=rgb
+            if (any(abs(v-1)>0.001 for v in rm) or any(abs(v)>0.001 for v in ra)) and displayed_extent>270:
+                preferred=min(preferred,0.56)
+        raster_scale=min(preferred,1536/max(maxx-minx,maxy-miny))''')
+
 # Better viewport guard is needed when the Flash raster edges have AA pixels.
 swap('for wx in (-10,560):\n            for wy in (-10,410):',
      'for wx in (-36,586):\n            for wy in (-36,436):')
