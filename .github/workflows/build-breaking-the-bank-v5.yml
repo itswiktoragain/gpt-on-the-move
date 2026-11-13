@@ -1,0 +1,132 @@
+name: Breaking the Bank — Quality v5
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-breaking-the-bank-v5.yml'
+      - 'breaking-the-bank-scratch/build_native_v5_patch.py'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libcairo2 libffi-dev
+          python -m pip install 'Pillow>=10,<12' 'CairoSVG>=2.7,<3' 'numpy>=1.26,<3'
+      - name: Exact original SWF
+        run: |
+          set -euo pipefail
+          cd breaking-the-bank-scratch
+          curl -fL --retry 3 --user-agent 'Mozilla/5.0' \
+            https://uploads.ungrounded.net/457000/457209_Bank_NG.swf -o 457209_Bank_NG.swf
+          echo 'dfbd9ae58e9e505aae7d0edb26e7c2aa5d46e63815ccfbcbb8158dc982f7e835  457209_Bank_NG.swf' | sha256sum -c -
+      - name: Recreate and patch the native converter
+        run: |
+          python - <<'PY'
+          import lzma,base64,pathlib
+          root=pathlib.Path('breaking-the-bank-scratch')
+          (root/'build_native.py').write_bytes(lzma.decompress(base64.b64decode((root/'build_native.py.xz.b64').read_text().strip())))
+          PY
+          python breaking-the-bank-scratch/quality_fixes_v3.py breaking-the-bank-scratch/build_native.py
+          python breaking-the-bank-scratch/build_native_v4_patch.py breaking-the-bank-scratch/build_native.py
+          python breaking-the-bank-scratch/build_native_v5_patch.py breaking-the-bank-scratch/build_native.py
+          python -m compileall -q breaking-the-bank-scratch
+      - name: Extract Flash audio
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('breaking-the-bank-scratch/audio.py')
+          root=str(p.parent.resolve())
+          p.write_text(p.read_text().replace('/mnt/data/bank_port',root).replace('/mnt/data/457209_Bank_NG.swf',root+'/457209_Bank_NG.swf'))
+          PY
+          python breaking-the-bank-scratch/audio.py
+      - name: Render and package scene sprites
+        run: |
+          python -u breaking-the-bank-scratch/build_native.py \
+            --output breaking-the-bank-scratch/BreakingTheBank_Objects_Quality_v5.sb3
+      - name: Check true costume centers, no native rotation, native Scratch format
+        run: |
+          python - <<'PY'
+          import zipfile,json,io
+          from PIL import Image
+          path='breaking-the-bank-scratch/BreakingTheBank_Objects_Quality_v5.sb3'
+          with zipfile.ZipFile(path) as z:
+            assert z.testzip() is None
+            p=json.loads(z.read('project.json'))
+            assert not p['extensions'] and not p.get('extensionURLs')
+            sprites=p['targets'][1:]
+            assert len(sprites)>=170
+            n=sum(len(sp['costumes']) for sp in sprites)
+            assert n>2500,n
+            dims={}
+            for sp in sprites:
+              L={v[0]:v[1] for v in sp['lists'].values()}
+              assert all(abs(float(x)-90)<.01 for x in L['Direction']),sp['name']
+              assert all(abs(float(x))<.01 for x in L['Ghost']),sp['name']
+              assert len(set(len(L[k]) for k in ['At','Costume','X','Y','Direction','Size','Ghost','Action','Hover']))==1
+              for c in sp['costumes']:
+                file=c['md5ext']
+                if file not in dims:
+                  with Image.open(io.BytesIO(z.read(file))) as im:dims[file]=im.size
+                w,h=dims[file]
+                assert abs(c['rotationCenterX']-w/2)<.01 and abs(c['rotationCenterY']-h/2)<.01,(sp['name'],w,h,c)
+              for ci,sz in zip(L['Costume'],L['Size']):
+                if ci:
+                  c=sp['costumes'][int(ci)-1];w,h=dims[c['md5ext']];scale=float(sz)/100
+                  low=min(1,max(5/w,5/h));high=min(720/w,540/h)
+                  assert low-.01<=scale<=high+.01,(sp['name'],scale,low,high)
+            print('PASS',len(sprites),'sprites',n,'costumes',len(dims),'unique bitmaps; exact centers; no native rotation or ghost effects')
+          PY
+      - name: Create release notes
+        run: |
+          cat > breaking-the-bank-scratch/README_NATIVE_v5.md <<'EOF'
+          # Breaking the Bank — Vanilla Scratch Quality v5
+
+          An editable, object-based conversion of the original SWF (not a
+          single-sprite movie). Retains separate scene sprites, original six
+          interactive choices, audio, and native 30 FPS animation keyframes.
+
+          Fixes: Each symbol is rendered with the *complete* original Flash
+          affine matrix, including rotation, skew and reflection. Costumes
+          are centered on the Scratch costume grid. Native Scratch rotations
+          are not used. Flash RGB/alpha values are baked into RGBA artwork;
+          masked Flash groups are kept together to preserve clipDepth.
+
+          Uses no extensions or internet at runtime. This is an SWF display-
+          list conversion, not a full ActionScript interpreter. Structural
+          validation is automated; complete in-editor playthrough is not.
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BreakingTheBank-Quality-v5
+          path: |
+            breaking-the-bank-scratch/BreakingTheBank_Objects_Quality_v5.sb3
+            breaking-the-bank-scratch/README_NATIVE_v5.md
+          compression-level: 0
+          retention-days: 90
+          if-no-files-found: error
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=breaking-the-bank-native-objects-v5
+          f=breaking-the-bank-scratch/BreakingTheBank_Objects_Quality_v5.sb3
+          notes=breaking-the-bank-scratch/README_NATIVE_v5.md
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$f" "$notes" --clobber
+          else
+            gh release create "$tag" "$f" "$notes" \
+              --title 'Breaking the Bank — Quality v5: centered Flash sprites' --notes-file "$notes"
+          fi
