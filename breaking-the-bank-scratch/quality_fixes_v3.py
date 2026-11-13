@@ -143,14 +143,13 @@ swap("'name':f'SWF depth {root:02d}.{inner:02d}'+suffix,",
 swap("                targets.append(sprite)\n                assetcostumes+=len(sprite['costumes']);events+=nevents",
      "                existing={t['name'] for t in targets[1:]}\n                base=sprite['name'];number=2\n                while sprite['name'] in existing:\n                    sprite['name']=f'{base} ({number})';number+=1\n                targets.append(sprite)\n                assetcostumes+=len(sprite['costumes']);events+=nevents")
 
-# Prepend description functions to module so no source-index rewriting is needed.
-s=s.replace('def sprite_script(assets,layer,events_by_scene,art,part=0,parts=1):',
-            '# Automatic semantic naming enabled\\n'
-            'def sprite_script(assets,layer,events_by_scene,art,part=0,parts=1):',1)
-s=s.replace('                    before[g]=signature\n                    before[g]=signature','                    before[g]=signature')
-# A single 'exec' of this module's definitions is simpler than rewriting the
-# original parser; insert the definitions just above sprite_script.
-# The code above defines NAMED, SYMBOLS and describe_sprite in this patch process
-# only, so take their source from a standalone module alongside the converter.
+# Embed the semantic label data and classifier into the converted module.
+# They were defined above for building this patch, not in the original SWF parser.
+import inspect
+extra=('NAMED = '+repr(NAMED)+'\nSYMBOLS = '+repr(SYMBOLS)+'\n'+
+       inspect.getsource(describe_sprite)+'\n')
+needle='def sprite_script(assets,layer,events_by_scene,art,part=0,parts=1):'
+assert needle in s
+s=s.replace(needle,extra+needle,1)
 p.write_text(s)
 print('Applied high-quality native Scratch patches to',p)
