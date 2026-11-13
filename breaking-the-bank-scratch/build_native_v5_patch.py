@@ -16,6 +16,14 @@ method=r'''
         """Rasterize each independent SWF object with its entire affine transform.
         Costume center matches pixel-grid center; Scratch never rotates it again.
         """
+        # Fade values retain 1/128 precision. Near-identical frames reuse
+        # a single centered costume, avoiding GPU memory exhaustion.
+        def qfade(x):
+            return round(x*128)/128 if 0<=x<=1 else x
+        alpha=qfade(alpha)
+        if rgb is not None:
+            mul,add=rgb
+            rgb=(tuple(qfade(v) for v in mul),tuple(add))
         body,used,localbounds=self.contents(cid,age,button_state)
         if not body or not localbounds:return None
         # Render affine rotation/shear into the costume, but let Scratch
@@ -33,7 +41,8 @@ method=r'''
         minx=math.floor(bx0-pad);miny=math.floor(by0-pad)
         maxx=math.ceil(bx1+pad);maxy=math.ceil(by1+pad)
         if maxx<=minx or maxy<=miny:return None
-        rs=1.0 if (maxx-minx)>420 and (maxy-miny)>260 else PIXEL_SCALE
+        max_extent=max(maxx-minx,maxy-miny)
+        rs=0.95 if max_extent>250 else (1.10 if max_extent>145 else PIXEL_SCALE)
         w=max(1,math.ceil((maxx-minx)*rs));h=max(1,math.ceil((maxy-miny)*rs))
         hsh=hashlib.sha1(body.encode("utf-8")).hexdigest()[:20]
         key=(hsh,tuple(round(t,5) for t in L),button_state,
