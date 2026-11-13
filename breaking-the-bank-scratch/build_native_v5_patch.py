@@ -18,20 +18,29 @@ method=r'''
         """
         body,used,localbounds=self.contents(cid,age,button_state)
         if not body or not localbounds:return None
-        world=compose_bounds(localbounds,M)
-        world=intersect(world,(-6,-6,556,406))
-        if world is None:return None
-        bx0,by0,bx1,by1=world
+        # Render affine rotation/shear into the costume, but let Scratch
+        # handle translations so moving sprites can reuse the same bitmap.
+        tx,ty=M[4],M[5]
+        L=(M[0],M[1],M[2],M[3],0,0)
+        relative=compose_bounds(localbounds,L)
+        world=compose_bounds(relative,(1,0,0,1,tx,ty))
+        if intersect(world,(-6,-6,556,406)) is None:return None
+        excessive=(relative[2]-relative[0]>795 or relative[3]-relative[1]>570)
+        view=intersect(relative,(-6-tx,-6-ty,556-tx,406-ty)) if excessive else relative
+        if view is None:return None
+        bx0,by0,bx1,by1=view
         pad=3
-        minx=max(-7,math.floor(bx0-pad));miny=max(-7,math.floor(by0-pad))
-        maxx=min(557,math.ceil(bx1+pad));maxy=min(407,math.ceil(by1+pad))
+        minx=math.floor(bx0-pad);miny=math.floor(by0-pad)
+        maxx=math.ceil(bx1+pad);maxy=math.ceil(by1+pad)
         if maxx<=minx or maxy<=miny:return None
         rs=1.0 if (maxx-minx)>420 and (maxy-miny)>260 else PIXEL_SCALE
         w=max(1,math.ceil((maxx-minx)*rs));h=max(1,math.ceil((maxy-miny)*rs))
         hsh=hashlib.sha1(body.encode("utf-8")).hexdigest()[:20]
-        key=(hsh,tuple(round(t,5) for t in M),button_state,
+        key=(hsh,tuple(round(t,5) for t in L),button_state,
              minx,miny,maxx,maxy,rs,rgb,round(alpha,5))
-        if key in self.render_cache:return self.render_cache[key]
+        if key in self.render_cache:
+            saved=self.render_cache[key]
+            return (*saved[:7],saved[7]+tx*STAGE_SCALE,saved[8]-ty*STAGE_SCALE,saved[9])
         defs="".join(self.converter.all_defs[x] for x in sorted(used))
         gradients={}
         for shid in used:
@@ -50,8 +59,8 @@ method=r'''
             needed.update(re.findall(r"url\(#(clip_[^)]*)\)",v))
         svg=(f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
              f'viewBox="{fmt(minx)} {fmt(miny)} {fmt(maxx-minx)} {fmt(maxy-miny)}">'
-             f'<defs>{defs}</defs><g transform="{svg_matrix(M)}">{body}</g></svg>')
-        basekey=(hsh,tuple(round(t,5) for t in M),button_state,minx,miny,maxx,maxy,rs)
+             f'<defs>{defs}</defs><g transform="{svg_matrix(L)}">{body}</g></svg>')
+        basekey=(hsh,tuple(round(t,5) for t in L),button_state,minx,miny,maxx,maxy,rs)
         raw=self.base_png_cache.get(basekey)
         if raw is None:
             raw=cairosvg.svg2png(bytestring=svg.encode(),output_width=w,output_height=h)
@@ -91,6 +100,7 @@ method=r'''
         size=100*STAGE_SCALE/rs
         result=(aid,filename,cx,cy,im.width,im.height,rs,posx,posy,size)
         self.render_cache[key]=result
+        result=(*result[:7],result[7]+tx*STAGE_SCALE,result[8]-ty*STAGE_SCALE,result[9])
         self.render_count+=1;self.svgtotal+=len(svg);self.maxdim=max(self.maxdim,w,h)
         if self.render_count%400==0:
             print("baked",self.render_count,"art assets",flush=True)
