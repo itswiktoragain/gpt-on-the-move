@@ -38,7 +38,7 @@ swap('aid,fname,cx,cy,width,height=png','aid,fname,cx,cy,width,height,skin_scale
 swap('aid,fname,cx,cy,width,height=hover','aid,fname,cx,cy,width,height,hover_scale=hover')
 swap('size=s*DEFAULT_SIZE','size=s*(STAGE_SCALE/skin_scale)*100')
 swap('min_skin=math.ceil(5/max(s,.00001))+2)',
-     'min_skin=math.ceil(5/max(s,.00001))+2,display_scale=s)')
+     'min_skin=math.ceil(5/max(s*(STAGE_SCALE/PIXEL_SCALE),.00001))+3,display_scale=s)')
 
 # Completely reset the state even when returning to the same scene.
 swap("GLOBAL_VAR={'Scene':'global_scene','Frame':'global_frame','Clip Start':'global_clipstart','Clip End':'global_clipend'}",
