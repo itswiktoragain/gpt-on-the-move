@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import sys
 import socket
 import threading
 import time
@@ -13,10 +14,40 @@ from urllib.parse import urlsplit
 import webbrowser
 import mailcore
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(getattr(sys,'_MEIPASS',Path(__file__).resolve().parents[1]))
 ASSETS = ROOT / 'dist'
 MAX_REQUEST = 31 * 1024 * 1024
 SESSION_TTL = 30 * 60
+SAFE_FIELDS = ('email','username','protocol','incoming','incoming_security','smtp','smtp_security','smtp_username')
+
+
+def config_path():
+    if sys.platform == 'win32':
+        return Path(os.environ.get('APPDATA',str(Path.home()))) / 'Tmailer' / 'settings.json'
+    if sys.platform == 'darwin':
+        return Path.home() / 'Library/Application Support/Tmailer/settings.json'
+    return Path(os.environ.get('XDG_CONFIG_HOME',str(Path.home()/'.config'))) / 'tmailer/settings.json'
+
+
+def load_settings():
+    try:
+        data=json.loads(config_path().read_text())
+        return {k:data[k] for k in SAFE_FIELDS if k in data}
+    except (OSError,ValueError):
+        return {}
+
+
+def save_settings(c,remember):
+    path=config_path()
+    if not remember:
+        path.unlink(missing_ok=True)
+        return
+    path.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
+    temp=path.with_suffix('.tmp')
+    fd=os.open(temp,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)
+    with os.fdopen(fd,'w') as stream:
+        json.dump({k:c.get(k,'') for k in SAFE_FIELDS},stream)
+    temp.replace(path)
 
 
 def install_public_network_policy():
@@ -155,9 +186,13 @@ class Handler(BaseHTTPRequestHandler):
             session=self.server.session(self.headers.get('X-Tmailer-Token',''))
             if not session:return self.respond(401,{'error':'Your session expired. Connect again.'})
             with session.lock:
+                if name=='settings':
+                    return self.respond(200,{} if self.server.public else load_settings())
                 if name=='connect':
                     self.server.login_limit(self.client_address[0])
                     c=mailcore.validate(data);mailcore.check(c)
+                    if not self.server.public and 'remember' in data:
+                        save_settings(c,bool(data['remember']))
                     session.account=c
                     return self.respond(200,{'email':c['email'],'protocol':c['protocol']})
                 if name=='disconnect':

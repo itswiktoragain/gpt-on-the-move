@@ -13,7 +13,7 @@ if '--no-browser' in sys.argv:
     sys.argv=[sys.argv[0],'--no-browser'];server.main()
 else:
     from PyQt6.QtCore import QUrl
-    from PyQt6.QtGui import QIcon
+    from PyQt6.QtGui import QIcon,QDesktopServices
     from PyQt6.QtWidgets import QApplication,QMainWindow
     from PyQt6.QtWebEngineCore import QWebEngineProfile,QWebEnginePage
     from PyQt6.QtWebEngineWidgets import QWebEngineView
@@ -23,7 +23,13 @@ else:
     window=QMainWindow();window.setWindowTitle('Tmailer');window.resize(1320,860)
     view=QWebEngineView();window.setCentralWidget(view)
     profile=QWebEngineProfile(window)
-    page=QWebEnginePage(profile,view);view.setPage(page)
+    class MailPage(QWebEnginePage):
+        def acceptNavigationRequest(self,url,kind,is_main):
+            if url.scheme() in ('http','https') and url.host()!='127.0.0.1':
+                QDesktopServices.openUrl(url);return False
+            return True
+        def createWindow(self,kind):return self
+    page=MailPage(profile,view);view.setPage(page)
     def download(item):
         from PyQt6.QtWidgets import QFileDialog
         path,_=QFileDialog.getSaveFileName(window,'Save attachment',item.downloadFileName())

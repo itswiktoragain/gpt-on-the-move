@@ -1,4 +1,4 @@
-"""Postline's protocol layer. Only Python's standard library is required."""
+"""Tmailer's protocol layer. Only Python's standard library is required."""
 import base64
 import contextlib
 import email

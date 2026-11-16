@@ -4,6 +4,7 @@
     <MediaTemplate EmbedCab="yes" />
     <Icon Id="TmailerIcon" SourceFile="packaging/logo.ico" />
     <Property Id="ARPPRODUCTICON" Value="TmailerIcon" />
+    <StandardDirectory Id="ProgramMenuFolder" />
     <StandardDirectory Id="ProgramFiles64Folder"><Directory Id="INSTALLFOLDER" Name="Tmailer">
       <Component Id="TmailerExecutable" Guid="A93F87A3-F100-49F5-9105-A580E8956BE2">
         <File Id="MainExecutable" Source="build/native/Tmailer.exe" KeyPath="yes">

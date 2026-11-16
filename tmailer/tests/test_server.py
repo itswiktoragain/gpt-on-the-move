@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import sys
 import threading
+import tempfile
 import unittest
 import urllib.request
 import urllib.error
@@ -63,3 +64,14 @@ class ServerTests(unittest.TestCase):
             with self.assertRaises(ValueError):socket.create_connection(('127.0.0.1',993))
             with self.assertRaises(ValueError):socket.create_connection(('example.com',22))
         finally:socket.create_connection=original
+
+class SettingsTests(unittest.TestCase):
+    def test_only_nonsecret_fields_persist(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(server,'config_path',return_value=Path(directory)/'settings.json'):
+            server.save_settings(dict(CONFIG,smtp_password='another-secret'),True)
+            text=server.config_path().read_text()
+            self.assertNotIn('secret',text)
+            self.assertNotIn('password',text)
+            self.assertEqual(server.load_settings()['email'],'you@example.com')
+            server.save_settings(CONFIG,False)
+            self.assertFalse(server.config_path().exists())

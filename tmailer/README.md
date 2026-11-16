@@ -23,7 +23,7 @@ TMAILER_ORIGINS=https://tmailer.tata-i-wikto-6410.chatgpt.site \
 python3 backend/server.py --public --host 0.0.0.0 --port 8080 --no-browser
 ```
 
-The deployment manifest `railway.json` and Dockerfile are included. Connect the service using its HTTPS origin in the website’s **Connection settings**. The website stores that address in the device browser; it sends mail credentials directly to that chosen service. Trust the service operator before logging in.
+The deployment manifest `railway.json` and Dockerfile are included. When deploying from the shared GitHub repository, set the service root directory to `/tmailer`. Connect the service using its HTTPS origin in the website’s **Connection settings**. The website stores that address in the device browser; it sends mail credentials directly to that chosen service. Trust the service operator before logging in.
 
 Hosted mode allows public internet addresses on mail ports 110, 143, 465, 587, 993, 995 and 2525. It rejects internal, loopback, private and link-local destinations, pins resolved IPs at socket creation, checks TLS certificates and hostnames, and rate-limits login attempts. Separate unpredictable in-memory session tokens isolate each mailbox. Idle sessions expire after 30 minutes and are removed on subsequent API traffic. Passwords are never saved to disk.
 
