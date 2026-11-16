@@ -164,11 +164,11 @@ class Handler(BaseHTTPRequestHandler):
         if not self.server.public and not self.origin_allowed():
             return self.respond(403,{'error':'Invalid local host.'})
         if self.path=='/health':
-            return self.respond(200,{'ok':True,'app':'Tmailer','version':'1.1.0'})
+            return self.respond(200,{'ok':True,'app':'Tmailer','version':'1.1.1'})
         if self.path=='/runtime-config.js':
             data={'desktop':not self.server.public,'apiBase':'','ready':True}
             return self.respond(200,('window.TMAILER_CONFIG='+json.dumps(data)+';').encode(),'application/javascript')
-        names={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/style.css':'style.css','/logo.svg':'logo.svg','/downloads.json':'downloads.json'}
+        names={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/style.css':'style.css','/logo.svg':'logo.svg','/icons.svg':'icons.svg','/icons.js':'icons.js','/downloads.json':'downloads.json'}
         filename=names.get(self.path)
         if not filename or not (ASSETS/filename).is_file():
             return self.respond(404,{'error':'Not found.'})

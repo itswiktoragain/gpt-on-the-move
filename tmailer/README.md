@@ -2,15 +2,15 @@
 
 Website and native desktop email client for IMAP, POP3 and SMTP. Branding and logo by Wiktor Laskowski.
 
-The website is hosted on Sites. Its hosting runtime cannot open mail-server TCP connections. The web UI therefore needs an independently hosted Tmailer mail service; it clearly reports when that service is not configured. Desktop apps run their service locally and connect directly to your email servers.
+The website is hosted on Sites. Its hosting runtime cannot open mail-server TCP connections. Tmailer’s hosted mail backend must handle those connections. The web UI no longer asks users to configure a separate service URL. Its built-in backend is pending activation, which the UI reports explicitly. Desktop apps run their service locally and connect directly to your email servers.
 
 ## Desktop downloads
 
-The `Tmailer installers` GitHub Actions workflow builds a Windows x64 MSI, separate Apple silicon and Intel macOS DMGs, and a Linux DEB. Successful builds are published in the `tmailer-v1.1.0` GitHub Release. The Windows and macOS packages are unsigned; no signing identity was supplied.
+The `Tmailer installers` GitHub Actions workflow builds a Windows x64 MSI, separate Apple silicon and Intel macOS DMGs, and a Linux DEB. Successful builds are published in the `tmailer-v1.1.1` GitHub Release. The Windows and macOS packages are unsigned; no signing identity was supplied.
 
 - Windows: install the MSI, then launch Tmailer from Start. Uses the system Edge WebView2 renderer; WebView2 Runtime must be installed.
 - macOS: open the matching architecture’s DMG and drag Tmailer into Applications. Uses system WebKit. The build runs on macOS 15.
-- Linux Mint / Ubuntu / Debian: install the DEB with `sudo apt install ./Tmailer-1.1.0-linux.deb`. The package installs Python and QtWebEngine dependencies through your package manager. Launch Tmailer from the applications menu.
+- Linux Mint / Ubuntu / Debian: install the DEB with `sudo apt install ./Tmailer-1.1.1-linux.deb`. The package installs Python and QtWebEngine dependencies through your package manager. Launch Tmailer from the applications menu.
 
 The desktop clients create a native window. Closing that window shuts down the local mail service and clears its sessions.
 
@@ -23,7 +23,7 @@ TMAILER_ORIGINS=https://tmailer.tata-i-wikto-6410.chatgpt.site \
 python3 backend/server.py --public --host 0.0.0.0 --port 8080 --no-browser
 ```
 
-The deployment manifest `railway.json` and Dockerfile are included. When deploying from the shared GitHub repository, set the service root directory to `/tmailer`. Connect the service using its HTTPS origin in the website’s **Connection settings**. The website stores that address in the device browser; it sends mail credentials directly to that chosen service. Trust the service operator before logging in.
+The deployment manifest `railway.json` and Dockerfile are included for self-hosting. When deploying from the shared GitHub repository, set the service root directory to `/tmailer`. The deployed backend is selected by the owner in `dist/runtime-config.js` (`apiBase` and `ready`). Users only enter their email login and mail-server addresses; there is no separate service connection screen. Mail credentials are sent to Tmailer’s configured backend only after activation.
 
 Hosted mode allows public internet addresses on mail ports 110, 143, 465, 587, 993, 995 and 2525. It rejects internal, loopback, private and link-local destinations, pins resolved IPs at socket creation, checks TLS certificates and hostnames, and rate-limits login attempts. Separate unpredictable in-memory session tokens isolate each mailbox. Idle sessions expire after 30 minutes and are removed on subsequent API traffic. Passwords are never saved to disk.
 

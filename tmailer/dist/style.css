@@ -2,3 +2,19 @@
 /* Comfortable desktop type sizes for day-to-day mail. */
 .searchbar input,.subtle,.accountButton{font-size:13px}.folder{font-size:13px}.navLabel{font-size:10px;color:#7e886f}.serviceLine,.sideBottom .textButton{font-size:11px;color:#758164}.version{font-size:10px}.version>span{font-size:9px}.mailboxToolbar #count{font-size:12px;color:#7a856b}.tableHead{font-size:10px;color:#7f896f}.listEmpty{font-size:12px;color:#7c886b}.listEmpty .textButton{font-size:12px}.pagination,.mailStatus{font-size:11px;color:#7f896f}.welcome p{font-size:13px;color:#7a866a}.welcomeNote{font-size:11px;color:#798669}.welcome small{font-size:10px;color:#929e81}.serviceBanner{font-size:12px}.sender{font-size:13px}.subject{font-size:12px}.date{font-size:10px;color:#7e8b6b}.dialogKicker{font-size:10px;color:#899773}.muted{font-size:12px;color:#788767}label{font-size:12px}input,select,textarea{font-size:13px}.finePrint,.checkbox{font-size:11px;color:#7f8c6e}.formNote{font-size:11px}.dialogFooter>span,.dialogFooter>a{font-size:10px}.platformInfo h3{font-size:14px}.platformInfo p,.buildPending{font-size:11px}.downloadLink,.sourceLink{font-size:12px}.attachmentInput,.attachRow>span{font-size:11px}.messageMeta{font-size:12px}.body{font-size:14px}
 @media(max-width:720px){.folder{font-size:0}.navLabel{font-size:0}.sideBottom .textButton{font-size:0}.mailboxToolbar #count{display:none}.mailStatus{font-size:9px}.welcome p{font-size:12px}.welcomeNote{font-size:10px}.welcome small{font-size:9px}.serviceBanner{font-size:11px}.downloadLink{font-size:10px}.platformInfo p,.buildPending{font-size:10px}}
+/* Local vector icons replace font glyphs on every control. */
+.icon{display:inline-block;width:18px;height:18px;flex:0 0 auto;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.iconWrap{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;line-height:1;vertical-align:middle}
+.searchbar>.iconWrap .icon{width:18px;height:18px}.searchbar>.iconWrap{color:#8b967b}
+.avatar .icon{width:18px;height:18px}.composeButton .icon{width:20px;height:20px}
+.folder>.iconWrap{width:25px}.folder .icon{width:17px;height:17px}
+.subtle,.iconButton,.readerActions button,.attachment,.downloadLink,.sourceLink,.attachmentInput{align-items:center;gap:8px}
+.subtle,.iconButton,.readerActions button,.attachment,.downloadLink,.sourceLink{display:inline-flex}
+.subtle .icon{width:16px;height:16px}.iconButton{justify-content:center;padding:7px}
+.platformIcon{display:inline-flex;align-items:center;justify-content:center}.platformIcon .icon{width:30px;height:30px;stroke-width:1.4}
+.primary>.icon,.primary>.iconWrap>.icon{width:17px;height:17px}
+.welcomeNote>span{display:inline-flex;align-items:center;gap:7px}.welcomeNote .icon{width:14px;height:14px}
+.textButton .icon{width:15px;height:15px}.sourceLink .icon{width:13px;height:13px}
+#notice button .icon{width:17px;height:17px}.closeButton .icon{width:20px;height:20px}
+.attachmentInput .icon{width:16px;height:16px}.attachmentInput input{display:block}
+@media(max-width:720px){.folder>.iconWrap{width:22px}.folder .icon{width:21px;height:21px}.composeButton>.iconWrap{font-size:0}.composeButton .icon{width:23px;height:23px}.sideBottom .textButton .icon{width:18px;height:18px}.subtle .icon{width:15px;height:15px}}
