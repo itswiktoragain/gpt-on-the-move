@@ -1,0 +1,16 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Tmailer" Manufacturer="Tmailer" Version="1.1.0" UpgradeCode="8829D5A3-D769-482D-BD7D-A4536ACB5E71" Scope="perMachine">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Tmailer is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <Icon Id="TmailerIcon" SourceFile="packaging/logo.ico" />
+    <Property Id="ARPPRODUCTICON" Value="TmailerIcon" />
+    <StandardDirectory Id="ProgramFiles64Folder"><Directory Id="INSTALLFOLDER" Name="Tmailer">
+      <Component Id="TmailerExecutable" Guid="A93F87A3-F100-49F5-9105-A580E8956BE2">
+        <File Id="MainExecutable" Source="build/native/Tmailer.exe" KeyPath="yes">
+          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="Tmailer" WorkingDirectory="INSTALLFOLDER" Icon="TmailerIcon" Advertise="yes" />
+        </File>
+      </Component>
+    </Directory></StandardDirectory>
+    <Feature Id="MainFeature" Title="Tmailer" Level="1"><ComponentRef Id="TmailerExecutable" /></Feature>
+  </Package>
+</Wix>
