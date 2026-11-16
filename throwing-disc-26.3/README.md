@@ -4,7 +4,7 @@ Fabric mod with copper, iron, golden, diamond, and netherite discs. Pixel-perfec
 Run `./gradlew build` with JDK 25; output in build/libs. Requires Fabric Loader and Fabric API. Recipe progression uses standard smithing and shaped crafting.
 
 ## Included refinements (v1.0.0)
-- Adds a 10-tick (0.5 second) cooldown between throws with the vanilla cooldown indicator.
+- Adds a 10-tick (0.5 second) cooldown between throws with the vanilla cooldown indicator. All five materials share one `throwingdisc:all_throwing_discs` cooldown group, so swapping to a different material or hand does not bypass it.
 - Third-person discs now follow Minecraft's handheld item pose (not a -90 degree X-axis rotation), mirrored between hands.
 - FIRST-PERSON remains inherited from the standard generated model (unchanged).
 - Third-person scale remains 0.55; hand translation uses vanilla handheld positioning.
