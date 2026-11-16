@@ -69,7 +69,7 @@ public class DiscEntity extends ThrowableItemProjectile {
                 if (distance >= max || tickCount >= 100) beginReturn();
             }
             if (tickCount >= 300 || !(getOwner() instanceof Player owner) || !owner.isAlive()) {
-                if (!creative) spawnAtLocation(payload);
+                if (!creative) spawnAtLocation((ServerLevel)level(), payload);
                 discard();
             }
         }
@@ -84,7 +84,7 @@ public class DiscEntity extends ThrowableItemProjectile {
             }
             InteractionHand hand = offHand ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
             if (player.getItemInHand(hand).isEmpty()) player.setItemInHand(hand, result);
-            else if (!player.getInventory().add(result)) player.drop(result, false);
+            else if (!player.getInventory().add(result)) player.spawnAtLocation((ServerLevel)level(), result);
         }
         discard();
     }
