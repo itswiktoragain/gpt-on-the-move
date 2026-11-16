@@ -5,9 +5,9 @@ Run `./gradlew build` with JDK 25; output in build/libs. Requires Fabric Loader 
 
 ## Included refinements (v1.0.0)
 - Adds a 10-tick (0.5 second) cooldown between throws with the vanilla cooldown indicator.
-- Rotates discs upright in THIRD-PERSON (F5 and other players' view) in both hands using a -90-degree X-axis model transform.
-- FIRST-PERSON hand display is inherited from Minecraft's regular generated item model (original unmodified look); GUI/ground appearance stays inherited too.
-- Restores default third-person generated-item size (0.55 scale) instead of the enlarged previous override.
+- Third-person discs now follow Minecraft's handheld item pose (not a -90 degree X-axis rotation), mirrored between hands.
+- FIRST-PERSON remains inherited from the standard generated model (unchanged).
+- Third-person scale remains 0.55; hand translation uses vanilla handheld positioning.
 - The inventory and GUI textures remain unchanged.
 
 The version stays at 1.0.0 for subsequent updates unless the maintainer explicitly requests a bump after publishing on Modrinth.
