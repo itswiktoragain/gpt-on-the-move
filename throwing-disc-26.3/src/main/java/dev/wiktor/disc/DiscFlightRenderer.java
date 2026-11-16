@@ -17,7 +17,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
  * No velocity-linked banking or pitching, as requested.
  */
 public final class DiscFlightRenderer extends ThrownItemRenderer<DiscEntity> {
-    private static final float PROJECTILE_SCALE = 1.5F;
+    private static final float PROJECTILE_SCALE = 1.1F;
 
     public DiscFlightRenderer(EntityRendererProvider.Context context) {
         super(context);

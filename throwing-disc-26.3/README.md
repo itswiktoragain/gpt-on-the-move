@@ -19,6 +19,6 @@ The version stays at 1.0.0 for subsequent updates unless the maintainer explicit
 - All five materials preserve the 10-tick shared cooldown and version 1.0.0.
 
 ## Flight visual refinements (still v1.0.0)
-- Enlarged the thrown disc to a renderer scale of 1.5 (previously 0.85). Third-person held size is unchanged.
+- The thrown disc now renders at 1.1 scale (between the too-small 0.85 and oversized 1.5). Third-person held size is unchanged.
 - Reduced ring thickness from 2.5 to 1.0 model pixels, keeping an open center.
 - Removed animation rotation entirely so the world-aligned pixelated outline does not shimmer or rotate off-grid.
