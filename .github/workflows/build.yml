@@ -44,6 +44,14 @@ jobs:
               javap -classpath "$JAR" -p "$cls" | head -95 || true
             done
           fi
+          echo '=== BYTECODE THROWN ITEM ==='
+          javap -classpath "$JAR" -c -p net.minecraft.client.renderer.entity.ThrownItemRenderer | head -320 || true
+          echo '=== ENTITY RENDER STATE ==='
+          javap -classpath "$JAR" -p net.minecraft.client.renderer.entity.state.EntityRenderState || true
+          echo '=== SUBMIT NODE COLLECTOR ==='
+          javap -classpath "$JAR" -p net.minecraft.client.renderer.SubmitNodeCollector | head -160 || true
+          echo '=== CAMERA RENDER STATE ==='
+          javap -classpath "$JAR" -p net.minecraft.client.renderer.state.level.CameraRenderState | head -105 || true
       - uses: actions/upload-artifact@v4
         with:
           name: throwing-disc-26.3-jar
