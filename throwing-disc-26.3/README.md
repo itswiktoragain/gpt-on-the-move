@@ -7,7 +7,7 @@ Run `./gradlew build` with JDK 25; output in build/libs. Requires Fabric Loader 
 - Adds a 10-tick (0.5 second) cooldown between throws with the vanilla cooldown indicator. All five materials share one `throwingdisc:all_throwing_discs` cooldown group, so swapping to a different material or hand does not bypass it.
 - Third-person discs use an upright wrist-hanging grip: removed the 55-degree Z roll that previously made them look like diamonds, while preserving the face-visible Y orientation in each hand.
 - FIRST-PERSON remains inherited from the standard generated model (unchanged).
-- Third-person scale remains 0.55; hand translation uses vanilla handheld positioning.
+- The third-person held scale is now 0.9 (was 0.55) for all five materials; hand rotation and translation remain unchanged.
 - The inventory and GUI textures remain unchanged.
 
 The version stays at 1.0.0 for subsequent updates unless the maintainer explicitly requests a bump after publishing on Modrinth.
@@ -27,3 +27,6 @@ The version stays at 1.0.0 for subsequent updates unless the maintainer explicit
 - Both third-person hands show the disc upright with zero Z roll (formerly +55/-55 degrees); no first-person model changes.
 - Every thrown disc stores the throwing player's launch yaw in a synchronized float. The flight renderer applies that angle once and keeps it fixed, without spin or movement-based tracking.
 - Projectile scale remains 0.5, model thickness one pixel, shared cooldown ten ticks, and mod version 1.0.0.
+
+## Third-person held-size adjustment (still 1.0.0)
+- Increased only the held model scale (right and left third-person hand) from 0.55 to 0.9, around 64% larger; this gives a model-ring diameter of about 0.79 blocks. This is independent of the flight render scale (0.5) and does not affect the first-person appearance, inventory or GUI.
