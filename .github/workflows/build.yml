@@ -17,6 +17,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.2.1'
+      - name: Check available Java and Fabric versions
+        run: |
+          curl -fsSL https://piston-meta.mojang.com/mc/game/version_manifest_v2.json | jq -r '.versions[] | select(.id | startswith("26.")) | .id' | head -25
+          curl -fsSL https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml | grep -E '<version>.*26\\.1' | tail -8
       - name: Compile
         working-directory: throwing-disc-26.3
         run: gradle build --stacktrace
