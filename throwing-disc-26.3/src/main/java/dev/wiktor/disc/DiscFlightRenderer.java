@@ -13,12 +13,11 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 /**
  * Dedicated renderer for discs in flight. Unlike vanilla ThrownItemRenderer,
  * it never billboard-faces the camera: it renders a proper 3D ring horizontally
- * in world space with a continuous spin around the global vertical axis.
+ * in world space, aligned to the pixel axes with no rotation over time.
  * No velocity-linked banking or pitching, as requested.
  */
 public final class DiscFlightRenderer extends ThrownItemRenderer<DiscEntity> {
-    private static final float SPIN_DEGREES_PER_TICK = 36.0F;
-    private static final float PROJECTILE_SCALE = 0.85F;
+    private static final float PROJECTILE_SCALE = 1.5F;
 
     public DiscFlightRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -30,10 +29,11 @@ public final class DiscFlightRenderer extends ThrownItemRenderer<DiscEntity> {
         poseStack.pushPose();
         // The original item art faces the XY plane, so the fixed 90-degree
         // X rotation makes its face parallel with the ground (XZ plane).
-        // Rotate around Y in world space first, for a level Frisbee-like spin.
+        // Keep the ring square to Minecraft's world axes. In particular, don't
+        // rotate with velocity or animate the heading: fractional-angle rotation
+        // makes a pixel-art outline shimmer and appear off-grid.
         Quaternionf orientation = new Quaternionf()
-            .rotationY((float) Math.toRadians(state.ageInTicks * SPIN_DEGREES_PER_TICK))
-            .rotateX((float) (Math.PI * 0.5));
+            .rotationX((float) (Math.PI * 0.5));
         poseStack.rotate(orientation);
         poseStack.scale(PROJECTILE_SCALE, PROJECTILE_SCALE, PROJECTILE_SCALE);
 
