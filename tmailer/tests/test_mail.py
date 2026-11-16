@@ -38,10 +38,11 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(base64.b64decode(parsed['attachments'][0]['data']),b'\x00\xff')
     def test_smtp_starttls_before_login(self):
         conn=MagicMock()
-        with patch.object(m.smtplib,'SMTP',return_value=conn):
+        with patch.object(m.smtplib,'SMTP',return_value=conn) as constructor:
             with m.outgoing(CONFIG): pass
         names=[x[0] for x in conn.method_calls]
         self.assertEqual(names,['ehlo','starttls','ehlo','login','quit'])
+        self.assertEqual(constructor.call_args.kwargs['local_hostname'],'[127.0.0.1]')
     def test_pop_starttls_before_login(self):
         c=dict(CONFIG,protocol='pop3',incoming='pop.example.com:110',incoming_security='starttls')
         conn=MagicMock()

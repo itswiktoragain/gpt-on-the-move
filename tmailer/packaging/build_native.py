@@ -21,7 +21,7 @@ if sys.platform=='linux':
         package=Path(directory)
         app=package/'usr/share/tmailer';app.mkdir(parents=True)
         for name in ('backend','desktop','dist'):
-            shutil.copytree(ROOT/name,app/name,ignore=shutil.ignore_patterns('__pycache__'))
+            shutil.copytree(ROOT/name,app/name,ignore=shutil.ignore_patterns('__pycache__','downloads'))
         shutil.copy2(ROOT/'README.md',app/'README.md')
         control=package/'DEBIAN';control.mkdir()
         (control/'control').write_text('Package: tmailer\nVersion: 1.1.0\nArchitecture: all\nSection: mail\nPriority: optional\nDepends: python3 (>= 3.10), python3-pyqt6, python3-pyqt6.qtwebengine\nMaintainer: Tmailer Project <tmailer@example.invalid>\nDescription: Tmailer IMAP, POP3 and SMTP mail client\n Native desktop window and direct encrypted mail connections.\n')

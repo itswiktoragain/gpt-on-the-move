@@ -8,6 +8,7 @@ from pathlib import Path
 import secrets
 import sys
 import socket
+import socketserver
 import threading
 import time
 from urllib.parse import urlsplit
@@ -79,6 +80,10 @@ class Session:
 
 class MailServer(ThreadingHTTPServer):
     daemon_threads = True
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)
+        self.server_name=self.server_address[0]
+        self.server_port=self.server_address[1]
     def __init__(self, address, origins=(), public=False):
         super().__init__(address, Handler)
         self.public = public

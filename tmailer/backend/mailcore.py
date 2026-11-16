@@ -82,7 +82,7 @@ def outgoing(c):
     ctx = ssl.create_default_context()
     conn = None
     try:
-        conn = smtplib.SMTP_SSL(host, port, timeout=TIMEOUT, context=ctx) if security == 'tls' else smtplib.SMTP(host, port, timeout=TIMEOUT)
+        conn = smtplib.SMTP_SSL(host, port, timeout=TIMEOUT, context=ctx, local_hostname='[127.0.0.1]') if security == 'tls' else smtplib.SMTP(host, port, timeout=TIMEOUT, local_hostname='[127.0.0.1]')
         conn.ehlo()
         if security == 'starttls':
             conn.starttls(context=ctx)
@@ -264,7 +264,7 @@ def send(c, draft):
     msg['From'] = c['email']
     msg['Subject'] = draft.get('subject', '')
     msg['Date'] = formatdate(localtime=True)
-    msg['Message-ID'] = make_msgid()
+    msg['Message-ID'] = make_msgid(domain=c['email'].rsplit('@',1)[-1])
     if draft.get('in_reply_to'):
         msg['In-Reply-To'] = draft['in_reply_to']
         msg['References'] = draft['in_reply_to']
