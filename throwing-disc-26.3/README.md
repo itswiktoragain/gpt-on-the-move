@@ -30,3 +30,8 @@ The version stays at 1.0.0 for subsequent updates unless the maintainer explicit
 
 ## Third-person held-size adjustment (still 1.0.0)
 - Increased only the held model scale (right and left third-person hand) from 0.55 to 0.9, around 64% larger; this gives a model-ring diameter of about 0.79 blocks. This is independent of the flight render scale (0.5) and does not affect the first-person appearance, inventory or GUI.
+
+## Dropped item size (still 1.0.0)
+- Dropped 3D discs use an explicit `ground` display transform at 0.28x, giving approximately 0.245-block diameter for the 14/16-wide ring, like ordinary compact dropped items.
+- Because projectiles also use the GROUND display context, the custom flight renderer cancels that transform and retains the previous effective 0.5x projectile scale (0.4375-block diameter).
+- Third-person held model remains 0.9x, first-person and GUI stay unchanged; cooldown and version remain unchanged.

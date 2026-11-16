@@ -20,7 +20,11 @@ public final class DiscFlightRenderer extends ThrownItemRenderer<DiscEntity> {
     // The ring spans 14/16 of a full block in the model. At 0.5 scale its
     // real diameter is 0.4375 blocks, matching the 0.5-block projectile hitbox.
     // Promotional close-ups are not representative of world-space size.
+    // The raw 3D model's GROUND display transform is 0.28 for dropped items.
+    // Thrown projectiles also use GROUND context, so compensate for that
+    // transform to retain their effective 0.5x world-space scale.
     private static final float PROJECTILE_SCALE = 0.5F;
+    private static final float GROUND_ITEM_SCALE = 0.28F;
 
     public DiscFlightRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -55,10 +59,12 @@ public final class DiscFlightRenderer extends ThrownItemRenderer<DiscEntity> {
             .rotationY((float) Math.toRadians(-((FlightState) state).throwYaw))
             .rotateX((float) (Math.PI * 0.5));
         poseStack.rotate(orientation);
-        poseStack.scale(PROJECTILE_SCALE, PROJECTILE_SCALE, PROJECTILE_SCALE);
+        float adjusted = PROJECTILE_SCALE / GROUND_ITEM_SCALE;
+        poseStack.scale(adjusted, adjusted, adjusted);
 
         // Vanilla extraction puts this projectile's item in GROUND context,
         // selecting the voxel-extruded 3D model rather than the inventory icon.
+        // The adjusted renderer scaling cancels the smaller dropped-item transform.
         state.item.submit(poseStack, nodes, state.lightCoords,
             OverlayTexture.NO_OVERLAY, state.outlineColor);
         poseStack.popPose();
