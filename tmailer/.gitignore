@@ -6,3 +6,12 @@ release/
 node_modules/
 .env
 .DS_Store
+
+.sites-runtime/
+.wrangler/
+.vinext/
+dist/
+.env*
+.dev.vars*
+*.tsbuildinfo
+!.env.example

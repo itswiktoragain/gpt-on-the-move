@@ -16,7 +16,7 @@ import webbrowser
 import mailcore
 
 ROOT = Path(getattr(sys,'_MEIPASS',Path(__file__).resolve().parents[1]))
-ASSETS = ROOT / 'dist'
+ASSETS = ROOT / 'ui'
 MAX_REQUEST = 31 * 1024 * 1024
 SESSION_TTL = 30 * 60
 SAFE_FIELDS = ('email','username','protocol','incoming','incoming_security','smtp','smtp_security','smtp_username')
@@ -161,15 +161,16 @@ class Handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.respond(200 if self.origin_allowed() else 403,{})
     def do_GET(self):
+        path=urlsplit(self.path).path
         if not self.server.public and not self.origin_allowed():
             return self.respond(403,{'error':'Invalid local host.'})
-        if self.path=='/health':
-            return self.respond(200,{'ok':True,'app':'Tmailer','version':'1.1.1'})
-        if self.path=='/runtime-config.js':
-            data={'desktop':not self.server.public,'apiBase':'','ready':True}
+        if path=='/health':
+            return self.respond(200,{'ok':True,'app':'Tmailer','version':'1.2.0'})
+        if path=='/runtime-config.js':
+            data={'desktop':not self.server.public,'apiBase':'','ready':True,'cloudEnabled':True,'cloudOrigin':'https://tmailer.tata-i-wikto-6410.chatgpt.site'}
             return self.respond(200,('window.TMAILER_CONFIG='+json.dumps(data)+';').encode(),'application/javascript')
-        names={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/style.css':'style.css','/logo.svg':'logo.svg','/icons.svg':'icons.svg','/icons.js':'icons.js','/downloads.json':'downloads.json'}
-        filename=names.get(self.path)
+        names={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/style.css':'style.css','/logo.svg':'logo.svg','/icons.svg':'icons.svg','/icons.js':'icons.js','/cloud.js':'cloud.js','/downloads.json':'downloads.json'}
+        filename=names.get(path)
         if not filename or not (ASSETS/filename).is_file():
             return self.respond(404,{'error':'Not found.'})
         mime={'.html':'text/html; charset=utf-8','.js':'application/javascript','.css':'text/css','.svg':'image/svg+xml','.json':'application/json'}[Path(filename).suffix]

@@ -6,7 +6,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'backend'))
 import server
 if '--smoke-test' in sys.argv:
-    assert (ROOT/'dist/index.html').is_file()
+    assert (ROOT/'ui/index.html').is_file()
     print('Tmailer Linux bundle OK')
     raise SystemExit(0)
 if '--no-browser' in sys.argv:
@@ -18,7 +18,7 @@ else:
     from PyQt6.QtWebEngineCore import QWebEngineProfile,QWebEnginePage
     from PyQt6.QtWebEngineWidgets import QWebEngineView
     app=QApplication(sys.argv);app.setApplicationName('Tmailer');app.setDesktopFileName('tmailer')
-    app.setWindowIcon(QIcon(str(ROOT/'dist/logo.svg')))
+    app.setWindowIcon(QIcon(str(ROOT/'ui/logo.svg')))
     http=server.MailServer(('127.0.0.1',0));threading.Thread(target=http.serve_forever,daemon=True).start()
     window=QMainWindow();window.setWindowTitle('Tmailer');window.resize(1320,860)
     view=QWebEngineView();window.setCentralWidget(view)

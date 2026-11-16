@@ -7,7 +7,7 @@ sys.path.insert(0,str(ROOT/'backend'))
 import server
 
 if '--smoke-test' in sys.argv:
-    assert (ROOT/'dist'/'index.html').is_file()
+    assert (ROOT/'ui'/'index.html').is_file()
     import mailcore
     if sys.stdout: print('Tmailer desktop bundle OK')
     raise SystemExit(0)

@@ -1,0 +1,22 @@
+{
+  "version": "1.2.0",
+  "release": "https://github.com/itswiktoragain/gpt-on-the-move/releases/tag/tmailer-v1.2.0",
+  "assets": [
+    {
+      "platform": "linux",
+      "url": "https://github.com/itswiktoragain/gpt-on-the-move/releases/download/tmailer-v1.2.0/Tmailer-1.2.0-linux.deb"
+    },
+    {
+      "platform": "macos-arm64",
+      "url": "https://github.com/itswiktoragain/gpt-on-the-move/releases/download/tmailer-v1.2.0/Tmailer-1.2.0-macos-arm64.dmg"
+    },
+    {
+      "platform": "macos-x64",
+      "url": "https://github.com/itswiktoragain/gpt-on-the-move/releases/download/tmailer-v1.2.0/Tmailer-1.2.0-macos-x64.dmg"
+    },
+    {
+      "platform": "windows",
+      "url": "https://github.com/itswiktoragain/gpt-on-the-move/releases/download/tmailer-v1.2.0/Tmailer-1.2.0-windows-x64.msi"
+    }
+  ]
+}
