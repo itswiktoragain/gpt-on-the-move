@@ -28,30 +28,6 @@ jobs:
           echo "Resolved Fabric API version: $FABRIC_VERSION"
           test -n "$FABRIC_VERSION"
           gradle build -Pfabric_version="$FABRIC_VERSION" --stacktrace
-      - name: Inspect Minecraft 26.3 renderer API
-        shell: bash
-        run: |
-          echo '=== Candidate Minecraft jars ==='
-          find "$HOME/.gradle/caches" -type f -name '*.jar' | grep -Ei 'minecraft.*jar|merged.*jar|26\\.3.*jar' | head -35 || true
-          JAR=$(find "$HOME/.gradle/caches" -type f -name '*.jar' | grep -Ei 'minecraft.*26\\.3|minecraft.*merged|merged.*minecraft' | head -1 || true)
-          if [[ -z "$JAR" ]]; then
-            echo 'Minecraft jar not found; full Fabric Loom jar paths:'
-            find "$HOME/.gradle/caches/fabric-loom" -type f -name '*.jar' | head -60 || true
-          else
-            echo "INSPECTING $JAR"
-            for cls in net.minecraft.client.renderer.entity.ThrownItemRenderer net.minecraft.client.renderer.entity.state.ThrownItemRenderState net.minecraft.client.renderer.entity.state.CameraRenderState net.minecraft.client.renderer.item.ItemModelResolver net.minecraft.client.renderer.item.ItemStackRenderState net.minecraft.client.renderer.entity.EntityRenderer net.minecraft.client.renderer.entity.EntityRendererProvider\\$Context net.minecraft.client.renderer.feature.SubmitNodeCollector; do
-              echo "=== CLASS $cls ==="
-              javap -classpath "$JAR" -p "$cls" | head -95 || true
-            done
-          fi
-          echo '=== BYTECODE THROWN ITEM ==='
-          javap -classpath "$JAR" -c -p net.minecraft.client.renderer.entity.ThrownItemRenderer | head -320 || true
-          echo '=== ENTITY RENDER STATE ==='
-          javap -classpath "$JAR" -p net.minecraft.client.renderer.entity.state.EntityRenderState || true
-          echo '=== SUBMIT NODE COLLECTOR ==='
-          javap -classpath "$JAR" -p net.minecraft.client.renderer.SubmitNodeCollector | head -160 || true
-          echo '=== CAMERA RENDER STATE ==='
-          javap -classpath "$JAR" -p net.minecraft.client.renderer.state.level.CameraRenderState | head -105 || true
       - uses: actions/upload-artifact@v4
         with:
           name: throwing-disc-26.3-jar

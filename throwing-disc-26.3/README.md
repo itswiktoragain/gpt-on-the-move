@@ -11,3 +11,9 @@ Run `./gradlew build` with JDK 25; output in build/libs. Requires Fabric Loader 
 - The inventory and GUI textures remain unchanged.
 
 The version stays at 1.0.0 for subsequent updates unless the maintainer explicitly requests a bump after publishing on Modrinth.
+
+## 3D disc flight and holding (Minecraft 26.3)
+- Thrown projectiles use a dedicated third-dimensional ring model with 18 textured voxel sections and a physically open center; the ring is 2.5 pixels thick.
+- Flying discs stay horizontal in world space, spinning 36 degrees per tick; there is NO steering-based banking, tilt, or camera-facing billboard.
+- The 3D model is also used for the third-person handheld disc (both hands), preserving existing hand transforms; GUI and first-person still use the original 16x16 sprite.
+- All five materials preserve the 10-tick shared cooldown and version 1.0.0.
