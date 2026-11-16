@@ -19,6 +19,13 @@ public class DiscItem extends Item {
     }
     @Override public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack held = player.getItemInHand(hand);
+        // A short 10-tick (0.5-second) recovery between throws, with a visible
+        // vanilla cooldown overlay. Check on both sides for responsive handling.
+        if (player.getCooldowns().isOnCooldown(held)) {
+            return InteractionResult.FAIL;
+        }
+        player.getCooldowns().addCooldown(held, 10);
+
         level.playSound(null, player.getX(), player.getY(), player.getZ(),
             SoundEvents.TRIDENT_THROW, SoundSource.PLAYERS, 0.75f, 1.3f);
         if (level instanceof ServerLevel server) {
