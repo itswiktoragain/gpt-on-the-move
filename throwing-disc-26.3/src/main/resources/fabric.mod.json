@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "throwingdisc",
+  "version": "${version}",
+  "name": "Throwing Discs",
+  "description": "Five returning, bouncing throwing discs based on the announced 2027 Minecraft game drop.",
+  "authors": [
+    "Wiktor"
+  ],
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.wiktor.disc.ThrowingDiscs"
+    ],
+    "client": [
+      "dev.wiktor.disc.ThrowingDiscsClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.0",
+    "minecraft": "26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
