@@ -23,7 +23,11 @@ jobs:
           curl -fsSL https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml | grep -E '<version>.*26\\.1' | tail -8
       - name: Compile
         working-directory: throwing-disc-26.3
-        run: gradle build --stacktrace
+        run: |
+          FABRIC_VERSION=$(curl -fsSL https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml | sed -n 's#.*<version>\\(.*+26\\.3\\)</version>.*#\\1#p' | tail -1)
+          echo "Resolved Fabric API version: $FABRIC_VERSION"
+          test -n "$FABRIC_VERSION"
+          gradle build -Pfabric_version="$FABRIC_VERSION" --stacktrace
       - uses: actions/upload-artifact@v4
         with:
           name: throwing-disc-26.3-jar
