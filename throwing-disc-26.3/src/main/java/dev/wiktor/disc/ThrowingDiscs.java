@@ -32,7 +32,7 @@ public class ThrowingDiscs implements ModInitializer {
         DISC = Registry.register(BuiltInRegistries.ENTITY_TYPE, typeKey,
             EntityType.Builder.<DiscEntity>of(DiscEntity::new, MobCategory.MISC)
              .sized(0.5f, 0.16f).clientTrackingRange(8).updateInterval(1).build(typeKey));
-        CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.COMBAT).register((params, output) -> {
+        CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.COMBAT).register(output -> {
             output.accept(COPPER); output.accept(IRON); output.accept(GOLDEN);
             output.accept(DIAMOND); output.accept(NETHERITE);
         });
