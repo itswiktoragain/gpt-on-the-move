@@ -16,7 +16,7 @@ jobs:
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.2.1'
+          gradle-version: '9.4.0'
       - name: Check available Java and Fabric versions
         run: |
           curl -fsSL https://piston-meta.mojang.com/mc/game/version_manifest_v2.json | jq -r '.versions[] | select(.id | startswith("26.")) | .id' | head -25
