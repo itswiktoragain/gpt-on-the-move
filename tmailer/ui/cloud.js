@@ -9,6 +9,7 @@ async function cloudApi(path,method='GET',data){
  if(!response.ok)throw Error(result.error||'Cloud request failed.');return result;
 }
 function cloudIdentity(){
+ connectionUI();
  $('#cloudLabel').textContent=cloudState.user?cloudState.user.displayName:'Sign in';
  $('#cloudBtn').title=cloudState.user?'Your Tmailer account':'Sign in to Tmailer';
  $('#cloudAccountsSection').hidden=!cloudState.user;
