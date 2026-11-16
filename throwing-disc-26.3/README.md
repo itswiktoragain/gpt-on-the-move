@@ -19,6 +19,6 @@ The version stays at 1.0.0 for subsequent updates unless the maintainer explicit
 - All five materials preserve the 10-tick shared cooldown and version 1.0.0.
 
 ## Flight visual refinements (still v1.0.0)
-- The thrown disc now renders at 1.1 scale (between the too-small 0.85 and oversized 1.5). Third-person held size is unchanged.
+- The thrown disc now renders at 0.5 scale. Its voxel model spans 14/16 of a block, so its physical diameter in flight is 0.4375 blocks, matching its 0.5-block collision box. Previous 1.1 scale was almost a full block across because the trailer disc was shown close to the camera. Third-person held size is unchanged.
 - Reduced ring thickness from 2.5 to 1.0 model pixels, keeping an open center.
 - Removed animation rotation entirely so the world-aligned pixelated outline does not shimmer or rotate off-grid.

@@ -17,7 +17,10 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
  * No velocity-linked banking or pitching, as requested.
  */
 public final class DiscFlightRenderer extends ThrownItemRenderer<DiscEntity> {
-    private static final float PROJECTILE_SCALE = 1.1F;
+    // The ring spans 14/16 of a full block in the model. At 0.5 scale its
+    // real diameter is 0.4375 blocks, matching the 0.5-block projectile hitbox.
+    // Promotional close-ups are not representative of world-space size.
+    private static final float PROJECTILE_SCALE = 0.5F;
 
     public DiscFlightRenderer(EntityRendererProvider.Context context) {
         super(context);
