@@ -35,3 +35,9 @@ The version stays at 1.0.0 for subsequent updates unless the maintainer explicit
 - Dropped 3D discs use an explicit `ground` display transform at 0.28x, giving approximately 0.245-block diameter for the 14/16-wide ring, like ordinary compact dropped items.
 - Because projectiles also use the GROUND display context, the custom flight renderer cancels that transform and retains the previous effective 0.5x projectile scale (0.4375-block diameter).
 - Third-person held model remains 0.9x, first-person and GUI stay unchanged; cooldown and version remain unchanged.
+
+## Dropped item and projectile size correction (still v1.0.0)
+- A Minecraft ItemEntity applies its own size reduction in addition to the model's ground transform. The former 0.28 display scale over-shrank the disc, so the five dropped-item ground scales are now 0.65.
+- The thrown projectile now renders its 3D ring using the `none` item display context (selected separately in each item definition), not the `ground` context. This completely separates dropped-item sizing from projectile sizing.
+- The projectile render scale is now 0.72, producing a 14/16 * 0.72 = 0.63-block ring diameter. Holding remains 0.9, and the model stays one pixel thick.
+- The throw-direction lock, lack of spin, shared 10-tick cooldown, and version 1.0.0 remain intact.

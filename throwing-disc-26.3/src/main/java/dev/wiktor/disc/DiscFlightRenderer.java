@@ -7,8 +7,10 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.ThrownItemRenderer;
 import net.minecraft.client.renderer.entity.state.ThrownItemRenderState;
+import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.world.item.ItemDisplayContext;
 
 /**
  * Dedicated renderer for discs in flight. Unlike vanilla ThrownItemRenderer,
@@ -17,17 +19,15 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
  * No velocity-linked banking or pitching, as requested.
  */
 public final class DiscFlightRenderer extends ThrownItemRenderer<DiscEntity> {
-    // The ring spans 14/16 of a full block in the model. At 0.5 scale its
-    // real diameter is 0.4375 blocks, matching the 0.5-block projectile hitbox.
-    // Promotional close-ups are not representative of world-space size.
-    // The raw 3D model's GROUND display transform is 0.28 for dropped items.
-    // Thrown projectiles also use GROUND context, so compensate for that
-    // transform to retain their effective 0.5x world-space scale.
-    private static final float PROJECTILE_SCALE = 0.5F;
-    private static final float GROUND_ITEM_SCALE = 0.28F;
+    // Render the thrown model independently from dropped-item scaling.
+    // The visible voxel ring spans 14/16 model units, giving a disc about
+    // 0.63 blocks across in flight, versus 0.79 blocks when held.
+    private static final float PROJECTILE_SCALE = 0.72F;
+    private final ItemModelResolver itemModelResolver;
 
     public DiscFlightRenderer(EntityRendererProvider.Context context) {
         super(context);
+        this.itemModelResolver = context.getItemModelResolver();
     }
 
     /** The renderer has its own state so the initial throw heading survives the
@@ -44,6 +44,12 @@ public final class DiscFlightRenderer extends ThrownItemRenderer<DiscEntity> {
     @Override
     public void extractRenderState(DiscEntity entity, ThrownItemRenderState state, float partialTick) {
         super.extractRenderState(entity, state, partialTick);
+        // Do NOT use GROUND for projectiles: it also controls the size of
+        // real dropped ItemEntity objects. NONE picks our dedicated 3D branch
+        // without applying the dropped-item scale. The item resolver resets
+        // and rebuilds the render state for this context.
+        this.itemModelResolver.updateForNonLiving(
+            state.item, entity.getItem(), ItemDisplayContext.NONE, entity);
         ((FlightState) state).throwYaw = entity.getThrowYaw();
     }
 
@@ -59,12 +65,10 @@ public final class DiscFlightRenderer extends ThrownItemRenderer<DiscEntity> {
             .rotationY((float) Math.toRadians(-((FlightState) state).throwYaw))
             .rotateX((float) (Math.PI * 0.5));
         poseStack.rotate(orientation);
-        float adjusted = PROJECTILE_SCALE / GROUND_ITEM_SCALE;
-        poseStack.scale(adjusted, adjusted, adjusted);
+        poseStack.scale(PROJECTILE_SCALE, PROJECTILE_SCALE, PROJECTILE_SCALE);
 
-        // Vanilla extraction puts this projectile's item in GROUND context,
-        // selecting the voxel-extruded 3D model rather than the inventory icon.
-        // The adjusted renderer scaling cancels the smaller dropped-item transform.
+        // Item extraction selected NONE, mapped to the voxel-extruded
+        // projectile model. Dropped items still use their own GROUND transform.
         state.item.submit(poseStack, nodes, state.lightCoords,
             OverlayTexture.NO_OVERLAY, state.outlineColor);
         poseStack.popPose();
