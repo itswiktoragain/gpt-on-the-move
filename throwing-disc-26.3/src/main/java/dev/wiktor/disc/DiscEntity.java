@@ -4,6 +4,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
@@ -19,6 +22,25 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
 public class DiscEntity extends ThrowableItemProjectile {
+    // Snapshot at throw time, synchronized for all observers. Never update this
+    // from motion: ricochets and the return flight must not rotate the model.
+    private static final EntityDataAccessor<Float> THROW_YAW =
+        SynchedEntityData.defineId(DiscEntity.class, EntityDataSerializers.FLOAT);
+
+    @Override
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(THROW_YAW, 0.0F);
+    }
+
+    public void setThrowYaw(float yaw) {
+        this.getEntityData().set(THROW_YAW, yaw);
+    }
+
+    public float getThrowYaw() {
+        return this.getEntityData().get(THROW_YAW);
+    }
+
     private ItemStack payload = ItemStack.EMPTY;
     private boolean creative = false;
     private boolean offHand = false;

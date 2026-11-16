@@ -13,7 +13,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 /**
  * Dedicated renderer for discs in flight. Unlike vanilla ThrownItemRenderer,
  * it never billboard-faces the camera: it renders a proper 3D ring horizontally
- * in world space, aligned to the pixel axes with no rotation over time.
+ * in world space, using the original throw direction with no rotation over time.
  * No velocity-linked banking or pitching, as requested.
  */
 public final class DiscFlightRenderer extends ThrownItemRenderer<DiscEntity> {
@@ -26,17 +26,34 @@ public final class DiscFlightRenderer extends ThrownItemRenderer<DiscEntity> {
         super(context);
     }
 
+    /** The renderer has its own state so the initial throw heading survives the
+     * extraction-to-render handoff in Minecraft 26.3. */
+    public static final class FlightState extends ThrownItemRenderState {
+        public float throwYaw;
+    }
+
+    @Override
+    public FlightState createRenderState() {
+        return new FlightState();
+    }
+
+    @Override
+    public void extractRenderState(DiscEntity entity, ThrownItemRenderState state, float partialTick) {
+        super.extractRenderState(entity, state, partialTick);
+        ((FlightState) state).throwYaw = entity.getThrowYaw();
+    }
+
     @Override
     public void submit(ThrownItemRenderState state, PoseStack poseStack,
                        SubmitNodeCollector nodes, CameraRenderState camera) {
         poseStack.pushPose();
-        // The original item art faces the XY plane, so the fixed 90-degree
-        // X rotation makes its face parallel with the ground (XZ plane).
-        // Keep the ring square to Minecraft's world axes. In particular, don't
-        // rotate with velocity or animate the heading: fractional-angle rotation
-        // makes a pixel-art outline shimmer and appear off-grid.
+        // Player yaw is zero towards world +Z (south), positive clockwise
+        // towards -X. JOML's Y rotation has the opposite sign, hence -yaw.
+        // This is the stored launch yaw, NOT the changing velocity heading.
+        // A fixed X rotation lays the ring horizontally (XZ plane).
         Quaternionf orientation = new Quaternionf()
-            .rotationX((float) (Math.PI * 0.5));
+            .rotationY((float) Math.toRadians(-((FlightState) state).throwYaw))
+            .rotateX((float) (Math.PI * 0.5));
         poseStack.rotate(orientation);
         poseStack.scale(PROJECTILE_SCALE, PROJECTILE_SCALE, PROJECTILE_SCALE);
 

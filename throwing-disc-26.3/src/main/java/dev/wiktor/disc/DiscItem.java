@@ -35,6 +35,9 @@ public class DiscItem extends Item {
             DiscEntity projectile = new DiscEntity(level, player, flying, this, creative, hand);
             projectile.setPos(player.getX(), player.getEyeY() - 0.15, player.getZ());
             projectile.shootFromRotation(player, player.getXRot(), player.getYRot(), 0, 1.8f, 0.35f);
+            // Remember the facing direction at release, not the projectile's
+            // changing velocity. This is synced to other clients by DiscEntity.
+            projectile.setThrowYaw(player.getYRot());
             server.addFreshEntity(projectile);
         }
         player.awardStat(Stats.ITEM_USED.get(this));
