@@ -28,6 +28,20 @@ jobs:
           echo "Resolved Fabric API version: $FABRIC_VERSION"
           test -n "$FABRIC_VERSION"
           gradle build -Pfabric_version="$FABRIC_VERSION" --stacktrace
+      - name: Check 26.2 compilation
+        working-directory: throwing-disc-26.3
+        run: |
+          FABRIC_262=$(curl -fsSL https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml | grep '+26.2</version>' | sed 's/.*<version>//;s#</version>.*##' | tail -1)
+          echo "Fabric API for Minecraft 26.2: $FABRIC_262"
+          test -n "$FABRIC_262"
+          gradle clean compileJava -Pminecraft_version=26.2 -Pfabric_version="$FABRIC_262" --stacktrace
+      - name: Restore 26.3 release build
+        working-directory: throwing-disc-26.3
+        run: |
+          FABRIC_263=$(curl -fsSL https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml | grep '+26.3</version>' | sed 's/.*<version>//;s#</version>.*##' | tail -1)
+          echo "Fabric API for Minecraft 26.3: $FABRIC_263"
+          test -n "$FABRIC_263"
+          gradle clean build -Pminecraft_version=26.3 -Pfabric_version="$FABRIC_263" --stacktrace
       - uses: actions/upload-artifact@v4
         with:
           name: throwing-disc-26.3-jar

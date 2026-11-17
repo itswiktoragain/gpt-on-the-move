@@ -41,3 +41,7 @@ The version stays at 1.0.0 for subsequent updates unless the maintainer explicit
 - The thrown projectile now renders its 3D ring using the `none` item display context (selected separately in each item definition), not the `ground` context. This completely separates dropped-item sizing from projectile sizing.
 - The projectile render scale is now 0.72, producing a 14/16 * 0.72 = 0.63-block ring diameter. Holding remains 0.9, and the model stays one pixel thick.
 - The throw-direction lock, lack of spin, shared 10-tick cooldown, and version 1.0.0 remain intact.
+
+## Version compatibility (still mod v1.0.0)
+- The JAR advertises Minecraft Java 26.2 and 26.3, without changing the mod version 1.0.0.
+- CI compiles the code against Minecraft 26.2 and then produces the final distributable against Minecraft 26.3. Use the matching Fabric API release for the chosen game version.
