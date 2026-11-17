@@ -15,6 +15,13 @@
       "when": 1794873107537,
       "tag": "0001_dark_meteorite",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794876346745,
+      "tag": "0002_shiny_tarantula",
+      "breakpoints": true
     }
   ]
 }

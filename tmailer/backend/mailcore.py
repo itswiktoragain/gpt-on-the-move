@@ -11,6 +11,7 @@ import poplib
 import re
 import smtplib
 import ssl
+from signals import spam_signals
 from urllib.parse import urlsplit
 
 TIMEOUT = 25
@@ -138,9 +139,9 @@ def select(conn, folder):
     checked(conn.select('"' + folder.replace('\\', '\\\\').replace('"', '\\"') + '"', readonly=True))
 
 
-def summary(raw, ident, seen=False):
+def summary(raw, ident, seen=False, folder=''):
     msg = email.message_from_bytes(raw, policy=policy.default)
-    return {'id': str(ident), 'subject': str(msg.get('Subject', '(No subject)')), 'from': str(msg.get('From', 'Unknown sender')), 'to': str(msg.get('To', '')), 'date': str(msg.get('Date', '')), 'seen': seen}
+    return {'id': str(ident), 'subject': str(msg.get('Subject', '(No subject)')), 'from': str(msg.get('From', 'Unknown sender')), 'to': str(msg.get('To', '')), 'date': str(msg.get('Date', '')), 'seen': seen, 'cc': str(msg.get('Cc','')), 'spam': spam_signals(msg,folder)}
 
 
 def list_messages(c, folder='INBOX', offset=0, limit=40):
@@ -155,7 +156,7 @@ def list_messages(c, folder='INBOX', offset=0, limit=40):
                 data = checked(conn.uid('fetch', uid, '(BODY.PEEK[HEADER] FLAGS)'))
                 parts = [x for x in data if isinstance(x, tuple)]
                 if parts:
-                    messages.append(summary(parts[0][1], uid.decode(), b'\\Seen' in parts[0][0]))
+                    messages.append(summary(parts[0][1], uid.decode(), b'\\Seen' in parts[0][0],folder))
             return {'messages': messages, 'total': len(ids)}
         rows = conn.uidl()[1]
         ids = [(int(row.split()[0]), row.split()[1].decode('ascii')) for row in rows][::-1]
@@ -168,7 +169,7 @@ def list_messages(c, folder='INBOX', offset=0, limit=40):
                 if sizes.get(number, 0) > MAX_MESSAGE:
                     continue
                 raw = b'\r\n'.join(conn.retr(number)[1])
-            messages.append(summary(raw, uid))
+            messages.append(summary(raw, uid,folder=folder))
         return {'messages': messages, 'total': len(ids)}
 
 
@@ -190,7 +191,7 @@ class TextHTML(HTMLParser):
             self.text.append(data)
 
 
-def parse_message(raw, ident):
+def parse_message(raw, ident,folder=''):
     msg = email.message_from_bytes(raw, policy=policy.default)
     result = summary(raw, ident)
     body = msg.get_body(preferencelist=('plain', 'html')) if msg.is_multipart() else msg
@@ -206,11 +207,16 @@ def parse_message(raw, ident):
             text = ''.join(parser.text)
     attachments = []
     for part in msg.walk():
-        if part.get_filename() or part.get_content_disposition() == 'attachment':
+        if part.get_filename() or part.get_content_disposition() == 'attachment' or part.get('Content-ID'):
             data = part.get_payload(decode=True)
             if isinstance(data, bytes):
-                attachments.append({'name': part.get_filename() or 'attachment', 'type': part.get_content_type(), 'data': base64.b64encode(data).decode()})
-    result.update(body=text, attachments=attachments, reply_to=str(msg.get('Reply-To') or msg.get('From', '')), message_id=str(msg.get('Message-ID', '')))
+                attachments.append({'name': part.get_filename() or 'attachment', 'type': part.get_content_type(), 'cid': str(part.get('Content-ID','')).strip('<>'), 'inline': part.get_content_disposition()=='inline', 'data': base64.b64encode(data).decode()})
+    html_body=msg.get_body(preferencelist=('html',)) if msg.is_multipart() else (msg if msg.get_content_type()=='text/html' else None)
+    try:
+        html=html_body.get_content() if html_body else ''
+    except (LookupError,UnicodeError):
+        html=''
+    result.update(body=text, html=html, spam=spam_signals(msg,folder,attachments), attachments=attachments, reply_to=str(msg.get('Reply-To') or msg.get('From', '')), message_id=str(msg.get('Message-ID', '')))
     return result
 
 
@@ -238,7 +244,7 @@ def get_message(c, folder, ident):
             if size > MAX_MESSAGE:
                 raise ValueError('This message exceeds the 30 MiB download limit.')
             raw = b'\r\n'.join(conn.retr(number)[1])
-        return parse_message(raw, ident)
+        return parse_message(raw, ident,folder)
 
 
 def addresses(value):
@@ -269,6 +275,8 @@ def send(c, draft):
         msg['In-Reply-To'] = draft['in_reply_to']
         msg['References'] = draft['in_reply_to']
     msg.set_content(draft.get('body', ''))
+    if draft.get('html'):
+        msg.add_alternative(str(draft['html']),subtype='html')
     total = 0
     for attachment in draft.get('attachments', []):
         data = base64.b64decode(attachment['data'], validate=True)
@@ -279,3 +287,20 @@ def send(c, draft):
     with outgoing(c) as conn:
         refused = conn.send_message(msg, from_addr=c['email'], to_addrs=recipients)
     return {'sent': True, 'refused': list(refused), 'message_id': str(msg['Message-ID'])}
+
+
+def sent_recipients(c):
+    if c['protocol']!='imap':return []
+    def decoded(value):
+        def part(m):
+            if not m[1]:return '&'
+            try:return base64.b64decode(m[1].replace(',','/')+'===').decode('utf-16-be')
+            except (ValueError,UnicodeError):return m[0]
+        return re.sub(r'&([^-]*)-',part,value)
+    sent=next((f for f in folders(c) if re.search(r'(?:^|[\/\]])(?:sent(?: mail| items| messages)?|wysłane|envoyés|gesendet)$',decoded(f),re.I)),None)
+    if not sent:return []
+    items=[]
+    for msg in list_messages(c,sent)['messages']:
+        for name,addr in getaddresses([msg['to'],msg.get('cc','')]):
+            if '@' in addr and addr.lower()!=c['email'].lower():items.append({'email':addr.lower(),'name':name[:120]})
+    return items

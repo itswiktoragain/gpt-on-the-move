@@ -1,22 +1,22 @@
 {
-  "version": "1.3.1",
-  "release": "https://github.com/itswiktoragain/gpt-on-the-move/releases/tag/tmailer-v1.3.1",
+  "version": "1.4.0",
+  "release": "https://github.com/itswiktoragain/gpt-on-the-move/releases/tag/tmailer-v1.4.0",
   "assets": [
     {
       "platform": "linux",
-      "url": "https://github.com/itswiktoragain/gpt-on-the-move/releases/download/tmailer-v1.3.1/Tmailer-1.3.1-linux.deb"
+      "url": "https://github.com/itswiktoragain/gpt-on-the-move/releases/download/tmailer-v1.4.0/Tmailer-1.4.0-linux.deb"
     },
     {
       "platform": "macos-arm64",
-      "url": "https://github.com/itswiktoragain/gpt-on-the-move/releases/download/tmailer-v1.3.1/Tmailer-1.3.1-macos-arm64.dmg"
+      "url": "https://github.com/itswiktoragain/gpt-on-the-move/releases/download/tmailer-v1.4.0/Tmailer-1.4.0-macos-arm64.dmg"
     },
     {
       "platform": "macos-x64",
-      "url": "https://github.com/itswiktoragain/gpt-on-the-move/releases/download/tmailer-v1.3.1/Tmailer-1.3.1-macos-x64.dmg"
+      "url": "https://github.com/itswiktoragain/gpt-on-the-move/releases/download/tmailer-v1.4.0/Tmailer-1.4.0-macos-x64.dmg"
     },
     {
       "platform": "windows",
-      "url": "https://github.com/itswiktoragain/gpt-on-the-move/releases/download/tmailer-v1.3.1/Tmailer-1.3.1-windows-x64.msi"
+      "url": "https://github.com/itswiktoragain/gpt-on-the-move/releases/download/tmailer-v1.4.0/Tmailer-1.4.0-windows-x64.msi"
     }
   ]
 }

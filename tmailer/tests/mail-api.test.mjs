@@ -4,6 +4,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,readdirSync} from 'node:fs';
 import {handleMail} from '../cloud/mail.mjs';
 import {handleCloud,b64} from '../cloud/server.mjs';
+import {readRecipients,saveRecipients} from '../cloud/recipients.mjs';
 class Statement{constructor(db,sql,args=[]){Object.assign(this,{db,sql,args});}bind(...args){return new Statement(this.db,this.sql,args);}async first(){return this.db.prepare(this.sql).get(...this.args)||null;}async run(){return this.db.prepare(this.sql).run(...this.args);}async all(){return{results:this.db.prepare(this.sql).all(...this.args)};}}
 class D1{constructor(){this.db=new DatabaseSync(':memory:');this.db.exec('PRAGMA foreign_keys=ON');for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())this.db.exec(readFileSync('drizzle/'+f,'utf8'));}prepare(s){return new Statement(this.db,s);}async batch(items){const out=[];for(const i of items)out.push(await i.run());return out;}}
 const origin='https://tmailer.test',config={email:'user@example.com',password:'never-plaintext-in-db',protocol:'imap',incoming:'imap.example.com',incoming_security:'tls',smtp:'smtp.example.com',smtp_security:'tls'};
@@ -22,4 +23,12 @@ test('mail sessions encrypt credentials, sign server requests, isolate owners, e
   await call('disconnect',{},a);assert.equal((await call('messages',{},a)).status,401);env.DB.db.prepare('UPDATE tmailer_mail_sessions SET expires_at=0').run();assert.equal((await call('messages',{},b,cookie)).status,401);assert.equal(calls,3);
   const cross=new Request(origin+'/api/session',{method:'POST',headers:{Origin:'https://evil.example','Content-Type':'application/json'},body:'{}'});assert.equal((await handleMail(cross,env)).status,403);
  }finally{globalThis.fetch=originalFetch;}
+});
+test('cloud recipient history is encrypted and separated by user and sending mailbox',async()=>{
+ const env={DB:new D1(),TMAILER_VAULT_KEY:b64(crypto.getRandomValues(new Uint8Array(32)))};
+ for(const id of ['one','two'])env.DB.db.prepare('INSERT INTO tmailer_users(id,display_name,settings_json,created_at) VALUES(?,?,?,?)').run(id,id,'{}',0);
+ await saveRecipients(env,{id:'one'},'first@example.com',[{email:'private-recipient@example.com',name:'Contact'}],true);
+ assert.equal((await readRecipients(env,{id:'one'},'first@example.com'))[0].email,'private-recipient@example.com');
+ assert.deepEqual(await readRecipients(env,{id:'two'},'first@example.com'),[]);assert.deepEqual(await readRecipients(env,{id:'one'},'second@example.com'),[]);
+ const row=env.DB.db.prepare('SELECT * FROM tmailer_recipients').get();assert.ok(!row.encrypted_history.includes('private-recipient'));assert.ok(!row.id.includes('first@example.com'));
 });

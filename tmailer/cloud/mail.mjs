@@ -1,4 +1,5 @@
 import {authenticate,loadVault,encrypt,decrypt,b64,digest,ApiError} from './server.mjs';
+import {readRecipients,saveRecipients,sentAddresses} from './recipients.mjs';
 const enc=new TextEncoder(),TTL=7200;
 const response=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const q=(env,sql,...args)=>env.DB.prepare(sql).bind(...args);
@@ -16,7 +17,7 @@ async function body(req){const reader=req.body?.getReader();let parts=[],size=0;
 export async function handleMail(request,env){try{
  if(request.headers.get('Origin')!==new URL(request.url).origin)throw new ApiError('Origin not allowed.',403);
  if(!request.headers.get('Content-Type')?.startsWith('application/json'))throw new ApiError('Use a JSON request.',415);
- const action=new URL(request.url).pathname.replace(/^\/api\//,'');if(!['session','connect','disconnect','folders','messages','message','send'].includes(action))throw new ApiError('Not found.',404);
+ const action=new URL(request.url).pathname.replace(/^\/api\//,'');if(!['session','connect','disconnect','folders','messages','message','send','recipients'].includes(action))throw new ApiError('Not found.',404);
  const data=await body(request),now=Math.floor(Date.now()/1000),user=await authenticate(request,env);
  const ip=request.headers.get('cf-connecting-ip')||'unknown',bucket=Math.floor(now/60),limitKey=await digest('mail:'+ip+':'+bucket);
  const count=await q(env,'INSERT INTO tmailer_auth_limits(key,count,expires_at) VALUES(?,1,?) ON CONFLICT(key) DO UPDATE SET count=count+1 RETURNING count',limitKey,now+120).first();if(count.count>120)throw new ApiError('Too many mail requests. Try again in a minute.',429);
@@ -32,5 +33,9 @@ export async function handleMail(request,env){try{
   const result=await backend(env,'connect',config);await q(env,'UPDATE tmailer_mail_sessions SET user_id=?,encrypted_config=?,expires_at=? WHERE token_hash=?',user?.id||null,await encrypt(env,config,'mail:'+hash),now+TTL,hash).run();return response(result);
  }
  if(!session.encrypted_config)throw new ApiError('Connect a mailbox first.',401);
- return response(await backend(env,action,await decrypt(env,session.encrypted_config,'mail:'+hash),data));
+ const config=await decrypt(env,session.encrypted_config,'mail:'+hash);
+ if(action==='recipients'){let history=await readRecipients(env,user,config.email);let source='history';if(data.importSent){try{const imported=await backend(env,'recipients',config);source=imported.source;history=await saveRecipients(env,user,config.email,imported.recipients||[]);}catch{return response({recipients:history,source:'unavailable'});}}return response({recipients:history,source});}
+ const result=await backend(env,action,config,data);
+ if(action==='send'&&result.sent&&user){try{await saveRecipients(env,user,config.email,sentAddresses(data,result.refused||[]),true);}catch{result.history_warning='Message sent, but recipient history could not be saved.';}}
+ return response(result);
  }catch(e){return response({error:e instanceof ApiError?e.message:e instanceof SyntaxError?'Invalid JSON request.':'The mail connection could not be completed. Please try again.'},e instanceof ApiError?e.status:e instanceof SyntaxError?400:502);}}

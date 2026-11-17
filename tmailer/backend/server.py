@@ -51,6 +51,28 @@ def save_settings(c,remember):
     temp.replace(path)
 
 
+def load_recipient_history(email):
+    path=config_path().with_name('recipients.json')
+    try:return json.loads(path.read_text()).get(email.lower(),[])
+    except (OSError,ValueError):return []
+
+def save_recipient_history(email,items,increment=False):
+    path=config_path().with_name('recipients.json')
+    try:all_history=json.loads(path.read_text())
+    except (OSError,ValueError):all_history={}
+    contacts={r['email'].lower():r for r in all_history.get(email.lower(),[])}
+    for item in items:
+        addr=item['email'].strip().lower()
+        if '@' not in addr or addr==email.lower():continue
+        old=contacts.get(addr,{})
+        contacts[addr]={'email':addr,'name':item.get('name') or old.get('name',''),'count':old.get('count',0)+int(increment),'lastUsed':int(time.time()*1000) if increment else old.get('lastUsed',0)}
+    history=sorted(contacts.values(),key=lambda r:(-r['lastUsed'],-r['count'],r['email']))[:500]
+    all_history[email.lower()]=history;path.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
+    temp=path.with_suffix('.tmp');fd=os.open(temp,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)
+    with os.fdopen(fd,'w') as f:json.dump(all_history,f)
+    temp.replace(path);return history
+
+
 def install_public_network_policy():
     """Resolve once at actual connect and reject nonpublic destinations."""
     original = socket.create_connection
@@ -150,7 +172,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Cache-Control','no-store')
         self.send_header('X-Content-Type-Options','nosniff')
         self.send_header('Referrer-Policy','no-referrer')
-        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self' https: http://127.0.0.1:*; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; frame-src 'self' blob:; child-src blob:; connect-src 'self' https: http://127.0.0.1:*; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
         if self.origin_allowed() and self.headers.get('Origin'):
             self.send_header('Access-Control-Allow-Origin',self.headers['Origin'])
             self.send_header('Vary','Origin')
@@ -165,11 +187,11 @@ class Handler(BaseHTTPRequestHandler):
         if not self.server.public and not self.origin_allowed():
             return self.respond(403,{'error':'Invalid local host.'})
         if path=='/health':
-            return self.respond(200,{'ok':True,'app':'Tmailer','version':'1.3.1'})
+            return self.respond(200,{'ok':True,'app':'Tmailer','version':'1.4.0'})
         if path=='/runtime-config.js':
             data={'desktop':not self.server.public,'apiBase':'','ready':True,'cloudEnabled':True,'cloudOrigin':'https://tmailer.tata-i-wikto-6410.chatgpt.site'}
             return self.respond(200,('window.TMAILER_CONFIG='+json.dumps(data)+';').encode(),'application/javascript')
-        names={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/style.css':'style.css','/logo.svg':'logo.svg','/icons.svg':'icons.svg','/icons.js':'icons.js','/cloud.js':'cloud.js','/downloads.json':'downloads.json'}
+        names={'/':'index.html','/index.html':'index.html','/app.js':'app.js','/style.css':'style.css','/logo.svg':'logo.svg','/icons.svg':'icons.svg','/icons.js':'icons.js','/cloud.js':'cloud.js','/downloads.json':'downloads.json','/purify.js':'purify.js','/mail-tools.js':'mail-tools.js','/sample.js':'sample.js'}
         filename=names.get(path)
         if not filename or not (ASSETS/filename).is_file():
             return self.respond(404,{'error':'Not found.'})
@@ -213,7 +235,19 @@ class Handler(BaseHTTPRequestHandler):
                 if name=='folders':result={'folders':mailcore.folders(c)}
                 elif name=='messages':result=mailcore.list_messages(c,data.get('folder','INBOX'),data.get('offset',0))
                 elif name=='message':result=mailcore.get_message(c,data.get('folder','INBOX'),data['id'])
-                elif name=='send':result=mailcore.send(c,data)
+                elif name=='recipients':
+                    history=load_recipient_history(c['email'])
+                    if data.get('importSent'):
+                        try:history=save_recipient_history(c['email'],mailcore.sent_recipients(c))
+                        except Exception:pass
+                    result={'recipients':history}
+                elif name=='send':
+                    result=mailcore.send(c,data)
+                    if result.get('sent'):
+                        pairs=mailcore.getaddresses([data.get(k,'') for k in ('to','cc','bcc')])
+                        refused=set(result.get('refused',[]))
+                        try:save_recipient_history(c['email'],[{'email':addr,'name':name} for name,addr in pairs if addr not in refused],True)
+                        except Exception:result['history_warning']='Message sent, but recipient history could not be saved.'
                 else:return self.respond(404,{'error':'Unknown action.'})
                 self.respond(200,result)
         except Exception as exc:

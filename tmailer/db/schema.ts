@@ -17,3 +17,6 @@ export const devices=sqliteTable('tmailer_devices',{
 export const mailSessions=sqliteTable('tmailer_mail_sessions',{
  tokenHash:text('token_hash').primaryKey(),userId:text('user_id').references(()=>users.id,{onDelete:'cascade'}),encryptedConfig:text('encrypted_config'),expiresAt:integer('expires_at').notNull()
 },t=>[index('tmailer_mail_sessions_expiry').on(t.expiresAt)]);
+export const recipientHistory=sqliteTable('tmailer_recipients',{
+ id:text('id').primaryKey(),userId:text('user_id').notNull().references(()=>users.id,{onDelete:'cascade'}),encryptedHistory:text('encrypted_history').notNull()
+},t=>[index('tmailer_recipients_owner').on(t.userId)]);
