@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "AA",
+    "AA"
+  ],
+  "key": {
+    "A": {
+      "item": "lumenwild:aetherstone"
+    }
+  },
+  "result": {
+    "id": "lumenwild:polished_aetherstone",
+    "count": 4
+  }
+}

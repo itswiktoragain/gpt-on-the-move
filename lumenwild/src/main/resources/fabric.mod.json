@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "lumenwild",
+  "version": "${version}",
+  "name": "Lumenwild",
+  "description": "Three-tier floating sky archipelago with a custom 3D density generator, giant crystals, halo meteorites and 21 luminous blocks.",
+  "authors": [
+    "Lumenwild contributors"
+  ],
+  "contact": {
+    "sources": "https://github.com/itswiktoragain/gpt-on-the-move/tree/mod/lumenwild-1-21-1/lumenwild"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.wiktor.lumenwild.LumenwildMod"
+    ],
+    "client": [
+      "dev.wiktor.lumenwild.LumenwildClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

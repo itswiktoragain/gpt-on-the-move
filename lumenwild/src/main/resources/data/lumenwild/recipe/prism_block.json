@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "PPP",
+    "PPP",
+    "PPP"
+  ],
+  "key": {
+    "P": {
+      "item": "lumenwild:prism_shard"
+    }
+  },
+  "result": {
+    "id": "lumenwild:prism_block",
+    "count": 1
+  }
+}

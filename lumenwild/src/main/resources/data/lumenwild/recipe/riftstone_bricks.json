@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "RR",
+    "RR"
+  ],
+  "key": {
+    "R": {
+      "item": "lumenwild:riftstone"
+    }
+  },
+  "result": {
+    "id": "lumenwild:riftstone_bricks",
+    "count": 4
+  }
+}

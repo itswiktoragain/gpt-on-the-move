@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    {
+      "item": "minecraft:moss_block"
+    },
+    {
+      "item": "lumenwild:umbral_dust"
+    }
+  ],
+  "result": {
+    "id": "lumenwild:shadow_moss",
+    "count": 2
+  }
+}

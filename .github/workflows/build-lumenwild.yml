@@ -1,0 +1,68 @@
+name: Build Lumenwild Fabric mod
+
+on:
+  push:
+    branches:
+      - mod/lumenwild-1-21-1
+    paths:
+      - 'lumenwild/**'
+      - '.github/workflows/build-lumenwild.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build mod JAR
+        working-directory: lumenwild
+        run: gradle clean build --stacktrace
+      - name: Smoke test world loading (Minecraft dedicated server)
+        working-directory: lumenwild
+        timeout-minutes: 7
+        shell: bash
+        run: |
+          mkdir -p run
+          printf 'eula=true\n' > run/eula.txt
+          printf 'online-mode=false\n' > run/server.properties
+          LUMENWILD_WORLDGEN_TEST=1 gradle --no-daemon runServer --console=plain > server-smoke.log 2>&1 &
+          server_pid=$!
+          ready=0
+          for attempt in $(seq 1 160); do
+            if grep -Fq 'LUMENWILD WORLDGEN SMOKE TEST PASSED:' server-smoke.log; then
+              ready=1
+              break
+            fi
+            if grep -Eq 'Failed to load registries|Failed to start the minecraft server|FAILURE: Build failed|Failed to load datapacks|Exception in server tick loop' server-smoke.log; then
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          cat server-smoke.log
+          kill "$server_pid" 2>/dev/null || true
+          if [ "$ready" != 1 ]; then
+            echo "ERROR: Minecraft server failed to load the worldgen registries and start."
+            exit 1
+          fi
+          echo 'SUCCESS: Minecraft generated Lumenwild floating island terrain and loaded the custom registries.'
+      - name: Upload playable JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumenwild-fabric-1.21.1-v1.1.0
+          path: lumenwild/build/libs/lumenwild-1.1.0.jar
+          if-no-files-found: error

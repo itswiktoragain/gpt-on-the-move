@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "W"
+  ],
+  "key": {
+    "W": {
+      "item": "lumenwild:wispwood"
+    }
+  },
+  "result": {
+    "id": "lumenwild:wisp_planks",
+    "count": 4
+  }
+}

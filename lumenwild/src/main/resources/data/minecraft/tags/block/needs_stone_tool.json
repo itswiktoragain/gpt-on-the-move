@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "lumenwild:aetherstone",
+    "lumenwild:riftstone",
+    "lumenwild:crystal_bloom",
+    "lumenwild:aetherstone_bricks",
+    "lumenwild:riftstone_bricks"
+  ]
+}
