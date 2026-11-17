@@ -45,3 +45,5 @@ The version stays at 1.0.0 for subsequent updates unless the maintainer explicit
 ## Version compatibility (still mod v1.0.0)
 - The JAR advertises Minecraft Java 26.2 and 26.3, without changing the mod version 1.0.0.
 - CI compiles the code against Minecraft 26.2 and then produces the final distributable against Minecraft 26.3. Use the matching Fabric API release for the chosen game version.
+
+- The flight renderer now uses PoseStack.mulPose(Matrix4fc) instead of the renamed quaternion method, keeping one binary implementation compatible with Minecraft 26.2 and 26.3.

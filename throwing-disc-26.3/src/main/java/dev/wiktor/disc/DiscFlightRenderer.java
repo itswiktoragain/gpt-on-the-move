@@ -2,6 +2,7 @@ package dev.wiktor.disc;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import org.joml.Quaternionf;
+import org.joml.Matrix4f;
 
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -64,7 +65,11 @@ public final class DiscFlightRenderer extends ThrownItemRenderer<DiscEntity> {
         Quaternionf orientation = new Quaternionf()
             .rotationY((float) Math.toRadians(-((FlightState) state).throwYaw))
             .rotateX((float) (Math.PI * 0.5));
-        poseStack.rotate(orientation);
+        // Both Minecraft 26.2 and 26.3 expose mulPose(Matrix4fc).
+        // 26.2's quaternion method is mulPose(Quaternionfc), while 26.3
+        // renamed that quaternion overload to rotate(Quaternionfc).
+        // Multiplying a pure rotation matrix avoids that binary API mismatch.
+        poseStack.mulPose(new Matrix4f().rotation(orientation));
         poseStack.scale(PROJECTILE_SCALE, PROJECTILE_SCALE, PROJECTILE_SCALE);
 
         // Item extraction selected NONE, mapped to the voxel-extruded
