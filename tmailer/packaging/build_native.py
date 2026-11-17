@@ -10,7 +10,7 @@ import tempfile
 ROOT=Path(__file__).resolve().parents[1]
 os.chdir(ROOT)
 RELEASE=ROOT/'release';RELEASE.mkdir(exist_ok=True)
-VERSION='1.3.0'
+VERSION='1.3.1'
 
 
 def run(*args):subprocess.run([str(a) for a in args],check=True)
@@ -24,7 +24,7 @@ if sys.platform=='linux':
             shutil.copytree(ROOT/name,app/name,ignore=shutil.ignore_patterns('__pycache__','downloads'))
         shutil.copy2(ROOT/'README.md',app/'README.md')
         control=package/'DEBIAN';control.mkdir()
-        (control/'control').write_text('Package: tmailer\nVersion: 1.3.0\nArchitecture: all\nSection: mail\nPriority: optional\nDepends: python3 (>= 3.10), python3-pyqt6, python3-pyqt6.qtwebengine\nMaintainer: Tmailer Project <tmailer@example.invalid>\nDescription: Tmailer IMAP, POP3 and SMTP mail client\n Native desktop window and direct encrypted mail connections.\n')
+        (control/'control').write_text('Package: tmailer\nVersion: 1.3.1\nArchitecture: all\nSection: mail\nPriority: optional\nDepends: python3 (>= 3.10), python3-pyqt6, python3-pyqt6.qtwebengine\nMaintainer: Tmailer Project <tmailer@example.invalid>\nDescription: Tmailer IMAP, POP3 and SMTP mail client\n Native desktop window and direct encrypted mail connections.\n')
         bin=package/'usr/bin';bin.mkdir(parents=True)
         launcher=bin/'tmailer';launcher.write_text('#!/bin/sh\nexec /usr/bin/python3 /usr/share/tmailer/desktop/linux_window.py "$@"\n');launcher.chmod(0o755)
         apps=package/'usr/share/applications';apps.mkdir(parents=True)
@@ -33,7 +33,7 @@ if sys.platform=='linux':
         shutil.copy2(ROOT/'ui/logo.svg',icons/'tmailer.svg')
         for p in package.rglob('*'):
             p.chmod(0o755 if p.is_dir() or p==launcher else 0o644)
-        run('dpkg-deb','--root-owner-group','--build',package,RELEASE/'Tmailer-1.3.0-linux.deb')
+        run('dpkg-deb','--root-owner-group','--build',package,RELEASE/'Tmailer-1.3.1-linux.deb')
 else:
     from PIL import Image
     icon=Image.open(ROOT/'packaging/logo.png').convert('RGBA')
@@ -47,13 +47,13 @@ else:
     run(*args,'desktop/launcher.py')
     if sys.platform=='win32':
         run('build/native/Tmailer.exe','--smoke-test')
-        run('wix','build','packaging/windows.wxs','-arch','x64','-out','release/Tmailer-1.3.0-windows-x64.msi')
+        run('wix','build','packaging/windows.wxs','-arch','x64','-out','release/Tmailer-1.3.1-windows-x64.msi')
     else:
         run('build/native/Tmailer.app/Contents/MacOS/Tmailer','--smoke-test')
         image=ROOT/'build/dmg';image.mkdir(parents=True,exist_ok=True)
         shutil.copytree(ROOT/'build/native/Tmailer.app',image/'Tmailer.app',symlinks=True,dirs_exist_ok=True)
         (image/'Applications').symlink_to('/Applications')
         arch='arm64' if platform.machine()=='arm64' else 'x64'
-        run('hdiutil','create','-volname','Tmailer','-srcfolder',image,'-ov','-format','UDZO',RELEASE/f'Tmailer-1.3.0-macos-{arch}.dmg')
-        run('hdiutil','verify',RELEASE/f'Tmailer-1.3.0-macos-{arch}.dmg')
+        run('hdiutil','create','-volname','Tmailer','-srcfolder',image,'-ov','-format','UDZO',RELEASE/f'Tmailer-1.3.1-macos-{arch}.dmg')
+        run('hdiutil','verify',RELEASE/f'Tmailer-1.3.1-macos-{arch}.dmg')
 print('Built:',*[p.name for p in RELEASE.iterdir()])

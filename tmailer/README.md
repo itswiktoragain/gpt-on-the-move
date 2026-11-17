@@ -40,7 +40,7 @@ Downloads are published as Windows x64 MSI, macOS Apple silicon and Intel DMGs, 
 
 - Windows 10 / 11: install the MSI and launch Tmailer from Start. Requires the system Edge WebView2 Runtime.
 - macOS 15+: open the DMG for the matching architecture and copy Tmailer into Applications. Uses native WebKit.
-- Linux Mint / Ubuntu / Debian: `sudo apt install ./Tmailer-1.3.0-linux.deb`. The package installs Python and QtWebEngine dependencies through the system package manager.
+- Linux Mint / Ubuntu / Debian: `sudo apt install ./Tmailer-1.3.1-linux.deb`. The package installs Python and QtWebEngine dependencies through the system package manager.
 
 Desktop clients open a native window and connect directly to IMAP, POP3 and SMTP servers using Python's standard library. They can use mail independently of the hosted web backend. Closing the native window stops its local mail server and clears in-memory mail sessions. Cloud vault records remain online.
 

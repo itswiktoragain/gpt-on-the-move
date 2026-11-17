@@ -1,5 +1,5 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <Package Name="Tmailer" Manufacturer="Tmailer" Version="1.3.0" UpgradeCode="8829D5A3-D769-482D-BD7D-A4536ACB5E71" Scope="perMachine">
+  <Package Name="Tmailer" Manufacturer="Tmailer" Version="1.3.1" UpgradeCode="8829D5A3-D769-482D-BD7D-A4536ACB5E71" Scope="perMachine">
     <MajorUpgrade DowngradeErrorMessage="A newer version of Tmailer is already installed." />
     <MediaTemplate EmbedCab="yes" />
     <Icon Id="TmailerIcon" SourceFile="packaging/logo.ico" />
