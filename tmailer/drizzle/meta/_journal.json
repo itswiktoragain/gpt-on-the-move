@@ -8,6 +8,13 @@
       "when": 1794870583157,
       "tag": "0000_glorious_justice",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1794873107537,
+      "tag": "0001_dark_meteorite",
+      "breakpoints": true
     }
   ]
 }

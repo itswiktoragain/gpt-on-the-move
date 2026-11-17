@@ -1,4 +1,4 @@
-# Tmailer 1.2
+# Tmailer 1.3
 
 Tmailer combines a Sites-hosted email interface, cloud account storage, and native Windows, macOS and Linux clients. Logo and branding by Wiktor Laskowski.
 
@@ -18,17 +18,19 @@ When signed in, adding a mailbox can save its server settings and password onlin
 
 Cloud records are stored in the Site's D1 database. No separate service URL or external app is needed to save accounts and settings. The current version does not include email verification, automatic password recovery, inbox caching or cloud message storage. Mail remains on the provider's server. Keep a working sign-in method; the server encryption key must be preserved to decrypt stored mail accounts.
 
-## Web mail connection status
+## Web mail connections
 
-Sites does not support raw mail-server TCP sockets. Cloud sign-in and encrypted storage run on Sites, while direct IMAP/POP3/SMTP operations require Tmailer's own TCP-capable backend. That backend has not yet been provisioned. The website clearly reports that mail connections await activation, and signed-in users can still save mail accounts online.
+The website's native IMAP/POP3/SMTP service runs as a Supabase Edge Function. Sites keeps cloud identity, encrypted credentials and session state, then signs each backend request with an ECDSA P-256 private key. The function contains only the public verification key and rejects unsigned or expired requests. No provider API, browser extension, local bridge or user-supplied service URL is required.
 
-The application does not ask users to connect an external web-mail service or paste a service URL. Once the owner's backend is activated, users only enter their email login and server settings, or select a saved mailbox.
+Short-lived mailbox sessions are encrypted in D1 and use hashed opaque tokens. Sessions expire after two hours. Signing out removes browser access, and Disconnect clears the session's mail credentials. Saved vault records remain until the user removes them. Saved mailboxes reconnect on page load.
+
+Public DNS addresses are checked and pinned before TLS, certificate verification is mandatory, and only standard mail ports are allowed. The web backend uses SMTP SSL/TLS port 465 because the host blocks ports 25 and 587. A saved SMTP 587 setting tries the same hostname on 465. If SMTP fails, verified incoming mail remains usable and a separate sending warning is shown. Providers supporting only 587 require the desktop client until another hosting transport is available.
 
 Owner-only runtime configuration names:
 
-- `TMAILER_VAULT_KEY`: a base64url-encoded random 32-byte encryption key. Keep this secret, outside source and client bundles.
-- `MAIL_BACKEND_URL`: HTTPS origin/path for the deployed Tmailer mail backend.
-- `MAIL_BACKEND_SECRET`: optional shared server-to-server credential for that backend.
+- `TMAILER_VAULT_KEY`: base64url-encoded random 32-byte vault encryption key; preserve it across deployments.
+- `MAIL_BACKEND_URL`: HTTPS URL of the deployed Tmailer mail function.
+- `MAIL_BACKEND_SIGNING_KEY`: private ECDSA P-256 JWK, kept only in Sites secrets. Its public counterpart is in the mail function.
 
 ChatGPT identity uses the Sites platform's stamped user ID and reserved sign-in routes. The app does not implement a separate ChatGPT OAuth flow. To make ChatGPT sign-in optional, the site's sign-in page must be accessible without the platform's mandatory private-site login gate. The application's own authentication protects all saved cloud records.
 
@@ -38,9 +40,9 @@ Downloads are published as Windows x64 MSI, macOS Apple silicon and Intel DMGs, 
 
 - Windows 10 / 11: install the MSI and launch Tmailer from Start. Requires the system Edge WebView2 Runtime.
 - macOS 15+: open the DMG for the matching architecture and copy Tmailer into Applications. Uses native WebKit.
-- Linux Mint / Ubuntu / Debian: `sudo apt install ./Tmailer-1.2.1-linux.deb`. The package installs Python and QtWebEngine dependencies through the system package manager.
+- Linux Mint / Ubuntu / Debian: `sudo apt install ./Tmailer-1.3.0-linux.deb`. The package installs Python and QtWebEngine dependencies through the system package manager.
 
-Desktop clients open a native window and connect directly to IMAP, POP3 and SMTP servers using Python's standard library. They can use mail independently of the pending web connection backend. Closing the native window stops its local mail server and clears in-memory mail sessions. Cloud vault records remain online.
+Desktop clients open a native window and connect directly to IMAP, POP3 and SMTP servers using Python's standard library. They can use mail independently of the hosted web backend. Closing the native window stops its local mail server and clears in-memory mail sessions. Cloud vault records remain online.
 
 ## Mail features
 
@@ -52,6 +54,8 @@ TLS or STARTTLS and valid certificates are required. Password / app-password aut
 
 - `ui/`: shared website and desktop HTML, scripts, local SVG sprite and styling.
 - `cloud/server.mjs`: account authentication, encrypted vault, preferences and desktop authorization.
+- `cloud/mail.mjs`: encrypted mailbox sessions and signed backend requests.
+- `supabase/functions/tmailer-mail/`: native Deno socket protocol service.
 - `app/`, `worker/`: Sites/Vinext routes and runtime integration.
 - `db/schema.ts`, `drizzle/`: schema and immutable generated D1 migrations.
 - `backend/`: direct IMAP/POP3/SMTP backend and local HTTP server.
@@ -65,7 +69,7 @@ For native builds, run `python packaging/build_native.py` on the target OS. Wind
 Checks:
 
 ```sh
-node --test tests/cloud.test.mjs
+node --test tests/*.test.mjs
 python3 -m unittest discover -s tests -v
 node --check ui/app.js
 node --check ui/cloud.js

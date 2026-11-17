@@ -14,3 +14,6 @@ export const authLimits=sqliteTable('tmailer_auth_limits',{
 export const devices=sqliteTable('tmailer_devices',{
  id:text('id').primaryKey(),secretHash:text('secret_hash').notNull(),state:text('state').notNull().default('pending'),encryptedToken:text('encrypted_token'),expiresAt:integer('expires_at').notNull()
 });
+export const mailSessions=sqliteTable('tmailer_mail_sessions',{
+ tokenHash:text('token_hash').primaryKey(),userId:text('user_id').references(()=>users.id,{onDelete:'cascade'}),encryptedConfig:text('encrypted_config'),expiresAt:integer('expires_at').notNull()
+},t=>[index('tmailer_mail_sessions_expiry').on(t.expiresAt)]);

@@ -165,7 +165,7 @@ class Handler(BaseHTTPRequestHandler):
         if not self.server.public and not self.origin_allowed():
             return self.respond(403,{'error':'Invalid local host.'})
         if path=='/health':
-            return self.respond(200,{'ok':True,'app':'Tmailer','version':'1.2.1'})
+            return self.respond(200,{'ok':True,'app':'Tmailer','version':'1.3.0'})
         if path=='/runtime-config.js':
             data={'desktop':not self.server.public,'apiBase':'','ready':True,'cloudEnabled':True,'cloudOrigin':'https://tmailer.tata-i-wikto-6410.chatgpt.site'}
             return self.respond(200,('window.TMAILER_CONFIG='+json.dumps(data)+';').encode(),'application/javascript')
